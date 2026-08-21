@@ -22,6 +22,7 @@ más.
 | ✅  | Partidas: crear, cargar, borrar, sembrar el mundo                            |     |
 | ✅  | Pantallas: menú, nueva partida, club, plantilla, ficha de jugador            |     |
 | ✅  | Arnés de verificación con Electron real y capturas                           |     |
+| ✅  | Instalador NSIS con icono, verificado también empaquetado                    |     |
 
 ---
 
@@ -90,13 +91,14 @@ Aquí es donde más se parecían y más se diferenciaban las dos referencias.
 
 ## Bloque 6 — Alrededor
 
-|     | Pieza                    | Detalle                                                |     |
-| --- | ------------------------ | ------------------------------------------------------ | --- |
-| ⬜  | Historial y palmarés     | Temporadas, títulos, récords                           | M   |
-| ⬜  | Prensa y notificaciones  | Bandeja de avisos, ruedas de prensa                    | M   |
-| ⬜  | Editor de datos          | Editar equipos y plantillas dentro del juego           | M   |
-| ⬜  | Ajustes                  | Resolución, reglamento, idioma                         | S   |
-| ⬜  | Empaquetado e instalador | Ya está el `electron-builder.yml`; falta icono y firma | S   |
+|     | Pieza                   | Detalle                                                 |     |
+| --- | ----------------------- | ------------------------------------------------------- | --- |
+| ⬜  | Historial y palmarés    | Temporadas, títulos, récords                            | M   |
+| ⬜  | Prensa y notificaciones | Bandeja de avisos, ruedas de prensa                     | M   |
+| ⬜  | Editor de datos         | Editar equipos y plantillas dentro del juego            | M   |
+| ⬜  | Ajustes                 | Resolución, reglamento, idioma                          | S   |
+| ⬜  | Firma del instalador    | El instalador ya se genera con icono; falta certificado | S   |
+| ⬜  | Actualizaciones         | Publicación y auto-update, si llega a distribuirse      | M   |
 
 ---
 
