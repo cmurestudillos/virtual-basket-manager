@@ -94,4 +94,11 @@ jugada a jugada, sin arrancar la aplicación.
 Lo último es lo que de verdad dice si algo funciona: un test unitario no ve una
 pantalla en blanco ni un `window.api` que no llegó a exponerse.
 
+Hay un cuarto nivel que conviene repetir antes de dar nada por bueno: ejecutar
+el **ejecutable empaquetado** (`release/win-unpacked/`) y crear una partida en
+él. En desarrollo las migraciones y el dataset se leen del repo, y empaquetados
+salen de `process.resourcesPath`; es una ruta distinta que sólo falla en la
+build que se distribuye, justo la que nadie prueba. Se comprobó al montar el
+esqueleto y funciona.
+
 **`pnpm dev` no recompila.** Carga lo que hay en `out/`.
