@@ -30,18 +30,36 @@ más.
 
 Lo mínimo para que esto sea un juego y no una base de datos bonita.
 
-|     | Pieza                     | Detalle                                                                     |     |
-| --- | ------------------------- | --------------------------------------------------------------------------- | --- |
-| ⬜  | Calendario de liga        | Todos contra todos ida y vuelta; jornadas con fecha real de juego           | M   |
-| ⬜  | Simular jornada           | Avanzar y resolver todos los partidos, guardando el acta completa           | M   |
-| ⬜  | Clasificación             | Con el desempate de baloncesto: _average_ particular, no diferencia general | S   |
-| ⬜  | Resultados y calendario   | Jornada a jornada, con acta de cada partido                                 | M   |
-| ⬜  | Pantalla de partido       | Marcador, parciales por cuarto y acta de los dos equipos                    | M   |
-| ⬜  | Alineación y rotación     | Cinco inicial y minutos objetivo, editables por el usuario                  | M   |
-| ⬜  | Pizarra táctica           | Los seis sistemas de cada lado y los tres deslizadores                      | S   |
-| ⬜  | Estadísticas de temporada | Medias por jugador y líderes de la liga                                     | M   |
-| ⬜  | **Playoffs**              | Series al mejor de 3/5/7 con factor cancha; es como se decide el título     | M   |
-| ⬜  | Fin de temporada          | Campeón, ascensos y descensos, arranque de la siguiente                     | M   |
+Decidido con el usuario antes de empezar: calendario con fechas reales,
+playoffs formato ACB (8 equipos, cuartos al mejor de 3 y semis/final al mejor de
+5), previa antes del partido y entrega en tres fases.
+
+### Fase 1 — jugar la liga regular (hecha)
+
+|     | Pieza                   | Detalle                                                                     |     |
+| --- | ----------------------- | --------------------------------------------------------------------------- | --- |
+| ✅  | Calendario de liga      | 34 jornadas ida y vuelta sobre domingos reales del calendario del juego     | M   |
+| ✅  | Avance del reloj        | Avanzar día o ir a la jornada; se para en seco en el partido del usuario    | M   |
+| ✅  | Partido del usuario     | **Modo resultado cuarto a cuarto**: él pulsa para pasar de cuarto           | M   |
+| ✅  | Partidos de la IA       | Resueltos de una tacada por el mismo motor, con acta completa guardada      | M   |
+| ✅  | Clasificación           | Con el desempate de baloncesto: _average_ particular, no diferencia general | S   |
+| ✅  | Resultados y calendario | Jornada a jornada, con el acta de cada partido enlazada                     | M   |
+
+### Fase 2 — que las decisiones sean tuyas
+
+|     | Pieza                     | Detalle                                                    |     |
+| --- | ------------------------- | ---------------------------------------------------------- | --- |
+| ⬜  | Alineación y rotación     | Cinco inicial y minutos objetivo, editables por el usuario | M   |
+| ⬜  | Pizarra táctica           | Los seis sistemas de cada lado y los tres deslizadores     | S   |
+| ⬜  | Estadísticas de temporada | Medias por jugador y líderes de la liga                    | M   |
+
+### Fase 3 — que haya campeón
+
+|     | Pieza            | Detalle                                                           |     |
+| --- | ---------------- | ----------------------------------------------------------------- | --- |
+| ⬜  | **Playoffs**     | 8 equipos, cuartos al mejor de 3 y semis/final al mejor de 5      | M   |
+| ⬜  | Factor cancha    | Por posición en la liga regular                                   | S   |
+| ⬜  | Fin de temporada | Campeón, ascensos y descensos, arranque de la temporada siguiente | M   |
 
 ## Bloque 2 — El club
 

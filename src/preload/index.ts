@@ -5,6 +5,14 @@ import type { CreateSaveRequest, SavesApi, SaveSummary } from '@shared/contracts
 import type { CatalogTeam, TeamSummary, TeamsApi } from '@shared/contracts/teams.contract';
 import type { PlayerSummary, PlayersApi } from '@shared/contracts/players.contract';
 import type { GameStateApi, ManagedTeamState } from '@shared/contracts/game-state.contract';
+import type {
+  AdvanceResult,
+  FixtureEntry,
+  SeasonApi,
+  SeasonSummary,
+  StandingEntry
+} from '@shared/contracts/season.contract';
+import type { MatchApi, MatchState } from '@shared/contracts/match.contract';
 
 /**
  * Puente entre renderer y proceso principal.
@@ -45,6 +53,30 @@ const gameState: GameStateApi = {
   get: () => ipcRenderer.invoke(IPC_CHANNELS.gameStateGet) as Promise<ManagedTeamState | null>
 };
 
-export const api = { settings, saves, teams, players, gameState };
+const season: SeasonApi = {
+  getCurrent: () => ipcRenderer.invoke(IPC_CHANNELS.seasonGetCurrent) as Promise<SeasonSummary>,
+  getStandings: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.seasonGetStandings) as Promise<StandingEntry[]>,
+  listFixtures: (round?: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.seasonListFixtures, round) as Promise<FixtureEntry[]>,
+  listTeamFixtures: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.seasonListTeamFixtures, teamId) as Promise<FixtureEntry[]>,
+  getNextGame: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.seasonGetNextGame) as Promise<FixtureEntry | null>,
+  advanceDay: () => ipcRenderer.invoke(IPC_CHANNELS.seasonAdvanceDay) as Promise<AdvanceResult>,
+  advanceToNextGame: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.seasonAdvanceToNextGame) as Promise<AdvanceResult>
+};
+
+const match: MatchApi = {
+  start: (gameId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.matchStart, gameId) as Promise<MatchState>,
+  advancePeriod: (gameId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.matchAdvancePeriod, gameId) as Promise<MatchState>,
+  get: (gameId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.matchGet, gameId) as Promise<MatchState | null>
+};
+
+export const api = { settings, saves, teams, players, gameState, season, match };
 
 contextBridge.exposeInMainWorld('api', api);

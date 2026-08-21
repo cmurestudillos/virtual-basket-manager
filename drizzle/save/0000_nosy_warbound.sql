@@ -104,6 +104,7 @@ CREATE TABLE `games` (
 	`id` text PRIMARY KEY NOT NULL,
 	`season_id` text NOT NULL,
 	`round` integer NOT NULL,
+	`scheduled_on` integer NOT NULL,
 	`home_team_id` text NOT NULL,
 	`away_team_id` text NOT NULL,
 	`home_score` integer,
@@ -120,6 +121,8 @@ CREATE TABLE `games` (
 	FOREIGN KEY (`away_team_id`) REFERENCES `teams`(`id`) ON UPDATE no action ON DELETE cascade
 );
 --> statement-breakpoint
+CREATE INDEX `idx_games_scheduled` ON `games` (`scheduled_on`);--> statement-breakpoint
+CREATE INDEX `idx_games_season` ON `games` (`season_id`);--> statement-breakpoint
 CREATE TABLE `game_player_stats` (
 	`id` text PRIMARY KEY NOT NULL,
 	`game_id` text NOT NULL,

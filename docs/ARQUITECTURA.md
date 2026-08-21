@@ -76,6 +76,12 @@ Para añadir una feature: canal nuevo en `src/shared/ipc-channels.ts`, contrato
 en `src/shared/contracts/`, el trío de arriba, una línea en
 `src/main/ipc/registerIpcHandlers.ts` y el método en `src/preload/index.ts`.
 
+Los servicios que trabajan contra la partida cargada reciben un **resolutor**
+de conexión (`() => SaveDatabase`), no una instancia. Por dos razones: la
+partida activa cambia en caliente cuando el usuario sale al menú y carga otra,
+y así el servicio queda libre de Electron y se puede probar de verdad — es lo
+que permite jugar una temporada entera dentro de un test.
+
 ## El motor
 
 `src/shared/engine/basketball/` está en `shared` y no en `main` porque no

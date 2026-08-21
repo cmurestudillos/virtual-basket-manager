@@ -109,24 +109,73 @@ interface TeamState {
   isHome: boolean;
 }
 
-export function simulateGame(input: SimulateGameInput): GameResult {
-  const { ruleset } = input;
-  const seed = input.seed ?? seedFromString(input.gameId);
-  const rng = createRng(seed);
+/**
+ * Partido reanudable: se simula **cuarto a cuarto**, no de una tacada.
+ *
+ * Es lo que pide el modo resultado del juego, donde el usuario pulsa para pasar
+ * de cuarto y ve el parcial. Los partidos de la IA usan {@link simulateGame},
+ * que no es más que este mismo objeto con un bucle encima: hay un único camino
+ * de código, así que el partido del usuario y el del rival se simulan
+ * exactamente igual.
+ *
+ * Mantener el estado entre cuartos (en vez de resolver el partido entero y
+ * limitarse a enseñarlo por partes) es lo que permitirá más adelante ajustar la
+ * pizarra en el descanso sin rehacer el motor.
+ */
+export class GameSimulation {
+  private readonly ruleset: SimulateGameInput['ruleset'];
+  private readonly rng: Rng;
+  private readonly homeState: TeamState;
+  private readonly awayState: TeamState;
+  private readonly events: GameEvent[] = [];
+  private readonly periodScores: PeriodScore[] = [];
+  private readonly averagePossession: number;
+  private offenseIsHome: boolean;
+  private period = 1;
+  private elapsedSeconds = 0;
+  private finished = false;
 
-  const home = buildTeamState(input.home, true);
-  const away = buildTeamState(input.away, false);
-  const events: GameEvent[] = [];
-  const periods: PeriodScore[] = [];
+  readonly gameId: string;
+  readonly seed: number;
 
-  const averagePossession = averagePossessionSeconds(home, away);
-  // El salto inicial decide quién empieza; a partir de ahí se alterna.
-  let offenseIsHome = rng.chance(jumpBallHomeChance(home, away));
-  let period = 1;
-  let elapsedSeconds = 0;
+  constructor(input: SimulateGameInput) {
+    this.gameId = input.gameId;
+    this.ruleset = input.ruleset;
+    this.seed = input.seed ?? seedFromString(input.gameId);
+    this.rng = createRng(this.seed);
+    this.homeState = buildTeamState(input.home, true);
+    this.awayState = buildTeamState(input.away, false);
+    this.averagePossession = averagePossessionSeconds(this.homeState, this.awayState);
+    // El salto inicial decide quién empieza; a partir de ahí se alterna.
+    this.offenseIsHome = this.rng.chance(jumpBallHomeChance(this.homeState, this.awayState));
+  }
 
-  for (;;) {
-    const isOvertime = period > ruleset.periods;
+  get isFinished(): boolean {
+    return this.finished;
+  }
+
+  /** Cuarto que se jugará en la siguiente llamada a {@link playPeriod}. */
+  get nextPeriod(): number {
+    return this.period;
+  }
+
+  /** Cuántos cuartos se han jugado ya. */
+  get playedPeriods(): number {
+    return this.periodScores.length;
+  }
+
+  /**
+   * Juega un cuarto entero (o una prórroga) y devuelve su parcial. Llamarlo con
+   * el partido ya terminado no hace nada: devuelve el último parcial, para que
+   * un doble clic en el botón de avanzar no invente una prórroga.
+   */
+  playPeriod(): PeriodScore {
+    if (this.finished) {
+      return this.periodScores[this.periodScores.length - 1] as PeriodScore;
+    }
+
+    const { ruleset, rng, homeState: home, awayState: away, events } = this;
+    const isOvertime = this.period > ruleset.periods;
     const periodSeconds = (isOvertime ? ruleset.overtimeMinutes : ruleset.periodMinutes) * 60;
 
     const homeAtStart = home.score;
@@ -136,7 +185,7 @@ export function simulateGame(input: SimulateGameInput): GameResult {
 
     let clock = periodSeconds;
     pushEvent(events, home, away, {
-      period,
+      period: this.period,
       clockSeconds: clock,
       type: 'periodStart',
       teamId: '',
@@ -144,72 +193,90 @@ export function simulateGame(input: SimulateGameInput): GameResult {
     });
 
     while (clock > 0) {
-      const offense = offenseIsHome ? home : away;
-      const defense = offenseIsHome ? away : home;
+      const offense = this.offenseIsHome ? home : away;
+      const defense = this.offenseIsHome ? away : home;
 
       const duration = Math.min(
         clock,
-        Math.max(MIN_POSSESSION_SECONDS, Math.round(averagePossession + rng.int(-7, 7)))
+        Math.max(MIN_POSSESSION_SECONDS, Math.round(this.averagePossession + rng.int(-7, 7)))
       );
       clock -= duration;
 
       chargeMinutes(home, duration);
       chargeMinutes(away, duration);
-      elapsedSeconds += duration;
+      this.elapsedSeconds += duration;
 
       resolvePossession({
         offense,
         defense,
         rng,
         events,
-        period,
+        period: this.period,
         clock,
         home,
         away,
         ruleset,
-        elapsedSeconds
+        elapsedSeconds: this.elapsedSeconds
       });
 
       applyFatigue(offense, defense);
-      substitute(home, ruleset.personalFoulLimit, elapsedSeconds);
-      substitute(away, ruleset.personalFoulLimit, elapsedSeconds);
+      substitute(home, ruleset.personalFoulLimit, this.elapsedSeconds);
+      substitute(away, ruleset.personalFoulLimit, this.elapsedSeconds);
 
-      offenseIsHome = !offenseIsHome;
+      this.offenseIsHome = !this.offenseIsHome;
     }
 
     pushEvent(events, home, away, {
-      period,
+      period: this.period,
       clockSeconds: 0,
       type: 'periodEnd',
       teamId: '',
       playerId: null
     });
-    periods.push({
-      period,
+
+    const score: PeriodScore = {
+      period: this.period,
       home: home.score - homeAtStart,
       away: away.score - awayAtStart
-    });
+    };
+    this.periodScores.push(score);
 
     // Descanso entre cuartos: se recupera una parte del cansancio, no todo.
-    recoverBetweenPeriods(home, period === Math.floor(ruleset.periods / 2));
-    recoverBetweenPeriods(away, period === Math.floor(ruleset.periods / 2));
+    const isHalfTime = this.period === Math.floor(ruleset.periods / 2);
+    recoverBetweenPeriods(home, isHalfTime);
+    recoverBetweenPeriods(away, isHalfTime);
 
-    const regulationDone = period >= ruleset.periods;
-    if (regulationDone && home.score !== away.score) {
-      break;
+    // Empatados al final del reglamentario, hay prórroga; y otra, y otra.
+    if (this.period >= ruleset.periods && home.score !== away.score) {
+      this.finished = true;
+    } else {
+      this.period += 1;
     }
-    period += 1;
+
+    return score;
   }
 
-  return {
-    gameId: input.gameId,
-    seed,
-    home: toTeamResult(home),
-    away: toTeamResult(away),
-    periods,
-    overtimes: Math.max(0, periods.length - ruleset.periods),
-    events
-  };
+  /** Resultado hasta el momento. Sirve tanto a mitad de partido como al final. */
+  get result(): GameResult {
+    return {
+      gameId: this.gameId,
+      seed: this.seed,
+      home: toTeamResult(this.homeState),
+      away: toTeamResult(this.awayState),
+      periods: [...this.periodScores],
+      overtimes: Math.max(0, this.periodScores.length - this.ruleset.periods),
+      events: [...this.events]
+    };
+  }
+}
+
+/** Partido completo de una tacada. Es lo que usan los partidos de la IA. */
+export function simulateGame(input: SimulateGameInput): GameResult {
+  const simulation = new GameSimulation(input);
+  while (!simulation.isFinished) {
+    simulation.playPeriod();
+  }
+  return simulation.result;
 }
 
 // --------------------------------------------------------------------------

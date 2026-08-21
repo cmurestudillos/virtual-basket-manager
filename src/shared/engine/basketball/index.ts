@@ -1,4 +1,4 @@
-export { simulateGame } from './simulate-game';
+export { simulateGame, GameSimulation } from './simulate-game';
 export { createRng, seedFromString, type Rng } from './rng';
 export {
   effectiveAttribute,

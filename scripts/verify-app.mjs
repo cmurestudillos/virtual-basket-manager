@@ -5,11 +5,12 @@ import { resolve } from 'node:path';
 /**
  * Arnés de verificación de la aplicación real.
  *
- * Arranca Electron, recorre el flujo completo (menú -> nueva partida -> club ->
- * plantilla -> ficha -> competición) y deja una captura de cada pantalla en
- * `.dev-data/shots`. Es la única forma de saber que algo funciona de verdad:
- * los tests unitarios no ven ni una pantalla en blanco ni un `window.api`
- * que no llegó a exponerse.
+ * Arranca Electron y recorre el flujo completo: menú, nueva partida, club,
+ * plantilla, ficha, partido jugado cuarto a cuarto, clasificación y calendario.
+ * Deja una captura de cada pantalla en `.dev-data/shots`.
+ *
+ * Es la única forma de saber que algo funciona de verdad: los tests unitarios
+ * no ven ni una pantalla en blanco ni un `window.api` que no llegó a exponerse.
  *
  *   pnpm build && pnpm verify:app
  *
@@ -51,7 +52,7 @@ await page.locator('input').first().fill('Carlos');
 await page.screenshot({ path: `${SHOTS}/02-nueva-partida.png` });
 
 await page.getByText('Empezar').click();
-await page.waitForTimeout(2500);
+await page.waitForTimeout(3000);
 console.log('cabecera:', (await page.locator('header').first().innerText()).replace(/\n/g, ' · '));
 await page.screenshot({ path: `${SHOTS}/03-club.png` });
 
@@ -65,10 +66,53 @@ await page.waitForTimeout(1200);
 console.log('ficha:', await page.locator('h1').first().innerText());
 await page.screenshot({ path: `${SHOTS}/05-ficha.png` });
 
-await page.getByRole('link', { name: 'Competición' }).click();
+// --- Fase 1: temporada -----------------------------------------------------
+
+await page.getByRole('link', { name: 'Club' }).click();
 await page.waitForTimeout(1200);
-console.log('equipos en competición:', await page.locator('tbody tr').count());
-await page.screenshot({ path: `${SHOTS}/06-competicion.png` });
+console.log('próximo partido:', await page.locator('section').first().innerText());
+
+// El calendario se para solo en el partido del usuario.
+await page.getByRole('button', { name: 'Ir a la jornada' }).click();
+await page.waitForTimeout(2500);
+console.log('url tras avanzar:', page.url());
+await page.screenshot({ path: `${SHOTS}/06-previa.png` });
+
+// Cuarto a cuarto, que es como se juega en modo resultado.
+for (let quarter = 1; quarter <= 4; quarter += 1) {
+  const button = page.locator('button', { hasText: /^Jugar/ }).first();
+  if ((await button.count()) === 0) break;
+  await button.click();
+  await page.waitForTimeout(1500);
+  const scoreboard = await page.locator('section').first().innerText();
+  console.log(`tras el cuarto ${quarter}:`, scoreboard.split('\n').slice(0, 4).join(' '));
+  await page.screenshot({ path: `${SHOTS}/07-cuarto-${quarter}.png` });
+}
+
+// Prórrogas, si las hubo.
+for (let extra = 0; extra < 4; extra += 1) {
+  const button = page.locator('button', { hasText: /^Jugar/ }).first();
+  if ((await button.count()) === 0) break;
+  await button.click();
+  await page.waitForTimeout(1500);
+}
+await page.screenshot({ path: `${SHOTS}/08-acta.png` });
+console.log('actas en pantalla:', await page.locator('table').count());
+
+await page.getByRole('link', { name: 'Volver al club' }).click();
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: 'Avanzar día' }).click();
+await page.waitForTimeout(3000);
+
+await page.getByRole('link', { name: 'Competición' }).click();
+await page.waitForTimeout(1500);
+console.log('equipos en la clasificación:', await page.locator('tbody tr').count());
+await page.screenshot({ path: `${SHOTS}/09-clasificacion.png` });
+
+await page.getByRole('button', { name: 'Calendario' }).click();
+await page.waitForTimeout(1200);
+console.log('partidos de la jornada:', await page.locator('ul li').count());
+await page.screenshot({ path: `${SHOTS}/10-calendario.png` });
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);

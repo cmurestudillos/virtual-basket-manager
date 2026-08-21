@@ -1,7 +1,7 @@
 import { describe, expect, it } from 'vitest';
 import { points, type PlayerBoxScore } from '@shared/domain/box-score';
 import { FIBA_RULESET, NBA_RULESET, regulationMinutes } from '@shared/domain/rulesets';
-import { simulateGame } from '../simulate-game';
+import { GameSimulation, simulateGame } from '../simulate-game';
 import type { GameResult } from '../types';
 import { buildTestTeam } from './test-teams';
 
@@ -71,6 +71,53 @@ describe('simulateGame', () => {
       (regulationMinutes(FIBA_RULESET) + result.overtimes * FIBA_RULESET.overtimeMinutes) * 60 * 5;
 
     expect(totalSeconds).toBe(expected);
+  });
+
+  it('jugar cuarto a cuarto da exactamente el mismo partido que simularlo entero', () => {
+    // Es la invariante que sostiene todo el modo resultado: el partido del
+    // usuario, que se juega a botonazos, y el del rival, que se resuelve de
+    // una tacada, salen del mismo camino de código y del mismo azar.
+    const input = {
+      gameId: 'cuarto-a-cuarto',
+      home: buildTestTeam('local', 62),
+      away: buildTestTeam('visitante', 58),
+      ruleset: FIBA_RULESET
+    };
+
+    const deUnaVez = simulateGame(input);
+
+    const simulation = new GameSimulation(input);
+    const parciales: number[] = [];
+    while (!simulation.isFinished) {
+      parciales.push(simulation.playPeriod().home);
+    }
+    const porCuartos = simulation.result;
+
+    expect(porCuartos.home.score).toBe(deUnaVez.home.score);
+    expect(porCuartos.away.score).toBe(deUnaVez.away.score);
+    expect(porCuartos.periods).toEqual(deUnaVez.periods);
+    expect(porCuartos.home.boxScores).toEqual(deUnaVez.home.boxScores);
+    expect(parciales).toEqual(deUnaVez.periods.map((period) => period.home));
+  });
+
+  it('no inventa prórrogas si se pulsa avanzar con el partido acabado', () => {
+    const simulation = new GameSimulation({
+      gameId: 'boton-de-mas',
+      home: buildTestTeam('local', 60),
+      away: buildTestTeam('visitante', 55),
+      ruleset: FIBA_RULESET
+    });
+
+    while (!simulation.isFinished) {
+      simulation.playPeriod();
+    }
+    const alAcabar = simulation.result;
+
+    simulation.playPeriod();
+    simulation.playPeriod();
+
+    expect(simulation.result.periods).toEqual(alAcabar.periods);
+    expect(simulation.result.home.score).toBe(alAcabar.home.score);
   });
 
   it('rota el banquillo sin igualar los minutos de titulares y suplentes', () => {
