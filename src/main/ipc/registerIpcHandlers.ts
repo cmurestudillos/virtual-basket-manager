@@ -1,0 +1,17 @@
+import { registerSettingsIpcHandlers } from '../features/settings/settings.ipc-handler';
+import { registerSavesIpcHandlers } from '../features/saves/saves.ipc-handler';
+import { registerTeamsIpcHandlers } from '../features/teams/teams.ipc-handler';
+import { registerPlayersIpcHandlers } from '../features/players/players.ipc-handler';
+import { registerGameStateIpcHandlers } from '../features/game-state/game-state.ipc-handler';
+
+/**
+ * Único punto donde se cablean los handlers IPC de cada feature. Una línea por
+ * feature; esta agregación no lleva lógica de negocio.
+ */
+export function registerIpcHandlers(): void {
+  registerSettingsIpcHandlers();
+  registerSavesIpcHandlers();
+  registerTeamsIpcHandlers();
+  registerPlayersIpcHandlers();
+  registerGameStateIpcHandlers();
+}

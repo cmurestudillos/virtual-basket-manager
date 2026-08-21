@@ -1,0 +1,79 @@
+@import 'tailwindcss';
+
+/**
+ * Paleta del juego. Fondo de pista de noche y naranja de balón como acento:
+ * es la lectura inmediata de "esto es baloncesto" sin recurrir a ninguna marca.
+ *
+ * Se declara con `@theme` (Tailwind 4) para que estos colores estén disponibles
+ * como utilidades — `bg-court-900`, `text-ball-500` — y no como cadenas sueltas
+ * repartidas por los componentes.
+ */
+@theme {
+  --color-court-950: #0b0f14;
+  --color-court-900: #121822;
+  --color-court-800: #1a2230;
+  --color-court-700: #263143;
+  --color-court-600: #3a4759;
+  --color-court-300: #94a3b8;
+  --color-court-100: #e2e8f0;
+
+  --color-ball-600: #d9581a;
+  --color-ball-500: #f2761f;
+  --color-ball-400: #ff9440;
+
+  --color-line-500: #eab308;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+}
+
+body {
+  margin: 0;
+  background-color: var(--color-court-950);
+  color: var(--color-court-100);
+  font-family:
+    'Segoe UI',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  /* La ventana del juego no se desplaza: cada pantalla gestiona su propio
+     scroll interno, como cualquier manager de escritorio. */
+  overflow: hidden;
+}
+
+/* Tabla de datos: es el componente más repetido de todo el juego (plantilla,
+   clasificación, acta, estadísticas), así que su aspecto se define una vez. */
+.data-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.875rem;
+}
+
+.data-table thead th {
+  position: sticky;
+  top: 0;
+  background-color: var(--color-court-800);
+  color: var(--color-court-300);
+  font-weight: 600;
+  text-align: left;
+  padding: 0.5rem 0.75rem;
+  white-space: nowrap;
+}
+
+.data-table tbody td {
+  padding: 0.5rem 0.75rem;
+  border-top: 1px solid var(--color-court-700);
+  white-space: nowrap;
+}
+
+.data-table tbody tr:hover {
+  background-color: var(--color-court-800);
+}
+
+.numeric {
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}

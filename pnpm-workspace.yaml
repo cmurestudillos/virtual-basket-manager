@@ -1,0 +1,13 @@
+allowBuilds:
+  # `better-sqlite3` NO ejecuta su script de instalación a propósito.
+  #
+  # El tarball de npm ya trae los binarios N-API compilados
+  # (`prebuilds/win32-x64.node`), que son los que carga en tiempo de ejecución.
+  # Su script `install` intenta antes bajarse un prebuild de GitHub y, si no lo
+  # consigue, se lanza a compilar con node-gyp, que exige Visual Studio Build
+  # Tools y sin ellos revienta la instalación entera. En `false` se usa
+  # directamente el binario que ya viene dentro del paquete.
+  better-sqlite3: false
+  electron: true
+  electron-winstaller: true
+  esbuild: true

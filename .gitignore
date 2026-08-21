@@ -1,0 +1,10 @@
+node_modules
+out
+dist
+build
+coverage
+.dev-data
+*.local
+.DS_Store
+# Instaladores generados por electron-builder
+release
