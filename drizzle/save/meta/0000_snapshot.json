@@ -1,7 +1,7 @@
 {
   "version": "6",
   "dialect": "sqlite",
-  "id": "3b0abbe0-9b74-4bf4-a7cf-98c9e0014fdb",
+  "id": "19a24617-4254-4062-9e5a-85ffb0928aae",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "tables": {
     "competitions": {
@@ -732,6 +732,13 @@
           "notNull": true,
           "autoincrement": false
         },
+        "scheduled_on": {
+          "name": "scheduled_on",
+          "type": "integer",
+          "primaryKey": false,
+          "notNull": true,
+          "autoincrement": false
+        },
         "home_team_id": {
           "name": "home_team_id",
           "type": "text",
@@ -812,7 +819,22 @@
           "autoincrement": false
         }
       },
-      "indexes": {},
+      "indexes": {
+        "idx_games_scheduled": {
+          "name": "idx_games_scheduled",
+          "columns": [
+            "scheduled_on"
+          ],
+          "isUnique": false
+        },
+        "idx_games_season": {
+          "name": "idx_games_season",
+          "columns": [
+            "season_id"
+          ],
+          "isUnique": false
+        }
+      },
       "foreignKeys": {
         "games_season_id_seasons_id_fk": {
           "name": "games_season_id_seasons_id_fk",

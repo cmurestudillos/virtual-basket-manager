@@ -97,6 +97,19 @@ Encima corren cansancio y **rotación por objetivo de minutos** — la mecánica
 PC Basket. Sin ella los doce jugadores acaban con los mismos minutos, que no se
 parece a ningún partido real.
 
+El motor es **reanudable**: `GameSimulation` juega de cuarto en cuarto y
+`simulateGame` no es más que un bucle encima. El partido del usuario se juega a
+botonazos (modo resultado, un cuarto por pulsación) y el del rival se resuelve
+de una tacada, pero los dos salen del mismo camino de código y del mismo azar —
+hay un test que comprueba exactamente esa igualdad. Mantener el estado entre
+cuartos, en vez de resolver el partido entero y limitarse a enseñarlo por
+partes, es lo que permitirá ajustar la pizarra en el descanso sin rehacer nada.
+
+Un partido a medias vive sólo en memoria. Si se cierra la aplicación en el
+tercer cuarto, el encuentro vuelve a estar sin jugar y se repite idéntico,
+porque la semilla sale del id del partido. Guardar cuartos sueltos obligaría a
+que la clasificación supiera qué hacer con un partido a medio jugar.
+
 Calibrado sobre 40 partidos con plantillas de nivel medio:
 
 | Métrica                 | Motor  | Referencia ACB |

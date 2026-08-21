@@ -15,7 +15,17 @@ export const IPC_CHANNELS = {
   teamsListCatalog: 'teams:listCatalog',
   playersListByTeam: 'players:listByTeam',
   playersGet: 'players:get',
-  gameStateGet: 'gameState:get'
+  gameStateGet: 'gameState:get',
+  seasonGetCurrent: 'season:getCurrent',
+  seasonGetStandings: 'season:getStandings',
+  seasonListFixtures: 'season:listFixtures',
+  seasonListTeamFixtures: 'season:listTeamFixtures',
+  seasonGetNextGame: 'season:getNextGame',
+  seasonAdvanceDay: 'season:advanceDay',
+  seasonAdvanceToNextGame: 'season:advanceToNextGame',
+  matchStart: 'match:start',
+  matchAdvancePeriod: 'match:advancePeriod',
+  matchGet: 'match:get'
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

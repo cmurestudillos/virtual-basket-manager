@@ -46,6 +46,11 @@ export const router = createRouter({
           path: 'competition',
           name: 'competition',
           component: () => import('@renderer/features/competition/pages/CompetitionPage.vue')
+        },
+        {
+          path: 'match/:gameId',
+          name: 'match',
+          component: () => import('@renderer/features/match/pages/MatchPage.vue')
         }
       ]
     }

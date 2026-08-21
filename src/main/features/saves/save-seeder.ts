@@ -165,11 +165,19 @@ function buildRotation(
   }));
 }
 
+/**
+ * Mejor jugador disponible para un puesto del quinteto.
+ *
+ * Va por prioridades y no por una media común: primero los de esa posición
+ * natural, después los que la tienen como segunda, y sólo si no queda nadie,
+ * cualquiera. Mezclarlas en un mismo montón dejaba quintetos con dos pívots y
+ * ningún alero, porque un escolta bueno con el alero como segunda posición le
+ * ganaba el puesto al alero titular.
+ */
 function bestFor(candidates: readonly DatasetPlayer[], position: Position): DatasetPlayer | null {
-  const eligible = candidates.filter(
-    (player) => player.position === position || player.secondaryPosition === position
-  );
-  const pool = eligible.length > 0 ? eligible : candidates;
+  const natural = candidates.filter((player) => player.position === position);
+  const secondary = candidates.filter((player) => player.secondaryPosition === position);
+  const pool = natural.length > 0 ? natural : secondary.length > 0 ? secondary : candidates;
   if (pool.length === 0) {
     return null;
   }

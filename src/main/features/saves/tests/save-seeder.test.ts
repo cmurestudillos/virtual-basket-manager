@@ -80,6 +80,27 @@ describe('seedSave', () => {
     );
   });
 
+  it('saca de titular a un jugador de cada posición natural', () => {
+    const dataset = loadDataset(SEED_DIRECTORY);
+
+    for (const team of dataset.teams) {
+      const starters = db
+        .select()
+        .from(rotationSlotsTable)
+        .where(eq(rotationSlotsTable.teamId, team.id))
+        .all()
+        .filter((slot) => slot.depth < 5);
+
+      for (const slot of starters) {
+        const player = dataset.players.find((row) => row.id === slot.playerId)!;
+        // Cada plantilla trae dos jugadores de cada posición, así que el hueco
+        // se puede cubrir siempre con un natural: si aparece uno fuera de sitio
+        // es que la elección de titulares está mezclando prioridades.
+        expect(player.position).toBe(slot.slotPosition);
+      }
+    }
+  });
+
   it('reparte 200 minutos objetivo por equipo, los cinco huecos de pista', () => {
     const slots = db
       .select()
