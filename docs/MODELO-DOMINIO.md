@@ -191,6 +191,76 @@ al llegar deja de crecer. Pasados los treinta ya no mejora, y empieza a perder
 velocidad, salto y resistencia. La semana de recuperación no mejora a nadie:
 devuelve forma y quita riesgo.
 
+## El mundo
+
+Veintiuna ligas en catorce países, y el mismo motor para todas. Lo que cambia de
+una a otra es su **forma**: cuántos equipos tiene, cuántas categorías, con qué
+reglamento juega y cuánto dinero mueve. Eso vive en `scripts/seed-data/leagues.mts`,
+que es el mapa del mundo, y de ahí sale el dataset.
+
+Una liga juega **las vueltas que le caben** en las 34 jornadas de la temporada:
+dieciocho equipos juegan ida y vuelta (34), diez juegan tres vueltas (27) y una
+de treinta juega una sola (29). No hay formatos distintos, hay un número de
+vueltas distinto — que además es como funcionan las ligas pequeñas de verdad.
+
+De todo ese mundo, una partida sólo **simula las ligas del país del club que
+diriges**, más sus competiciones continentales. Simular las veintiuna serían
+más de cuatro mil partidos por temporada para enseñar clasificaciones que nadie
+va a abrir. Los clubes de los demás países existen igual: salen en el mercado y
+pueden cruzarse contigo en Europa.
+
+## Las competiciones continentales
+
+Cuatro: **Euroliga**, **Eurocup** y **Europe League** en Europa, y **American
+League** en América. Las cuatro se juegan igual —dieciséis equipos, fase de liga
+a una vuelta los jueves, los ocho primeros a cuartos al mejor de tres y una
+Final Four a partido único en sede neutral— porque lo que las distingue no es el
+reglamento: es contra quién juegas y cuánto paga.
+
+Se juegan **entre semana**, en jueves, viernes y lunes. La liga es de domingos,
+así que Europa no para el calendario nacional: lo que hace es cansar a la
+plantilla, que es exactamente lo que tiene que costar.
+
+El reparto de plazas no necesita una tabla de coeficientes por país. Dentro de
+cada liga manda **el puesto** del año anterior: su tercero no puede entrar antes
+que su segundo. Entre ligas manda **la reputación**: la plaza siguiente se la
+lleva el mejor club que quede de cualquier país. Con un tope de cuatro plazas
+por liga, eso reparte como reparte la realidad —las ligas fuertes se llevan
+más, pero ninguna se lo lleva todo—. Y hay un **aforo mínimo de pabellón** por
+categoría: un club que pelea por entrar en la primera y no llega sabe
+exactamente qué obra le falta.
+
+## Las divisiones
+
+El mundo de la partida tiene **dos ligas**, y las dos se juegan enteras con el
+mismo motor. La segunda no está para decorar: es de donde salen los que suben y
+adonde van los que bajan, y sin ella descender sería desaparecer.
+
+Al cerrar el curso bajan los **dos últimos** de primera y suben los **dos
+primeros** de segunda, de modo que ninguna categoría cambia de tamaño y el
+calendario del año siguiente se genera igual que el de este. Lo que viaja con el
+club es su **reputación**: de ella salen los derechos de televisión, el
+patrocinio, el precio que aguanta la grada y lo que le exige el consejo, así que
+subir cambia el club entero y no sólo la lista de rivales. Los premios de liga se
+cobran por categoría —en segunda, un tercio—, y allí el objetivo del consejo es
+ascender: un título que no existe no se puede pedir.
+
+Todo esto vive en `shared/domain/promotion.ts`, que no sabe de base de datos: le
+das dos clasificaciones y te dice quién sube y quién baja.
+
+## La Copa
+
+Ocho equipos, **partido único** y **sede neutral**, tres rondas en tres días
+seguidos de febrero: la Copa del Rey de toda la vida. Es lo contrario de los
+playoffs —allí el mejor tiene varias oportunidades y el factor cancha; aquí
+cualquiera te gana una tarde— y por eso merece la pena tenerla.
+
+Se clasifican los ocho primeros al cerrar la primera vuelta. La Copa tiene su
+propia temporada, de su propia competición, así que sus partidos no pueden
+colarse jamás en la clasificación de la liga ni mover el contador de jornadas; a
+cambio, el reloj de la partida mira ahora a todas las competiciones vivas a la
+vez. En sede neutral no hay taquilla para nadie.
+
 ## Los playoffs
 
 La liga regular no corona campeón: reparte el **factor cancha**. Ocho equipos,

@@ -13,6 +13,12 @@ export const competitionsTable = sqliteTable('competitions', {
   name: text('name').notNull(),
   shortName: text('short_name').notNull(),
   country: text('country').notNull(),
+  /**
+   * `EUR`, `AME` u `OCE`. Es lo que decide a qué competición continental puede
+   * ir un club: sin esto habría que mantener una lista de países a mano en el
+   * código, y el día que entre otro país habría que acordarse de tocarla.
+   */
+  continent: text('continent').notNull().default('EUR'),
   /** `fiba` o `nba`: decide duración de cuartos, faltas y posesión. */
   rulesetId: text('ruleset_id').notNull().default('fiba'),
   /** 1 = máxima categoría del país, 2 = segunda, etc. */

@@ -5,7 +5,7 @@ import {
   type PlayerAttributes
 } from '@shared/domain/attributes';
 import { marketValueCents, wageDemandCents } from '@shared/domain/market';
-import { randomName } from '@shared/domain/names';
+import { randomNameFor } from '@shared/domain/names';
 import { POSITIONS, type Position } from '@shared/domain/positions';
 import type { Rng } from '@shared/engine/basketball/rng';
 import type { NewPlayerRow } from '../../database/schema/save';
@@ -31,7 +31,12 @@ export function buildFreeAgents(input: {
   count: number;
   rng: Rng;
   seasonStartYear: number;
-  nationality: string;
+  /**
+   * De dónde son. En un mundo con catorce países, veinte agentes libres todos
+   * del mismo sitio dejarían el cupo de jugadores de formación sin nada que
+   * decidir: la mitad son de casa y la otra mitad de fuera.
+   */
+  nationalities: readonly string[];
 }): NewPlayerRow[] {
   const rows: NewPlayerRow[] = [];
 
@@ -39,7 +44,10 @@ export function buildFreeAgents(input: {
     const position = POSITIONS[input.rng.int(0, POSITIONS.length - 1)] as Position;
     const level = input.rng.int(42, 66);
     const age = input.rng.int(23, 35);
-    const { firstName, lastName } = randomName(input.rng);
+    const nationality = input.nationalities[
+      input.rng.int(0, input.nationalities.length - 1)
+    ] as string;
+    const { firstName, lastName } = randomNameFor(nationality, input.rng);
 
     const attributes = {} as PlayerAttributes;
     for (const key of ATTRIBUTE_KEYS) {
@@ -56,7 +64,7 @@ export function buildFreeAgents(input: {
       teamId: null,
       firstName,
       lastName,
-      nationality: input.nationality,
+      nationality,
       birthDate: new Date(
         Date.UTC(input.seasonStartYear - age, input.rng.int(0, 11), input.rng.int(1, 28))
       ),

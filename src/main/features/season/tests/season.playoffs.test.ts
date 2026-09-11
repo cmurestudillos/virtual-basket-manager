@@ -1,15 +1,27 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { eq } from 'drizzle-orm';
 import { afterAll, afterEach, beforeAll, beforeEach, describe, expect, it } from 'vitest';
-import type { PlayoffBracket } from '@shared/contracts/season.contract';
+import type {
+  ContinentalSummary,
+  ContinentalView,
+  PlayoffBracket
+} from '@shared/contracts/season.contract';
+import { CONTINENTAL_GROUP_ROUNDS, CONTINENTAL_TEAMS } from '@shared/domain/continental';
 import { winsNeeded } from '@shared/domain/playoffs';
+import { DIVISION_REPUTATION_STEP } from '@shared/domain/promotion';
 import {
   closeSaveDatabase,
   openSaveDatabase,
   type SaveDatabase
 } from '../../../database/save-database';
-import { boardTable, gamesTable } from '../../../database/schema/save';
+import {
+  boardTable,
+  financeEntriesTable,
+  gamesTable,
+  teamsTable
+} from '../../../database/schema/save';
 import { loadDataset } from '../../saves/dataset';
 import { seedSave } from '../../saves/save-seeder';
 import { MatchService } from '../../match/match.service';
@@ -25,7 +37,9 @@ import { SeasonService } from '../season.service';
 
 const MIGRATIONS = resolve('drizzle/save');
 const SEED_DIRECTORY = resolve('resources/seed-data');
-const MANAGED_TEAM = 'team-1';
+const MANAGED_TEAM = 'liga-nacional-1';
+const PRIMERA = 'liga-nacional';
+const SEGUNDA = 'liga-plata';
 
 let directory: string;
 let filePath: string;
@@ -37,6 +51,14 @@ let match: MatchService;
 let regularStandings: ReturnType<SeasonService['getStandings']>;
 let bracketAtStart: PlayoffBracket;
 let finalBracket: PlayoffBracket;
+/** Las dos divisiones al cerrar el curso, antes de mover a nadie de sitio. */
+let primeraAlCierre: ReturnType<SeasonService['getStandings']>;
+let segundaAlCierre: ReturnType<SeasonService['getStandings']>;
+/** Y la reputación de cada club antes del intercambio. */
+let reputacionAlCierre: Map<string, number>;
+/** Las competiciones continentales del curso, ya terminadas. */
+let continentales: ContinentalSummary[];
+let europa: ContinentalView;
 
 function openSave(prefix: string): void {
   directory = mkdtempSync(join(tmpdir(), prefix));
@@ -109,6 +131,17 @@ describe('playoffs', () => {
 
     playUntilOver();
     finalBracket = season.getPlayoffs() as PlayoffBracket;
+    primeraAlCierre = season.getStandings(PRIMERA);
+    segundaAlCierre = season.getStandings(SEGUNDA);
+    continentales = season.listContinental();
+    europa = season.getContinental() as ContinentalView;
+    reputacionAlCierre = new Map(
+      db
+        .select()
+        .from(teamsTable)
+        .all()
+        .map((row) => [row.id, row.reputation])
+    );
   }, 300_000);
 
   afterAll(closeSave);
@@ -215,6 +248,114 @@ describe('playoffs', () => {
     );
   });
 
+  it('las tres competiciones europeas se juegan y coronan campeón', () => {
+    expect(continentales.map((row) => row.tier)).toEqual([1, 2, 3]);
+    for (const competicion of continentales) {
+      expect(competicion.championTeamId).not.toBeNull();
+      expect(competicion.championTeamName).not.toBeNull();
+    }
+    // Y sólo las de su continente: la American League no se juega desde España.
+    expect(continentales.every((row) => row.name !== 'American League')).toBe(true);
+  });
+
+  it('nadie juega dos competiciones continentales a la vez', () => {
+    const porCompeticion = continentales.map((row) =>
+      (season.getContinental(row.competitionId) as ContinentalView).group.map((fila) => fila.teamId)
+    );
+    const todos = porCompeticion.flat();
+
+    for (const equipos of porCompeticion) {
+      expect(equipos).toHaveLength(CONTINENTAL_TEAMS);
+    }
+    expect(new Set(todos).size).toBe(todos.length);
+  });
+
+  it('la fase de liga es a una vuelta y el cuadro sale de ella', () => {
+    expect(europa.group.every((fila) => fila.played === CONTINENTAL_GROUP_ROUNDS)).toBe(true);
+    expect(europa.group.filter((fila) => fila.zone === 'playoffs')).toHaveLength(8);
+
+    const cuartos = europa.knockout.rounds[0];
+    const clasificados = europa.group.slice(0, 8).map((fila) => fila.teamId);
+    expect(cuartos?.name).toBe('Cuartos de final');
+    expect(cuartos?.series).toHaveLength(4);
+    for (const serie of cuartos?.series ?? []) {
+      expect(clasificados).toContain(serie.higherSeedTeamId);
+      expect(clasificados).toContain(serie.lowerSeedTeamId);
+    }
+  });
+
+  it('los cuartos son al mejor de tres y la Final Four a partido único', () => {
+    const nombres = europa.knockout.rounds.map((ronda) => ronda.name);
+    expect(nombres[0]).toBe('Cuartos de final');
+    expect(nombres).toHaveLength(3);
+
+    expect(europa.knockout.rounds[0]?.bestOf).toBe(3);
+    expect(europa.knockout.rounds[1]?.bestOf).toBe(1);
+    expect(europa.knockout.rounds[2]?.bestOf).toBe(1);
+    expect(europa.knockout.rounds[2]?.series).toHaveLength(1);
+    expect(europa.knockout.championTeamId).not.toBeNull();
+  });
+
+  it('la Final Four se juega en sede neutral y los cuartos no', () => {
+    const games = db.select().from(gamesTable).all();
+    const idsDe = (ronda: number): string[] =>
+      (europa.knockout.rounds[ronda]?.series ?? []).flatMap((serie) =>
+        serie.games.map((partido) => partido.gameId)
+      );
+
+    const neutral = (ids: string[]): boolean =>
+      ids.every((id) => games.find((game) => game.id === id)?.neutralVenue === true);
+
+    expect(neutral(idsDe(0))).toBe(false);
+    expect(neutral(idsDe(1))).toBe(true);
+    expect(neutral(idsDe(2))).toBe(true);
+  });
+
+  it('jugar Europa paga, y llegar lejos paga más', () => {
+    const juegaEuropa = continentales.some(
+      (competicion) =>
+        (season.getContinental(competicion.competitionId) as ContinentalView).involvesManaged
+    );
+    const premios = db
+      .select()
+      .from(financeEntriesTable)
+      .all()
+      .filter((row) => row.type === 'prize' && /Euro|Europe/.test(row.description));
+
+    if (juegaEuropa) {
+      expect(premios.length).toBeGreaterThan(0);
+      expect(premios.every((row) => row.amountCents > 0)).toBe(true);
+    } else {
+      expect(premios).toHaveLength(0);
+    }
+  });
+
+  it('Europa no toca la clasificación de la liga', () => {
+    expect(primeraAlCierre.every((fila) => fila.played === 34)).toBe(true);
+  });
+
+  it('la segunda división se juega entera y tiene su propio campeón', () => {
+    expect(segundaAlCierre).toHaveLength(18);
+    expect(segundaAlCierre.every((row) => row.played === 34)).toBe(true);
+
+    const segunda = season.listLeagues().find((row) => row.competitionId === SEGUNDA);
+    expect(segunda?.tier).toBe(2);
+    expect(segunda?.isManaged).toBe(false);
+    // Sin playoffs: campeón es el que acaba primero.
+    expect(segunda?.championTeamId).toBe(segundaAlCierre[0]?.teamId);
+  });
+
+  it('la clasificación dice qué se juega cada puesto', () => {
+    expect(primeraAlCierre[0]?.zone).toBe('playoffs');
+    expect(primeraAlCierre[8]?.zone).toBeNull();
+    expect(primeraAlCierre[17]?.zone).toBe('relegation');
+
+    // Y en segunda lo que hay arriba es ascenso, no cuadro.
+    expect(segundaAlCierre[0]?.zone).toBe('promotion');
+    expect(segundaAlCierre[1]?.zone).toBe('promotion');
+    expect(segundaAlCierre[17]?.zone).toBeNull();
+  });
+
   it('arranca la temporada siguiente con calendario nuevo', () => {
     // La temporada puede haber acabado con el consejo harto —los resultados
     // dependen de la semilla de cada partida— y a un destituido no le dejan
@@ -236,6 +377,45 @@ describe('playoffs', () => {
     expect(games.filter((game) => game.seasonId === next.id)).toHaveLength(306);
     expect(games.filter((game) => game.seriesId !== null).length).toBeGreaterThan(0);
     expect(season.getNextGame()?.round).toBe(1);
+  });
+
+  it('en verano suben dos de segunda y bajan dos de primera', () => {
+    // Este test va detrás del anterior a propósito: el intercambio se hace al
+    // arrancar la temporada siguiente, que es cuando toca.
+    const suben = segundaAlCierre.slice(0, 2).map((row) => row.teamId);
+    const bajan = primeraAlCierre.slice(-2).map((row) => row.teamId);
+
+    const primera = season.getStandings(PRIMERA).map((row) => row.teamId);
+    const segunda = season.getStandings(SEGUNDA).map((row) => row.teamId);
+
+    for (const teamId of suben) {
+      expect(primera).toContain(teamId);
+      expect(segunda).not.toContain(teamId);
+    }
+    for (const teamId of bajan) {
+      expect(segunda).toContain(teamId);
+      expect(primera).not.toContain(teamId);
+    }
+    // Y ninguna división cambia de tamaño, que es lo que rompería el calendario.
+    expect(primera).toHaveLength(18);
+    expect(segunda).toHaveLength(18);
+  });
+
+  it('cambiar de categoría mueve la reputación del club', () => {
+    const ascendido = segundaAlCierre[0]?.teamId as string;
+    const descendido = primeraAlCierre[17]?.teamId as string;
+
+    const ahora = (teamId: string): number =>
+      db.select().from(teamsTable).where(eq(teamsTable.id, teamId)).get()?.reputation ?? 0;
+
+    // Es lo que hace que subir cambie algo: la televisión, el patrocinio y lo
+    // que le piden a uno el año siguiente salen todos de ahí.
+    expect(ahora(ascendido)).toBe(
+      (reputacionAlCierre.get(ascendido) as number) + DIVISION_REPUTATION_STEP
+    );
+    expect(ahora(descendido)).toBe(
+      (reputacionAlCierre.get(descendido) as number) - DIVISION_REPUTATION_STEP
+    );
   });
 });
 

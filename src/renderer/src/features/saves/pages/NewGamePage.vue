@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import type { CatalogTeam } from '@shared/contracts/teams.contract';
+import type { CatalogLeague, CatalogTeam } from '@shared/contracts/teams.contract';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 
 const router = useRouter();
 const store = useGameStateStore();
 
 const teams = ref<CatalogTeam[]>([]);
+const leagues = ref<CatalogLeague[]>([]);
+/** Liga por la que se filtra; `null` es el mundo entero. */
+const league = ref<string | null>(null);
+const search = ref('');
 const selectedTeamId = ref<string | null>(null);
 const managerName = ref('');
 const saveName = ref('');
@@ -21,6 +25,39 @@ const canCreate = computed(
 
 onMounted(async () => {
   teams.value = await window.api.teams.listCatalog();
+  leagues.value = await window.api.teams.listLeagues();
+});
+
+/**
+ * El catálogo son trescientos y pico clubes de catorce países: sin filtrar por
+ * liga y poder escribir el nombre, elegir equipo es recorrer una lista infinita.
+ */
+const visibleTeams = computed(() => {
+  const needle = search.value.trim().toLowerCase();
+
+  return teams.value.filter((team) => {
+    if (league.value && team.competitionId !== league.value) {
+      return false;
+    }
+    if (!needle) {
+      return true;
+    }
+    return team.name.toLowerCase().includes(needle) || team.city.toLowerCase().includes(needle);
+  });
+});
+
+/** Las ligas agrupadas por país, que es como las busca el que elige. */
+const leaguesByCountry = computed(() => {
+  const grouped = new Map<string, CatalogLeague[]>();
+  for (const row of leagues.value) {
+    const rows = grouped.get(row.country);
+    if (rows) {
+      rows.push(row);
+    } else {
+      grouped.set(row.country, [row]);
+    }
+  }
+  return [...grouped.entries()];
 });
 
 async function create(): Promise<void> {
@@ -57,11 +94,53 @@ async function create(): Promise<void> {
       </RouterLink>
     </header>
 
-    <div class="grid flex-1 grid-cols-[1fr_18rem] gap-6 overflow-hidden">
-      <section class="flex flex-col overflow-hidden rounded border border-court-700">
+    <div class="grid flex-1 grid-cols-[14rem_1fr_18rem] gap-6 overflow-hidden">
+      <nav class="flex flex-col overflow-hidden rounded border border-court-700">
         <h2 class="border-b border-court-700 bg-court-900 px-4 py-2 text-sm text-court-300">
-          Elige equipo
+          Ligas
         </h2>
+        <div class="flex-1 overflow-auto p-2 text-sm">
+          <button
+            type="button"
+            class="w-full rounded px-2 py-1 text-left"
+            :class="league === null ? 'bg-court-800 text-ball-400' : 'hover:bg-court-800'"
+            @click="league = null"
+          >
+            Todo el mundo
+          </button>
+
+          <div v-for="[country, rows] in leaguesByCountry" :key="country" class="mt-3">
+            <p class="px-2 text-xs uppercase tracking-wide text-court-600">{{ country }}</p>
+            <button
+              v-for="row in rows"
+              :key="row.competitionId"
+              type="button"
+              class="w-full rounded px-2 py-1 text-left"
+              :class="
+                league === row.competitionId ? 'bg-court-800 text-ball-400' : 'hover:bg-court-800'
+              "
+              @click="league = row.competitionId"
+            >
+              {{ row.name }}
+              <span class="text-xs text-court-600">· {{ row.teams }}</span>
+            </button>
+          </div>
+        </div>
+      </nav>
+
+      <section class="flex flex-col overflow-hidden rounded border border-court-700">
+        <div class="flex items-center gap-3 border-b border-court-700 bg-court-900 px-4 py-2">
+          <h2 class="text-sm text-court-300">Elige equipo</h2>
+          <span class="text-xs text-court-600"
+            >{{ visibleTeams.length }} de {{ teams.length }}</span
+          >
+          <input
+            v-model="search"
+            type="search"
+            placeholder="Buscar club o ciudad…"
+            class="ml-auto w-56 rounded border border-court-600 bg-court-950 px-2 py-1 text-sm"
+          />
+        </div>
         <div class="flex-1 overflow-auto">
           <table class="data-table">
             <thead>
@@ -74,7 +153,7 @@ async function create(): Promise<void> {
             </thead>
             <tbody>
               <tr
-                v-for="team in teams"
+                v-for="team in visibleTeams"
                 :key="team.id"
                 class="cursor-pointer"
                 :class="{ 'bg-court-800 text-ball-400': team.id === selectedTeamId }"

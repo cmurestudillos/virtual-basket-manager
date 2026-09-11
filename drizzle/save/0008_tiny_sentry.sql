@@ -1,0 +1,1 @@
+ALTER TABLE `competitions` ADD `continent` text DEFAULT 'EUR' NOT NULL;

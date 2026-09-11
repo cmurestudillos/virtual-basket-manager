@@ -15,8 +15,8 @@ import { TacticsService } from '../tactics.service';
 
 const MIGRATIONS = resolve('drizzle/save');
 const SEED_DIRECTORY = resolve('resources/seed-data');
-const MANAGED_TEAM = 'team-1';
-const RIVAL_TEAM = 'team-2';
+const MANAGED_TEAM = 'liga-nacional-1';
+const RIVAL_TEAM = 'liga-nacional-2';
 
 let directory: string;
 let filePath: string;

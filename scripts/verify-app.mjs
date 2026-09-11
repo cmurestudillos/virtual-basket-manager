@@ -55,8 +55,16 @@ await page.screenshot({ path: `${SHOTS}/01-menu.png` });
 await page.getByText('Nueva partida').click();
 await page.waitForTimeout(1200);
 console.log('equipos en el catálogo:', await page.locator('tbody tr').count());
+
+// El catálogo va por reputación y lo encabezan los clubes de la liga
+// americana, así que sin filtrar el arnés jugaría en otro país cada vez que se
+// toque el dataset. Se filtra por la liga española, que es la que recorren
+// después el resto de pasos.
+await page.getByRole('button', { name: /^Liga Nacional ·/ }).click();
+await page.waitForTimeout(800);
+console.log('equipos tras filtrar:', await page.locator('tbody tr').count());
 await page.locator('tbody tr').nth(3).click();
-await page.locator('input').first().fill('Carlos');
+await page.locator('aside input').first().fill('Carlos');
 await page.screenshot({ path: `${SHOTS}/02-nueva-partida.png` });
 
 await page.getByText('Empezar').click();
@@ -230,7 +238,17 @@ console.log('plantilla tras el partido:', primeraFila.split('\n').join(' · '));
 await page.getByRole('link', { name: 'Competición' }).click();
 await page.waitForTimeout(1500);
 console.log('equipos en la clasificación:', await page.locator('tbody tr').count());
+console.log('divisiones:', await page.locator('main nav').nth(1).innerText());
 await page.screenshot({ path: `${SHOTS}/16-clasificacion.png` });
+
+// La división de al lado: la que decide quién sube el año que viene.
+await page.getByRole('button', { name: /Liga Plata/ }).click();
+await page.waitForTimeout(1200);
+console.log('equipos en la segunda:', await page.locator('tbody tr').count());
+console.log('zonas:', (await page.locator('main ul li').allInnerTexts()).join(' · '));
+await page.screenshot({ path: `${SHOTS}/16b-segunda-division.png` });
+await page.getByRole('button', { name: /Liga Nacional/ }).click();
+await page.waitForTimeout(1000);
 
 await page.getByRole('button', { name: 'Calendario' }).click();
 await page.waitForTimeout(1200);
@@ -239,6 +257,18 @@ await page.screenshot({ path: `${SHOTS}/17-calendario.png` });
 
 // El cuadro de playoffs todavía no existe en la jornada 1, pero la pantalla
 // tiene que explicarlo en vez de quedarse en blanco.
+await page.getByRole('button', { name: 'Copa' }).click();
+await page.waitForTimeout(1200);
+console.log('copa:', await page.locator('main p').first().innerText());
+await page.screenshot({ path: `${SHOTS}/17b-copa.png` });
+
+// Europa: la fase de liga arranca en octubre, así que en la jornada 1 la
+// pantalla tiene que explicarse en vez de quedarse en blanco.
+await page.getByRole('button', { name: 'Europa' }).click();
+await page.waitForTimeout(1500);
+console.log('europa:', (await page.locator('main nav').last().innerText()).replace(/\n/g, ' | '));
+await page.screenshot({ path: `${SHOTS}/17c-europa.png` });
+
 await page.getByRole('button', { name: 'Playoffs' }).click();
 await page.waitForTimeout(1200);
 console.log('playoffs:', await page.locator('main p').first().innerText());
@@ -276,6 +306,22 @@ await page.getByRole('link', { name: 'Competición' }).click();
 await page.waitForTimeout(1800);
 console.log('series en el cuadro:', await page.locator('main li').count());
 await page.screenshot({ path: `${SHOTS}/22-cuadro.png` });
+
+// Europa, ya terminada: fase de liga, cuadro y campeón.
+await page.getByRole('button', { name: 'Europa' }).click();
+await page.waitForTimeout(2000);
+console.log('campeón continental:', await page.locator('main p').first().innerText());
+console.log('equipos en la fase de liga:', await page.locator('tbody tr').count());
+await page.screenshot({ path: `${SHOTS}/22c-europa.png` });
+
+// Y la segunda, ya terminada: de sus dos primeros salen los ascendidos.
+await page.getByRole('button', { name: 'Clasificación' }).click();
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: /Liga Plata/ }).click();
+await page.waitForTimeout(1500);
+const ascensos = await page.locator('tbody tr').first().innerText();
+console.log('líder de la segunda:', ascensos.split('\n').join(' · '));
+await page.screenshot({ path: `${SHOTS}/22b-ascensos.png` });
 
 // Con la temporada entera jugada hay desgaste y enfermería de verdad.
 await page.getByRole('link', { name: 'Entrenamiento' }).click();

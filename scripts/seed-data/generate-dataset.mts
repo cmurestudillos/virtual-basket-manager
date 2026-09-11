@@ -2,12 +2,18 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createRng } from '../../src/shared/engine/basketball/rng';
 import { POSITIONS, type Position } from '../../src/shared/domain/positions';
-import { FIRST_NAMES, LAST_NAMES } from '../../src/shared/domain/names';
+import { randomNameFor } from '../../src/shared/domain/names';
 import {
   ATTRIBUTE_KEYS,
   overallForPosition,
   type PlayerAttributes
 } from '../../src/shared/domain/attributes';
+import {
+  CONTINENTAL_COMPETITIONS,
+  WORLD,
+  type LeagueCountry,
+  type LeagueTier
+} from './leagues.mts';
 
 /**
  * Generador del dataset con el que arranca una partida nueva.
@@ -15,10 +21,11 @@ import {
  * Todo lo que produce es inventado: clubes, pabellones y jugadores. Ni nombres
  * ni escudos reales, y a propósito — un dataset con marcas reales condiciona
  * después qué se puede distribuir, y arrastrar ese problema desde el primer día
- * sale mucho más caro que evitarlo.
+ * sale mucho más caro que evitarlo. La *forma* de cada liga sí es la de verdad:
+ * cuántos equipos, cuántas categorías y con qué reglamento.
  *
  * Es determinista: misma semilla, mismo dataset, así que regenerarlo no cambia
- * la liga entera por sorpresa.
+ * el mundo entero por sorpresa.
  *
  *   pnpm seed:generate
  */
@@ -27,7 +34,8 @@ const OUTPUT = resolve('resources/seed-data/dataset.json');
 const SEED = 20260821;
 const SEASON_START_YEAR = 2025;
 
-const CITIES = [
+/** Las ciudades españolas: las primeras dieciocho son las de primera. */
+const SPANISH_CITIES = [
   'Valdeorán',
   'Ríoseco',
   'Montenegro',
@@ -45,19 +53,37 @@ const CITIES = [
   'Mediana',
   'Las Salinas',
   'Roquedal',
-  'Nueva Estrada'
+  'Nueva Estrada',
+  'Alborada',
+  'Bárcena',
+  'Cabo Verde',
+  'Duratón',
+  'Espinar',
+  'Fuenteseca',
+  'Gálvez',
+  'Hontanar',
+  'Isla Redonda',
+  'Jarales',
+  'Lomas Altas',
+  'Montalbán',
+  'Navacerrada',
+  'Olmedilla',
+  'Pinar del Río',
+  'Quintanar',
+  'Robledal',
+  'Soto Mayor'
 ];
 
-const CLUB_PREFIXES = ['CB', 'Club Baloncesto', 'Basket', 'BC'];
-
+/**
+ * De dónde es la gente que no es del país de su club.
+ *
+ * El reparto no es uniforme a propósito: hay muchos más estadounidenses sueltos
+ * por las ligas del mundo que lituanos.
+ */
 const NATIONALITIES = [
   'ESP',
   'ESP',
-  'ESP',
-  'ESP',
-  'ESP',
-  'ESP',
-  'ESP',
+  'USA',
   'USA',
   'USA',
   'USA',
@@ -68,7 +94,11 @@ const NATIONALITIES = [
   'GRE',
   'SEN',
   'ARG',
-  'BRA'
+  'BRA',
+  'TUR',
+  'GER',
+  'AUS',
+  'CRO'
 ];
 
 /** Altura media y dispersión por posición, en centímetros. */
@@ -154,6 +184,8 @@ interface DatasetCompetition {
   name: string;
   shortName: string;
   country: string;
+  /** `EUR`, `AME` u `OCE`: decide a qué competición continental se va. */
+  continent: string;
   rulesetId: string;
   tier: number;
   format: string;
@@ -195,77 +227,109 @@ interface DatasetPlayer {
 
 const rng = createRng(SEED);
 
-const competitions: DatasetCompetition[] = [
-  {
-    id: 'liga-nacional',
-    name: 'Liga Nacional',
-    shortName: 'LN',
-    country: 'ESP',
-    rulesetId: 'fiba',
-    tier: 1,
-    format: 'league',
-    // Ocho equipos a playoff al mejor de cinco: el formato ACB de toda la vida
-    // y la diferencia estructural que este proyecto tiene y el de fútbol no.
-    playoffTeams: 8,
-    playoffSeriesLength: 5
-  },
-  {
-    id: 'copa-nacional',
-    name: 'Copa Nacional',
-    shortName: 'Copa',
-    country: 'ESP',
-    rulesetId: 'fiba',
-    tier: 1,
-    format: 'cup',
-    playoffTeams: 0,
-    playoffSeriesLength: 1
-  }
-];
+const competitions: DatasetCompetition[] = [];
+const teams: DatasetTeam[] = [];
+const players: DatasetPlayer[] = [];
 
-const teams: DatasetTeam[] = CITIES.map((city, index) => {
-  const prefix = CLUB_PREFIXES[rng.int(0, CLUB_PREFIXES.length - 1)] as string;
-  // La reputación va escalonada para que la liga tenga favoritos y colistas
-  // desde el primer día, no dieciocho equipos calcados.
-  const reputation = Math.round(78 - index * 2.4 + rng.int(-4, 4));
+for (const country of WORLD) {
+  // Las ciudades se reparten por orden entre las categorías del país: la
+  // primera se queda las primeras. Dos clubes de la misma ciudad en distinta
+  // división se confundirían en cuanto uno ascendiera.
+  const cities = country.code === 'ESP' ? SPANISH_CITIES : country.cities;
+  let cityIndex = 0;
 
-  return {
-    id: `team-${index + 1}`,
-    name: `${prefix} ${city}`,
-    shortName: city.slice(0, 3).toUpperCase(),
-    city,
-    country: 'ESP',
-    competitionId: 'liga-nacional',
-    pavilionName: `Pabellón ${city}`,
-    pavilionCapacity: 3200 + Math.round(reputation * 90) + rng.int(-400, 400),
-    reputation,
-    budgetCents: (900_000 + reputation * 55_000 + rng.int(-120_000, 120_000)) * 100
-  };
+  country.tiers.forEach((tier, tierIndex) => {
+    competitions.push({
+      id: tier.id,
+      name: tier.name,
+      shortName: tier.shortName,
+      country: country.code,
+      continent: country.continent,
+      rulesetId: country.rulesetId,
+      tier: tierIndex + 1,
+      format: 'league',
+      playoffTeams: tier.playoffTeams,
+      playoffSeriesLength: tier.playoffSeriesLength
+    });
+
+    for (let index = 0; index < tier.teams; index += 1) {
+      const city = cities[cityIndex] ?? `${country.code} ${cityIndex + 1}`;
+      cityIndex += 1;
+      teams.push(buildTeam(country, tier, city, index));
+    }
+  });
+}
+
+// La Copa nacional: de momento sólo la española, que es la que se juega.
+competitions.push({
+  id: 'copa-nacional',
+  name: 'Copa Nacional',
+  shortName: 'Copa',
+  country: 'ESP',
+  continent: 'EUR',
+  rulesetId: 'fiba',
+  tier: 1,
+  format: 'cup',
+  playoffTeams: 0,
+  playoffSeriesLength: 1
 });
 
-const players: DatasetPlayer[] = [];
-/** Nombres ya usados: dos "Pau Vidal" en la misma plantilla cantan mucho. */
-const usedNames = new Set<string>();
-
-function uniqueName(): { firstName: string; lastName: string } {
-  for (let attempt = 0; attempt < 60; attempt += 1) {
-    const firstName = FIRST_NAMES[rng.int(0, FIRST_NAMES.length - 1)] as string;
-    const lastName = LAST_NAMES[rng.int(0, LAST_NAMES.length - 1)] as string;
-    const key = `${firstName} ${lastName}`;
-    if (!usedNames.has(key)) {
-      usedNames.add(key);
-      return { firstName, lastName };
-    }
-  }
-  // Con 30x30 combinaciones y 216 fichas esto no debería pasar, pero si el
-  // dataset crece prefiero un segundo apellido a un bucle infinito.
-  const firstName = FIRST_NAMES[rng.int(0, FIRST_NAMES.length - 1)] as string;
-  const lastName = `${LAST_NAMES[rng.int(0, LAST_NAMES.length - 1)]}-${LAST_NAMES[rng.int(0, LAST_NAMES.length - 1)]}`;
-  usedNames.add(`${firstName} ${lastName}`);
-  return { firstName, lastName };
+for (const competition of CONTINENTAL_COMPETITIONS) {
+  competitions.push({
+    id: competition.id,
+    name: competition.name,
+    shortName: competition.shortName,
+    // El «país» de una competición continental es su continente: así no entra
+    // en el reparto de ascensos y descensos, que es cosa de cada país.
+    country: competition.continent,
+    continent: competition.continent,
+    rulesetId: 'fiba',
+    tier: competition.tier,
+    format: 'continental',
+    // Ocho a la eliminatoria tras la fase de liga, al mejor de tres.
+    playoffTeams: 8,
+    playoffSeriesLength: 3
+  });
 }
 
 for (const team of teams) {
-  // Doce fichas por equipo: los inscritos en acta de un partido FIBA.
+  buildRoster(team);
+}
+
+function buildTeam(
+  country: LeagueCountry,
+  tier: LeagueTier,
+  city: string,
+  index: number
+): DatasetTeam {
+  const prefix = country.prefixes[rng.int(0, country.prefixes.length - 1)] as string;
+  const flag = country.flags[rng.int(0, country.flags.length - 1)] as string;
+  // La reputación va escalonada del mejor al peor de cada liga: así toda
+  // competición tiene favoritos y colistas desde el primer día, y el mejor de
+  // segunda sigue estando por debajo del peor de primera.
+  const [best, worst] = tier.reputation;
+  const step = tier.teams > 1 ? (best - worst) / (tier.teams - 1) : 0;
+  const reputation = Math.max(1, Math.round(best - index * step + rng.int(-3, 3)));
+
+  return {
+    id: `${tier.id}-${index + 1}`,
+    name: prefix ? `${prefix} ${city}` : city,
+    shortName: city
+      .replace(/[^\p{L}]/gu, '')
+      .slice(0, 3)
+      .toUpperCase(),
+    city,
+    country: flag,
+    competitionId: tier.id,
+    pavilionName: `Pabellón ${city}`,
+    pavilionCapacity: Math.round(tier.capacity * (0.45 + reputation / 110)) + rng.int(-400, 400),
+    reputation,
+    budgetCents: (300_000 + reputation * 58_000 + rng.int(-120_000, 120_000)) * 100
+  };
+}
+
+/** Doce fichas por equipo: los inscritos en acta de un partido FIBA. */
+function buildRoster(team: DatasetTeam): void {
   const rosterPositions: Position[] = [
     'PG',
     'PG',
@@ -281,6 +345,11 @@ for (const team of teams) {
     POSITIONS[rng.int(0, 4)] as Position
   ];
 
+  // La unicidad de los nombres es por vestuario, no por mundo: dos Tomas
+  // Vaitkus en dos clubes lituanos distintos es lo normal; dos en el mismo
+  // canta mucho.
+  const usedNames = new Set<string>();
+
   rosterPositions.forEach((position, slot) => {
     // Los cinco primeros de cada puesto son el bloque titular: mejores que el
     // resto, y todos ellos escalados por la reputación del club.
@@ -294,7 +363,8 @@ for (const team of teams) {
         rng.int(-HEIGHT_BY_POSITION[position].spread, HEIGHT_BY_POSITION[position].spread)
     );
 
-    const { firstName, lastName } = uniqueName();
+    const nationality = nationalityFor(team);
+    const { firstName, lastName } = uniqueName(nationality, usedNames);
     const attributes = attributesFor(position, level);
     // El techo se mide contra la media real del jugador en su puesto, no contra
     // el `level` con el que se generó: los sesgos por posición suben esa media
@@ -307,7 +377,7 @@ for (const team of teams) {
       teamId: team.id,
       firstName,
       lastName,
-      nationality: NATIONALITIES[rng.int(0, NATIONALITIES.length - 1)] as string,
+      nationality,
       birthDate: birthDateFor(age),
       position,
       secondaryPosition: rng.chance(0.45) ? neighbourPosition(position) : null,
@@ -323,6 +393,34 @@ for (const team of teams) {
       valueCents: Math.round(Math.pow(level / 10, 3.6) * 9_000) * 100
     });
   });
+}
+
+/**
+ * De dónde es una ficha: media plantilla del país del club y media de fuera,
+ * que es como se reparte cualquier plantilla europea de verdad.
+ */
+function nationalityFor(team: DatasetTeam): string {
+  const roll = rng.int(0, NATIONALITIES.length - 1);
+  return roll < NATIONALITIES.length / 2 ? team.country : (NATIONALITIES[roll] as string);
+}
+
+function uniqueName(flag: string, used: Set<string>): { firstName: string; lastName: string } {
+  for (let attempt = 0; attempt < 40; attempt += 1) {
+    const name = randomNameFor(flag, rng);
+    const key = `${name.firstName} ${name.lastName}`;
+    if (!used.has(key)) {
+      used.add(key);
+      return name;
+    }
+  }
+
+  // Con doce fichas por vestuario esto no debería pasar, pero prefiero un
+  // segundo apellido a un bucle infinito.
+  const first = randomNameFor(flag, rng);
+  const second = randomNameFor(flag, rng);
+  const name = { firstName: first.firstName, lastName: `${first.lastName}-${second.lastName}` };
+  used.add(`${name.firstName} ${name.lastName}`);
+  return name;
 }
 
 function attributesFor(position: Position, level: number): PlayerAttributes {

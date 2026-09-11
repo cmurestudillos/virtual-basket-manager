@@ -18,7 +18,7 @@ más.
 | ✅  | Esqueleto Electron + Vue + SQLite, IPC tipado, migraciones                   |     |
 | ✅  | Dominio de baloncesto: posiciones, 21 atributos, reglamentos, acta, tácticas |     |
 | ✅  | Motor de partido posesión a posesión, determinista y calibrado               |     |
-| ✅  | Dataset ficticio: 18 equipos, 216 jugadores                                  |     |
+| ✅  | Dataset ficticio: 21 ligas, 338 equipos, 4.056 jugadores                     |     |
 | ✅  | Partidas: crear, cargar, borrar, sembrar el mundo                            |     |
 | ✅  | Pantallas: menú, nueva partida, club, plantilla, ficha de jugador            |     |
 | ✅  | Arnés de verificación con Electron real y capturas                           |     |
@@ -72,9 +72,9 @@ misma tabla de partidos que la liga, con `series_id`: por eso una eliminatoria
 nunca cuenta en la clasificación. Los partidos que sobran al decidirse una serie
 se borran, así que un 2-0 no deja un tercer partido colgado en el calendario.
 
-**Ascensos y descensos se quedan fuera a propósito**: el mundo del juego es una
-sola liga de 18 equipos, así que no hay ni de dónde subir ni adónde bajar.
-Entran con la segunda división del Bloque 4.
+**Ascensos y descensos se quedaron fuera de esta fase a propósito**: el mundo del
+juego era entonces una sola liga de 18 equipos, así que no había ni de dónde
+subir ni adónde bajar. Entraron con la segunda división del Bloque 4.
 
 ## Bloque 2 — El club
 
@@ -168,13 +168,66 @@ está en el Bloque 4 y es casi un juego aparte.
 
 ## Bloque 4 — Más competiciones
 
-|     | Pieza                       | Detalle                                                           |     |
-| --- | --------------------------- | ----------------------------------------------------------------- | --- |
-| ⬜  | Copa                        | Eliminatoria a partido único en sede neutral, estilo Copa del Rey | M   |
-| ⬜  | Competición continental     | Fase de liga más playoffs y Final Four                            | L   |
-| ⬜  | Segunda división y ascensos |                                                                   | M   |
-| ⬜  | Selecciones y ventanas FIBA |                                                                   | M   |
-| ⬜  | Formato NBA                 | Conferencias, divisiones, _cap_, draft — es casi un juego aparte  | L   |
+### Fase 1 — la Copa (hecha)
+
+|     | Pieza | Detalle                                                               |     |
+| --- | ----- | --------------------------------------------------------------------- | --- |
+| ✅  | Copa  | Ocho equipos, partido único en sede neutral, tres rondas en tres días | M   |
+
+Se sortea al cerrar la primera vuelta con los ocho primeros de la clasificación
+de ese momento, como la Copa del Rey. Vive en su propia temporada, así que sus
+partidos no tocan la clasificación de la liga ni el contador de jornadas, y el
+reloj de la partida mira ahora a las dos competiciones a la vez. En sede neutral
+no hay taquilla ni factor cancha para nadie, y llegar lejos paga premio.
+
+### Fase 2 — segunda división y ascensos (hecha)
+
+|     | Pieza                       | Detalle                                                             |     |
+| --- | --------------------------- | ------------------------------------------------------------------- | --- |
+| ✅  | Segunda división y ascensos | Desbloquea los ascensos y descensos que dejó pendientes el Bloque 1 | M   |
+
+Dieciocho clubes más en una **Liga Plata** que se juega entera, jornada a
+jornada y con el mismo motor: sin eso, descender sería desaparecer del mundo.
+Suben dos y bajan dos, así que ninguna división cambia de tamaño y el calendario
+del curso siguiente sale igual. La reputación viaja con el equipo —de ahí salen
+la televisión, el patrocinio y lo que le pide el consejo—, en segunda se cobra un
+tercio de los premios, y el objetivo del consejo allí es ascender, no ganar un
+título que no existe. La Copa sigue siendo de la máxima categoría: si diriges en
+plata la ves, pero no la juegas.
+
+### Fase 3 — el mundo y las competiciones continentales (hecha)
+
+|     | Pieza                   | Detalle                                            |     |
+| --- | ----------------------- | -------------------------------------------------- | --- |
+| ✅  | El mundo                | 21 ligas en 14 países, 338 clubes y 4.056 fichas   | L   |
+| ✅  | Competición continental | Euroliga, Eurocup, Europe League y American League | L   |
+
+El mundo pasa de una liga a **veintiuna**: España, Alemania, Francia, Grecia,
+Lituania, Adriática y Estados Unidos con dos categorías; Turquía, Italia,
+Israel, Argentina, Chile y Australia con una; y Bélgica y Países Bajos
+compartiendo la suya, como la BNXT de verdad. Cada liga juega **las vueltas que
+le caben** en 34 jornadas —dieciocho equipos juegan ida y vuelta, diez juegan
+tres vueltas, treinta juegan una—, así que ninguna necesita un formato propio.
+Sólo se simulan las ligas del país del club que diriges: elegir un club griego
+juega la liga griega y no la española.
+
+Las **cuatro competiciones continentales** se juegan igual —dieciséis equipos,
+fase de liga a una vuelta los jueves, cuartos al mejor de tres y Final Four a
+partido único en sede neutral— y lo que las separa es el rango: la Euroliga se
+queda a los mejores del continente, la Eurocup recoge a los siguientes y la
+Europe League a los de después; nadie juega dos. El reparto no usa tabla de
+coeficientes: dentro de cada liga manda el puesto del año anterior y entre ligas
+manda la reputación, con un tope de cuatro plazas por liga. Y hay un **aforo
+mínimo de pabellón** para entrar en cada categoría, que es lo que por fin le da
+un objetivo claro a ampliar el pabellón.
+
+### Fase 4 — el resto del bloque
+
+|     | Pieza                       | Detalle                                                          |     |
+| --- | --------------------------- | ---------------------------------------------------------------- | --- |
+| ⬜  | Escoger ligas jugables      | Elegir qué ligas se simulan, con su coste en tiempo de partida   | M   |
+| ⬜  | Selecciones y ventanas FIBA |                                                                  | M   |
+| ⬜  | Formato NBA                 | Conferencias, divisiones, _cap_, draft — es casi un juego aparte | L   |
 
 ## Bloque 5 — Ver el partido
 
@@ -191,6 +244,8 @@ Aquí es donde más se parecían y más se diferenciaban las dos referencias.
 
 |     | Pieza                   | Detalle                                                 |     |
 | --- | ----------------------- | ------------------------------------------------------- | --- |
+| ⬜  | Modos de juego          | Mánager (un club) y carrera (te fichan otros)           | L   |
+| ⬜  | Dificultad              | Incluye poder jugar sin despido                         | S   |
 | ⬜  | Historial y palmarés    | Temporadas, títulos, récords                            | M   |
 | ⬜  | Prensa y notificaciones | Bandeja de avisos, ruedas de prensa                     | M   |
 | ⬜  | Editor de datos         | Editar equipos y plantillas dentro del juego            | M   |
@@ -198,12 +253,26 @@ Aquí es donde más se parecían y más se diferenciaban las dos referencias.
 | ⬜  | Firma del instalador    | El instalador ya se genera con icono; falta certificado | S   |
 | ⬜  | Actualizaciones         | Publicación y auto-update, si llega a distribuirse      | M   |
 
+### Modos de juego y dificultad
+
+**Mánager** es lo que hay hoy: diriges un club y la partida se acaba si te
+echan. **Carrera** es la otra mitad —te quedas sin equipo y otro club te
+contrata según lo que hayas hecho—, y necesita que el consejo, el palmarés y la
+reputación del entrenador ya existan, que es justo lo que hay montado.
+
+La **dificultad** incluye poder jugar **sin despido**, y no es sólo una
+comodidad: el consejo es la mecánica más punitiva del juego y quien quiera
+construir un club a diez años vista tiene que poder desactivarla. Es un ajuste
+de la partida, no del dominio: `BoardService` ya decide en un solo sitio si
+estás destituido.
+
 ---
 
 ## Decisiones abiertas
 
-1. **¿Qué liga se simula?** Ahora hay una liga ficticia de 18 equipos. ¿ACB
-   ficticia, varias ligas europeas, NBA, o todo?
+1. **¿Qué liga se simula?** Resuelta: veintiuna ligas ficticias en catorce
+   países, con ascensos dentro de cada país y cuatro competiciones
+   continentales. Queda decidir si el jugador puede elegir cuáles se simulan.
 2. **¿Datos reales o inventados?** El dataset actual es inventado a propósito
    para no arrastrar el problema de marcas que apareció en el proyecto de
    fútbol. Cambiar de idea más adelante es caro.

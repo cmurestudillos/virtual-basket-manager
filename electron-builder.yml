@@ -1,5 +1,5 @@
-appId: com.virtualbasketmanager.desktop
-productName: Virtual Basket Manager
+appId: com.triplemanager.desktop
+productName: Triple Manager
 # `better-sqlite3` v13 trae binarios N-API (`prebuilds/win32-x64.node`), estables
 # entre versiones de Node y de Electron: no hace falta recompilarlo con node-gyp,
 # que además exige tener Visual Studio Build Tools instalado.
@@ -19,7 +19,7 @@ win:
   # Se apunta al PNG de 512 y no a un `.ico`: electron-builder genera el icono
   # multi-resolución a partir de cualquier PNG de 256 o más, así que no hace
   # falta ni el fichero `.ico` ni una dependencia de imágenes para producirlo.
-  icon: assets/iconos/basketball-court_512.png
+  icon: assets/iconos/icono_512.png
   target:
     - target: nsis
       arch:

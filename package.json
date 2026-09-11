@@ -1,7 +1,7 @@
 {
-  "name": "virtual-basket-manager",
+  "name": "triple-manager",
   "version": "0.1.0",
-  "description": "Virtual Basket Manager desktop — basketball manager simulation (Electron + Vue 3 + TypeScript + SQLite)",
+  "description": "Triple Manager — basketball manager simulation (Electron + Vue 3 + TypeScript + SQLite)",
   "main": "./out/main/index.js",
   "author": "Carlos",
   "license": "UNLICENSED",

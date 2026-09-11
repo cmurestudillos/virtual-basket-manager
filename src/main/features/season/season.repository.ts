@@ -9,7 +9,8 @@ import {
   type CompetitionRow,
   type GameRow,
   type NewGameRow,
-  type SeasonRow
+  type SeasonRow,
+  type TeamRow
 } from '../../database/schema/save';
 
 export class SeasonRepository {
@@ -109,6 +110,25 @@ export class SeasonRepository {
       .map((row) => row.id);
   }
 
+  findTeam(teamId: string): TeamRow | null {
+    return this.db.select().from(teamsTable).where(eq(teamsTable.id, teamId)).get() ?? null;
+  }
+
+  /**
+   * Mueve un equipo de división.
+   *
+   * La reputación viaja con él: un ascendido pasa a cobrar más televisión y a
+   * llenar más el pabellón, y un descendido deja de hacerlo. Sin eso, subir
+   * sería un cambio de rivales y nada más.
+   */
+  moveTeamToCompetition(teamId: string, competitionId: string, reputation: number): void {
+    this.db
+      .update(teamsTable)
+      .set({ competitionId, reputation })
+      .where(eq(teamsTable.id, teamId))
+      .run();
+  }
+
   teamNames(): Map<string, string> {
     return new Map(
       this.db
@@ -171,6 +191,29 @@ export class SeasonRepository {
       .all();
   }
 
+  listCompetitions(): CompetitionRow[] {
+    return this.db.select().from(competitionsTable).all();
+  }
+
+  /** La competición de un id, para saber si es liga o copa. */
+  findCompetition(competitionId: string): CompetitionRow | null {
+    return (
+      this.db
+        .select()
+        .from(competitionsTable)
+        .where(eq(competitionsTable.id, competitionId))
+        .get() ?? null
+    );
+  }
+
+  /**
+   * Temporada de otra competición del mismo curso: la Copa tiene la suya, con
+   * sus partidos, y corre en paralelo a la liga.
+   */
+  findSeasonOf(competitionId: string, seasonNumber: number): SeasonRow | null {
+    return this.findSeason(competitionId, seasonNumber);
+  }
+
   /**
    * Partidos de un equipo en orden cronológico, liga y playoffs juntos.
    *
@@ -191,14 +234,22 @@ export class SeasonRepository {
       .all();
   }
 
-  /** Partidos sin jugar cuya fecha ya ha llegado o pasado. */
-  listPendingGamesUpTo(seasonId: string, date: Date): GameRow[] {
+  /**
+   * Partidos sin jugar cuya fecha ya ha llegado o pasado, de todas las
+   * competiciones que estén en marcha. La Copa se juega en mitad de la liga, así
+   * que el reloj tiene que mirar a las dos a la vez.
+   */
+  listPendingGamesUpTo(seasonIds: readonly string[], date: Date): GameRow[] {
+    if (seasonIds.length === 0) {
+      return [];
+    }
+
     return this.db
       .select()
       .from(gamesTable)
       .where(
         and(
-          eq(gamesTable.seasonId, seasonId),
+          inArray(gamesTable.seasonId, [...seasonIds]),
           isNull(gamesTable.homeScore),
           lte(gamesTable.scheduledOn, date)
         )
@@ -208,14 +259,37 @@ export class SeasonRepository {
   }
 
   /** Fecha del próximo partido sin jugar, para poder saltarse los días vacíos. */
-  nextScheduledDate(seasonId: string): Date | null {
+  nextScheduledDate(seasonIds: readonly string[]): Date | null {
+    if (seasonIds.length === 0) {
+      return null;
+    }
+
     const row = this.db
       .select({ scheduledOn: gamesTable.scheduledOn })
       .from(gamesTable)
-      .where(and(eq(gamesTable.seasonId, seasonId), isNull(gamesTable.homeScore)))
+      .where(and(inArray(gamesTable.seasonId, [...seasonIds]), isNull(gamesTable.homeScore)))
       .orderBy(asc(gamesTable.scheduledOn))
       .get();
 
     return row?.scheduledOn ?? null;
+  }
+
+  /** Todos los partidos de un equipo en varias competiciones, por fecha. */
+  listTeamGamesIn(seasonIds: readonly string[], teamId: string): GameRow[] {
+    if (seasonIds.length === 0) {
+      return [];
+    }
+
+    return this.db
+      .select()
+      .from(gamesTable)
+      .where(
+        and(
+          inArray(gamesTable.seasonId, [...seasonIds]),
+          or(eq(gamesTable.homeTeamId, teamId), eq(gamesTable.awayTeamId, teamId))
+        )
+      )
+      .orderBy(asc(gamesTable.scheduledOn), asc(gamesTable.id))
+      .all();
   }
 }

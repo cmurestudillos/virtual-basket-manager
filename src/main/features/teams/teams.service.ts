@@ -1,4 +1,4 @@
-import type { CatalogTeam, TeamSummary } from '@shared/contracts/teams.contract';
+import type { CatalogLeague, CatalogTeam, TeamSummary } from '@shared/contracts/teams.contract';
 import { requireActiveSaveDatabase } from '../../database/resolve-save-database';
 import { loadDataset } from '../saves/dataset';
 import { TeamsRepository } from './teams.repository';
@@ -34,5 +34,30 @@ export class TeamsService {
         reputation: team.reputation
       }))
       .sort((a, b) => b.reputation - a.reputation);
+  }
+
+  /**
+   * Las ligas del mundo, con cuántos clubes tiene cada una.
+   *
+   * Sólo las de formato liga: en una competición continental no se empieza una
+   * partida, se entra clasificándose.
+   */
+  listLeagues(): CatalogLeague[] {
+    const dataset = loadDataset(this.seedDirectory);
+    const sizes = new Map<string, number>();
+    for (const team of dataset.teams) {
+      sizes.set(team.competitionId, (sizes.get(team.competitionId) ?? 0) + 1);
+    }
+
+    return dataset.competitions
+      .filter((competition) => competition.format === 'league')
+      .map((competition) => ({
+        competitionId: competition.id,
+        name: competition.name,
+        country: competition.country,
+        tier: competition.tier,
+        teams: sizes.get(competition.id) ?? 0
+      }))
+      .sort((a, b) => a.country.localeCompare(b.country) || a.tier - b.tier);
   }
 }

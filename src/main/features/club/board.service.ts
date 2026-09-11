@@ -3,6 +3,7 @@ import {
   BOARD_OBJECTIVE_LABELS,
   DISMISSAL_CONFIDENCE,
   START_CONFIDENCE,
+  confidenceAfterDivisionChange,
   confidenceAfterGame,
   confidenceAfterMonth,
   confidenceAfterSeason,
@@ -44,7 +45,7 @@ export class BoardService {
    * curso, siempre a partir de lo que es el club: al grande le piden el título
    * y al pequeño mantenerse.
    */
-  ensureForSeason(seasonNumber: number, teams: number): BoardRow {
+  ensureForSeason(seasonNumber: number, teams: number, tier = 1): BoardRow {
     const repository = new ClubRepository(this.resolveDb());
     const teamId = repository.managedTeamId();
     if (!teamId) {
@@ -57,7 +58,7 @@ export class BoardService {
     }
 
     const team = repository.findTeam(teamId);
-    const objective = objectiveForReputation(team?.reputation ?? 50);
+    const objective = objectiveForReputation(team?.reputation ?? 50, tier);
     const row: BoardRow = {
       teamId,
       seasonNumber,
@@ -118,6 +119,8 @@ export class BoardService {
     awayTeamId: string;
     homeScore: number;
     awayScore: number;
+    /** Si el partido no es de la competición del objetivo: pesa la mitad. */
+    secondary?: boolean;
   }): void {
     const repository = new ClubRepository(this.resolveDb());
     const teamId = repository.managedTeamId();
@@ -135,7 +138,8 @@ export class BoardService {
       ...row,
       confidence: confidenceAfterGame(row.confidence, {
         won: ownScore > rivalScore,
-        expectedToWin: (own?.reputation ?? 50) + (isHome ? 6 : 0) >= (rival?.reputation ?? 50)
+        expectedToWin: (own?.reputation ?? 50) + (isHome ? 6 : 0) >= (rival?.reputation ?? 50),
+        secondary: game.secondary ?? false
       })
     }));
   }
@@ -192,6 +196,19 @@ export class BoardService {
     }));
 
     return verdict;
+  }
+
+  /**
+   * El club cambia de categoría.
+   *
+   * No decide nada del ascenso: sólo se entera de que ha pasado, igual que con
+   * el puesto en la tabla. Quien lo llama es quien tiene delante las dos ligas.
+   */
+  afterDivisionChange(direction: 'promoted' | 'relegated'): void {
+    this.update((row) => ({
+      ...row,
+      confidence: confidenceAfterDivisionChange(row.confidence, direction)
+    }));
   }
 
   /** ¿Sigues siendo el entrenador? */

@@ -3,6 +3,7 @@ import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
 import { and, eq, isNull } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
+import type { MarketPlayer } from '@shared/contracts/market.contract';
 import { MIN_WAGE_CENTS } from '@shared/domain/market';
 import { MAX_ROSTER } from '@shared/domain/youth';
 import {
@@ -28,7 +29,7 @@ import { MarketService, MIN_ROSTER } from '../market.service';
 
 const MIGRATIONS = resolve('drizzle/save');
 const SEED_DIRECTORY = resolve('resources/seed-data');
-const MANAGED_TEAM = 'team-1';
+const MANAGED_TEAM = 'liga-nacional-1';
 
 let directory: string;
 let filePath: string;
@@ -109,9 +110,10 @@ describe('búsqueda', () => {
   });
 
   it('el agente libre no tiene precio de traspaso y el de un club sí', () => {
-    const found = market.search({});
-    const libre = found.find((player) => player.isFreeAgent)!;
-    const fichado = found.find((player) => !player.isFreeAgent)!;
+    // Cada uno por su lado: la búsqueda general viene ordenada por media y con
+    // todas las ligas del mundo dentro, así que los libres no asoman arriba.
+    const libre = market.search({ freeAgentsOnly: true })[0] as MarketPlayer;
+    const fichado = market.search({}).find((player) => !player.isFreeAgent) as MarketPlayer;
 
     expect(libre.askingPriceCents).toBe(0);
     expect(fichado.askingPriceCents).toBeGreaterThan(0);
@@ -327,17 +329,42 @@ describe('límites', () => {
   });
 
   it('el cupo de jugadores de formación no se puede romper', () => {
-    const status = market.getStatus();
-    expect(status.homegrownInSquad).toBeGreaterThanOrEqual(status.minHomegrown);
+    expect(market.getStatus().homegrownInSquad).toBeGreaterThanOrEqual(
+      market.getStatus().minHomegrown
+    );
 
-    // Se deja al club justo en el mínimo y se intenta soltar a uno de casa.
-    const nacionales = market.listContracts().filter((entry) => entry.isHomegrown);
-    let contracts = market.listContracts();
-    for (const entry of nacionales.slice(status.minHomegrown)) {
-      contracts = market.release({ playerId: entry.playerId });
+    // Primero se llena la plantilla con extranjeros baratos: sin sitio de
+    // sobra, soltar gente de casa chocaría antes con el mínimo de fichas que
+    // con el cupo, y lo que se comprueba aquí es el cupo.
+    const libres = market
+      .search({ freeAgentsOnly: true, limit: 100 })
+      .filter((player) => !player.isHomegrown)
+      .sort((a, b) => a.wageDemandCents - b.wageDemandCents);
+    for (const libre of libres) {
+      if (market.getStatus().rosterSize >= MAX_ROSTER) {
+        break;
+      }
+      market.offer({
+        playerId: libre.playerId,
+        feeCents: 0,
+        wageCents: libre.wageDemandCents,
+        years: 1
+      });
     }
 
-    const ultimo = contracts.find((entry) => entry.isHomegrown)!;
+    // Y ahora se deja al club justo en el mínimo de jugadores de formación.
+    for (const entry of market.listContracts().filter((row) => row.isHomegrown)) {
+      const status = market.getStatus();
+      if (status.homegrownInSquad <= status.minHomegrown) {
+        break;
+      }
+      market.release({ playerId: entry.playerId });
+    }
+
+    const status = market.getStatus();
+    expect(status.homegrownInSquad).toBe(status.minHomegrown);
+
+    const ultimo = market.listContracts().find((entry) => entry.isHomegrown)!;
     expect(() => market.release({ playerId: ultimo.playerId })).toThrow(/formación/);
   });
 });
@@ -468,7 +495,7 @@ describe('contratos', () => {
 describe('el mercado se mueve solo', () => {
   it('en verano vencen contratos y la IA cubre sus huecos', () => {
     // Se deja a un rival corto de plantilla y con un contrato vencido.
-    const rival = roster('team-2');
+    const rival = roster('liga-nacional-2');
     db.update(playersTable).set({ teamId: null }).where(eq(playersTable.id, rival[0]!.id)).run();
     db.update(playersTable)
       .set({ contractUntil: new Date(Date.UTC(2026, 5, 30)) })
@@ -479,7 +506,7 @@ describe('el mercado se mueve solo', () => {
     market.processOffseason(new Date(Date.UTC(2026, 6, 1)));
 
     // El rival vuelve a tener plantilla suficiente para jugar.
-    expect(roster('team-2').length).toBeGreaterThanOrEqual(12);
+    expect(roster('liga-nacional-2').length).toBeGreaterThanOrEqual(12);
     expect(freeAgents().length).toBeLessThan(libresAntes + 18);
   });
 

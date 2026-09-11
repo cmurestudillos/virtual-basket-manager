@@ -74,15 +74,54 @@ export function generateSingleRoundRobin(teamIds: readonly string[]): ScheduledP
  * cambiados, que es como se hace en cualquier liga real.
  */
 export function generateDoubleRoundRobin(teamIds: readonly string[]): ScheduledPairing[][] {
-  const first = generateSingleRoundRobin(teamIds);
-  const second = first.map((round) =>
-    round.map((pairing) => ({
-      homeTeamId: pairing.awayTeamId,
-      awayTeamId: pairing.homeTeamId
-    }))
-  );
+  return generateRoundRobin(teamIds, 2);
+}
 
-  return [...first, ...second];
+/**
+ * Varias vueltas seguidas, alternando el campo en cada una.
+ *
+ * No todas las ligas juegan dos vueltas: las pequeñas juegan tres o cuatro para
+ * llenar la temporada, y las muy grandes sólo una. Es la misma competición con
+ * distinto número de vueltas, no formatos distintos.
+ */
+export function generateRoundRobin(teamIds: readonly string[], laps: number): ScheduledPairing[][] {
+  const base = generateSingleRoundRobin(teamIds);
+  const rounds: ScheduledPairing[][] = [];
+
+  for (let lap = 0; lap < Math.max(1, laps); lap += 1) {
+    rounds.push(
+      ...base.map((round) =>
+        round.map((pairing) =>
+          lap % 2 === 0
+            ? pairing
+            : { homeTeamId: pairing.awayTeamId, awayTeamId: pairing.homeTeamId }
+        )
+      )
+    );
+  }
+
+  return rounds;
+}
+
+/**
+ * Jornadas que caben en una temporada. Es la horquilla de una liga FIBA real y
+ * el techo del calendario del juego: con más no cabrían los playoffs en junio.
+ */
+export const MAX_MATCHDAYS = 34;
+
+/**
+ * Cuántas vueltas juega una liga según su tamaño.
+ *
+ * Sale de lo que cabe en la temporada: dieciocho equipos dan justo las 34
+ * jornadas a ida y vuelta, diez juegan tres vueltas —como las ligas pequeñas de
+ * verdad— y una liga de treinta se queda en una sola. Así todas las ligas del
+ * mundo caben en el mismo calendario sin inventarse formatos distintos.
+ */
+export function roundRobinLaps(teams: number, maxRounds = MAX_MATCHDAYS): number {
+  if (teams < 2) {
+    return 1;
+  }
+  return Math.max(1, Math.floor(maxRounds / (teams - 1)));
 }
 
 /**

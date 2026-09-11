@@ -25,8 +25,8 @@ import { ClubService } from '../club.service';
 
 const MIGRATIONS = resolve('drizzle/save');
 const SEED_DIRECTORY = resolve('resources/seed-data');
-const MANAGED_TEAM = 'team-1';
-const RIVAL_TEAM = 'team-2';
+const MANAGED_TEAM = 'liga-nacional-1';
+const RIVAL_TEAM = 'liga-nacional-2';
 
 let directory: string;
 let filePath: string;
@@ -270,7 +270,7 @@ describe('el consejo', () => {
 
     board.afterManagedGame({
       homeTeamId: MANAGED_TEAM,
-      awayTeamId: 'team-18',
+      awayTeamId: 'liga-nacional-18',
       homeScore: 70,
       awayScore: 90
     });
@@ -284,7 +284,7 @@ describe('el consejo', () => {
 
     board.afterManagedGame({
       homeTeamId: MANAGED_TEAM,
-      awayTeamId: 'team-18',
+      awayTeamId: 'liga-nacional-18',
       homeScore: 70,
       awayScore: 90
     });
@@ -304,7 +304,7 @@ describe('el consejo', () => {
 
     board.afterManagedGame({
       homeTeamId: MANAGED_TEAM,
-      awayTeamId: 'team-2',
+      awayTeamId: 'liga-nacional-2',
       homeScore: 99,
       awayScore: 60
     });

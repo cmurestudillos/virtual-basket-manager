@@ -1,4 +1,6 @@
 import { efficiencyRating, points, type PlayerBoxScore } from '@shared/domain/box-score';
+import { continentalRoundName } from '@shared/domain/continental';
+import { CUP_TEAMS, cupRoundName } from '@shared/domain/cup';
 import { buildPlayoffFormat } from '@shared/domain/playoffs';
 import { analystRevealsRival } from '@shared/domain/staff';
 import {
@@ -100,7 +102,7 @@ export class MatchService {
       const playedOn = repository.currentDate();
       repository.saveResult(game, result, playedOn);
       applyPhysicalEffects(db, game.id, result, playedOn);
-      applyClubEffects(db, game, result, playedOn, roundLabel(repository, game));
+      applyClubEffects(db, game, result, playedOn, repository);
       sessions.delete(gameId);
     }
 
@@ -170,7 +172,7 @@ export class MatchService {
     const result = simulation.result;
     repository.saveResult(game, result, playedOn);
     applyPhysicalEffects(db, game.id, result, playedOn);
-    applyClubEffects(db, game, result, playedOn, roundLabel(repository, game));
+    applyClubEffects(db, game, result, playedOn, repository);
     return result;
   }
 }
@@ -205,7 +207,7 @@ function applyClubEffects(
   game: GameRow,
   result: GameResult,
   playedOn: Date,
-  label: string
+  repository: MatchRepository
 ): void {
   const outcome = {
     homeTeamId: game.homeTeamId,
@@ -214,13 +216,21 @@ function applyClubEffects(
     awayScore: result.away.score
   };
 
-  new ClubService(() => db).collectHomeGame({
+  // En sede neutral no hay taquilla de nadie: la Copa no llena tu pabellón.
+  if (!game.neutralVenue) {
+    new ClubService(() => db).collectHomeGame({
+      ...outcome,
+      seasonId: game.seasonId,
+      date: playedOn,
+      label: roundLabel(repository, game)
+    });
+  }
+
+  new BoardService(() => db).afterManagedGame({
     ...outcome,
-    seasonId: game.seasonId,
-    date: playedOn,
-    label
+    // El consejo puso el objetivo en la liga: lo de fuera cuenta la mitad.
+    secondary: repository.competitionForGame(game.id)?.format === 'continental'
   });
-  new BoardService(() => db).afterManagedGame(outcome);
 }
 
 function requireUnplayedGame(repository: MatchRepository, gameId: string): GameRow {
@@ -323,11 +333,21 @@ function scoutRival(
  * número de partido dentro de la eliminatoria.
  */
 function roundLabel(repository: MatchRepository, game: GameRow): string {
+  const competition = repository.competitionForGame(game.id);
+
+  // La Copa no tiene jornadas: tiene rondas, y se juega a partido único.
+  if (competition?.format === 'cup') {
+    return `${competition.name} · ${cupRoundName(CUP_TEAMS / Math.pow(2, game.round - 1))}`;
+  }
+
+  // Europa sí tiene jornadas, pero también cuartos y Final Four.
+  if (competition?.format === 'continental') {
+    return `${competition.name} · ${continentalRoundName(game.round)}`;
+  }
+
   if (!game.seriesId) {
     return `Jornada ${game.round}`;
   }
-
-  const competition = repository.competitionForGame(game.id);
   if (!competition || competition.playoffTeams < 2) {
     return 'Playoffs';
   }

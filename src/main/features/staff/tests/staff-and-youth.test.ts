@@ -26,8 +26,8 @@ import { StaffService } from '../staff.service';
 
 const MIGRATIONS = resolve('drizzle/save');
 const SEED_DIRECTORY = resolve('resources/seed-data');
-const MANAGED_TEAM = 'team-1';
-const RIVAL_TEAM = 'team-2';
+const MANAGED_TEAM = 'liga-nacional-1';
+const RIVAL_TEAM = 'liga-nacional-2';
 
 let directory: string;
 let filePath: string;
@@ -134,16 +134,22 @@ describe('cuerpo técnico', () => {
 
   it('las fichas del cuerpo técnico entran en la nómina del club', () => {
     season.getCurrent();
-    const antes = staff.seasonWagesCents(MANAGED_TEAM);
 
     const caro = staff
       .get(MANAGED_TEAM)
       .candidates.filter((member) => member.role === 'assistant')
       .sort((a, b) => b.level - a.level)[0];
-    if (caro) {
-      staff.hire({ teamId: MANAGED_TEAM, staffId: caro.id });
-      expect(staff.seasonWagesCents(MANAGED_TEAM)).not.toBe(antes);
-    }
+    expect(caro).toBeDefined();
+
+    staff.hire({ teamId: MANAGED_TEAM, staffId: caro!.id });
+    const plantilla = staff.get(MANAGED_TEAM).members;
+
+    // La nómina es la suma de lo que cobran los que están, ni más ni menos: es
+    // lo que evita que un despido deje pagando a quien ya no está.
+    expect(plantilla.some((member) => member.id === caro!.id)).toBe(true);
+    expect(staff.seasonWagesCents(MANAGED_TEAM)).toBe(
+      plantilla.reduce((sum, member) => sum + member.wageCents, 0)
+    );
   });
 });
 
