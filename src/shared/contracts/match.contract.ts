@@ -47,6 +47,8 @@ export interface PeriodScoreEntry {
 export interface MatchState {
   gameId: string;
   round: number;
+  /** «Jornada 12» o «Semifinales · 3er partido»: lo que se lee en la cabecera. */
+  roundLabel: string;
   scheduledOn: number;
   home: MatchTeamState;
   away: MatchTeamState;

@@ -3,10 +3,11 @@ import { computed, onMounted, ref, watch } from 'vue';
 import type { FixtureEntry, StandingEntry } from '@shared/contracts/season.contract';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { formatMatchDate } from '@renderer/shared/format';
+import PlayoffBracketView from '@renderer/features/competition/components/PlayoffBracketView.vue';
 
 const seasonStore = useSeasonStore();
 
-type Tab = 'standings' | 'fixtures';
+type Tab = 'standings' | 'fixtures' | 'playoffs';
 const tab = ref<Tab>('standings');
 const standings = ref<StandingEntry[]>([]);
 const fixtures = ref<FixtureEntry[]>([]);
@@ -17,8 +18,12 @@ const roundDate = computed(() => fixtures.value[0]?.scheduledOn ?? null);
 
 onMounted(async () => {
   await seasonStore.refresh();
-  // Se abre en la jornada en curso, no en la primera: es la que interesa.
+  // Se abre en la jornada en curso, no en la primera: es la que interesa. Y con
+  // la liga regular acabada, en el cuadro, que es donde está el juego.
   round.value = seasonStore.season?.currentRound ?? 1;
+  if (seasonStore.season && seasonStore.season.stage !== 'regular') {
+    tab.value = 'playoffs';
+  }
   standings.value = await window.api.season.getStandings();
   await loadRound();
 });
@@ -43,16 +48,24 @@ function streakLabel(streak: number): string {
   <div class="flex flex-col gap-4">
     <div class="flex items-baseline gap-4">
       <h1 class="text-2xl font-semibold">{{ seasonStore.season?.competitionName ?? 'Liga' }}</h1>
-      <span class="text-sm text-court-300">
+      <span v-if="seasonStore.season?.stage === 'regular'" class="text-sm text-court-300">
         Jornada {{ seasonStore.season?.currentRound ?? 1 }} de {{ totalRounds }}
       </span>
+      <span
+        v-else-if="seasonStore.season?.championTeamName && tab !== 'playoffs'"
+        class="text-sm text-court-300"
+      >
+        Campeón: <span class="text-ball-400">{{ seasonStore.season.championTeamName }}</span>
+      </span>
+      <span v-else class="text-sm text-ball-400">Playoffs</span>
     </div>
 
     <nav class="flex gap-1 border-b border-court-700">
       <button
         v-for="option in [
           { id: 'standings' as Tab, label: 'Clasificación' },
-          { id: 'fixtures' as Tab, label: 'Calendario' }
+          { id: 'fixtures' as Tab, label: 'Calendario' },
+          { id: 'playoffs' as Tab, label: 'Playoffs' }
         ]"
         :key="option.id"
         type="button"
@@ -104,6 +117,8 @@ function streakLabel(streak: number): string {
         </tbody>
       </table>
     </div>
+
+    <PlayoffBracketView v-else-if="tab === 'playoffs'" />
 
     <div v-else class="flex flex-col gap-3">
       <div class="flex items-center gap-3">

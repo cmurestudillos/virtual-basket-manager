@@ -128,8 +128,8 @@ describe('SeasonService', () => {
     }
   });
 
-  // Son 306 partidos simulados posesión a posesión y 7.344 líneas de acta
-  // escritas en SQLite: no cabe en el tiempo por defecto de un test.
+  // Son los 306 partidos de liga más los del cuadro, todos simulados posesión a
+  // posesión y con su acta escrita en SQLite: no cabe en el tiempo por defecto.
   it('juega una temporada completa de 34 jornadas', { timeout: 180_000 }, () => {
     let guard = 0;
     for (;;) {
@@ -146,11 +146,12 @@ describe('SeasonService', () => {
     }
 
     const games = db.select().from(gamesTable).all();
-    expect(games).toHaveLength(306);
+    // La liga regular son 306; el resto, ya jugados, son los de los playoffs.
+    expect(games.filter((game) => game.seriesId === null)).toHaveLength(306);
     expect(games.every((game) => game.homeScore !== null)).toBe(true);
 
-    // 306 partidos x 24 fichas: el acta completa de la liga.
-    expect(db.select().from(gamePlayerStatsTable).all()).toHaveLength(306 * 24);
+    // 24 fichas por partido: el acta completa de la temporada.
+    expect(db.select().from(gamePlayerStatsTable).all()).toHaveLength(games.length * 24);
 
     const standings = season.getStandings();
     expect(standings).toHaveLength(18);

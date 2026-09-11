@@ -7,6 +7,10 @@ export interface SeasonSummary {
   currentRound: number;
   totalRounds: number;
   stage: 'regular' | 'playoffs' | 'finished';
+  /** Equipos que juegan los playoffs; 0 si la liga los corona sin eliminatoria. */
+  playoffTeams: number;
+  championTeamId: string | null;
+  championTeamName: string | null;
 }
 
 export interface StandingEntry {
@@ -38,6 +42,37 @@ export interface FixtureEntry {
   played: boolean;
   /** Si juega el equipo del usuario. */
   involvesManaged: boolean;
+  /** Eliminatoria a la que pertenece; `null` en liga regular. */
+  seriesId: string | null;
+  /** Número de partido dentro de la eliminatoria (1..7). */
+  seriesGame: number | null;
+}
+
+/** Una eliminatoria del cuadro, con lo jugado hasta ahora. */
+export interface PlayoffSeries {
+  seriesId: string;
+  round: number;
+  roundName: string;
+  bestOf: number;
+  /** El mejor clasificado de la liga regular: abre y cierra en casa. */
+  higherSeedTeamId: string;
+  higherSeedTeamName: string;
+  higherSeed: number;
+  lowerSeedTeamId: string;
+  lowerSeedTeamName: string;
+  lowerSeed: number;
+  higherSeedWins: number;
+  lowerSeedWins: number;
+  winnerTeamId: string | null;
+  involvesManaged: boolean;
+  /** Partidos de la serie; los que no se llegaron a jugar no están. */
+  games: FixtureEntry[];
+}
+
+export interface PlayoffBracket {
+  rounds: { round: number; name: string; bestOf: number; series: PlayoffSeries[] }[];
+  championTeamId: string | null;
+  championTeamName: string | null;
 }
 
 /**
@@ -60,4 +95,8 @@ export interface SeasonApi {
   getNextGame: () => Promise<FixtureEntry | null>;
   advanceDay: () => Promise<AdvanceResult>;
   advanceToNextGame: () => Promise<AdvanceResult>;
+  /** Cuadro de playoffs; `null` mientras la liga regular no haya acabado. */
+  getPlayoffs: () => Promise<PlayoffBracket | null>;
+  /** Cierra la temporada terminada y arranca la siguiente. */
+  startNextSeason: () => Promise<SeasonSummary>;
 }

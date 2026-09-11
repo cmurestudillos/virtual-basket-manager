@@ -1,4 +1,5 @@
 import { _electron as electron } from 'playwright-core';
+import { execSync } from 'node:child_process';
 import { mkdirSync, rmSync } from 'node:fs';
 import { resolve } from 'node:path';
 
@@ -7,8 +8,8 @@ import { resolve } from 'node:path';
  *
  * Arranca Electron y recorre el flujo completo: menú, nueva partida, club,
  * plantilla, ficha, alineación, pizarra, partido jugado cuarto a cuarto,
- * clasificación, calendario y estadísticas. Deja una captura de cada pantalla
- * en `.dev-data/shots`.
+ * clasificación, calendario, cuadro de playoffs y estadísticas. Deja una
+ * captura de cada pantalla en `.dev-data/shots`.
  *
  * Es la única forma de saber que algo funciona de verdad: los tests unitarios
  * no ven ni una pantalla en blanco ni un `window.api` que no llegó a exponerse.
@@ -29,6 +30,11 @@ const SHOTS = resolve(PROJECT, '.dev-data/shots');
 // partida de la primera y el flujo de creación no se prueba.
 rmSync(resolve(PROJECT, '.dev-data'), { recursive: true, force: true });
 mkdirSync(SHOTS, { recursive: true });
+
+// Una segunda partida con la temporada ya jugada, para poder ver el cuadro de
+// playoffs y la pantalla de campeón sin jugar 306 partidos a botonazos.
+console.log('sembrando una partida con la temporada terminada…');
+execSync('pnpm seed:finished', { cwd: PROJECT, stdio: 'inherit' });
 
 const app = await electron.launch({
   args: ['.'],
@@ -139,17 +145,53 @@ await page.waitForTimeout(1200);
 console.log('partidos de la jornada:', await page.locator('ul li').count());
 await page.screenshot({ path: `${SHOTS}/12-calendario.png` });
 
+// El cuadro de playoffs todavía no existe en la jornada 1, pero la pantalla
+// tiene que explicarlo en vez de quedarse en blanco.
+await page.getByRole('button', { name: 'Playoffs' }).click();
+await page.waitForTimeout(1200);
+console.log('playoffs:', await page.locator('main p').first().innerText());
+await page.screenshot({ path: `${SHOTS}/13-playoffs.png` });
+
 // --- Fase 2: estadísticas de temporada -------------------------------------
 
 await page.getByRole('link', { name: 'Estadísticas' }).click();
 await page.waitForTimeout(1500);
 console.log('jugadores con estadística:', await page.locator('tbody tr').count());
-await page.screenshot({ path: `${SHOTS}/13-estadisticas.png` });
+await page.screenshot({ path: `${SHOTS}/14-estadisticas.png` });
 
 await page.getByRole('button', { name: 'Líderes de la liga' }).click();
 await page.waitForTimeout(1200);
 console.log('líderes en la tabla:', await page.locator('tbody tr').count());
-await page.screenshot({ path: `${SHOTS}/14-lideres.png` });
+await page.screenshot({ path: `${SHOTS}/15-lideres.png` });
+
+// --- Fase 3: playoffs y fin de temporada -----------------------------------
+
+// La otra partida, la que llega con la temporada terminada.
+await page.getByRole('link', { name: 'Salir al menú' }).click();
+await page.waitForTimeout(1000);
+await page.getByRole('link', { name: 'Cargar partida' }).click();
+await page.waitForTimeout(1200);
+await page
+  .locator('li', { hasText: 'Temporada terminada' })
+  .getByRole('button', { name: 'Cargar' })
+  .click();
+await page.waitForTimeout(2500);
+const finDeTemporada = await page.locator('section').first().innerText();
+console.log('fin de temporada:', finDeTemporada.split('\n').join(' · '));
+await page.screenshot({ path: `${SHOTS}/16-campeon.png` });
+
+await page.getByRole('link', { name: 'Competición' }).click();
+await page.waitForTimeout(1800);
+console.log('series en el cuadro:', await page.locator('main li').count());
+await page.screenshot({ path: `${SHOTS}/17-cuadro.png` });
+
+await page.getByRole('link', { name: 'Club' }).click();
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: /^Empezar temporada/ }).click();
+await page.waitForTimeout(2500);
+const cabecera = await page.locator('header').first().innerText();
+console.log('cabecera tras el salto:', cabecera.replace(/\n/g, ' · '));
+await page.screenshot({ path: `${SHOTS}/18-temporada-siguiente.png` });
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);

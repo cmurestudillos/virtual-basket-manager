@@ -12,6 +12,7 @@ import {
   rotationSlotsTable,
   seasonsTable,
   teamsTable,
+  type CompetitionRow,
   type GamePlayerStatsRow,
   type GameRow
 } from '../../database/schema/save';
@@ -41,6 +42,19 @@ export class MatchRepository {
       .get();
 
     return RULESETS[(row?.rulesetId as keyof typeof RULESETS) ?? 'fiba'] ?? RULESETS.fiba;
+  }
+
+  /** Competición a la que pertenece el partido: de ahí sale el formato de playoffs. */
+  competitionForGame(gameId: string): CompetitionRow | null {
+    const row = this.db
+      .select({ competition: competitionsTable })
+      .from(gamesTable)
+      .innerJoin(seasonsTable, eq(seasonsTable.id, gamesTable.seasonId))
+      .innerJoin(competitionsTable, eq(competitionsTable.id, seasonsTable.competitionId))
+      .where(eq(gamesTable.id, gameId))
+      .get();
+
+    return row?.competition ?? null;
   }
 
   managedTeamId(): string | null {

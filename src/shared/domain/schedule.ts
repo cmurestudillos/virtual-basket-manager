@@ -107,3 +107,36 @@ function firstSundayOnOrAfter(timestamp: number): Date {
   const daysUntilSunday = (7 - date.getUTCDay()) % 7;
   return new Date(timestamp + daysUntilSunday * 24 * 60 * 60 * 1000);
 }
+
+const DAY_MS = 24 * 60 * 60 * 1000;
+
+/** Días entre partidos de una misma eliminatoria. */
+export const PLAYOFF_GAME_GAP_DAYS = 3;
+/** Días de descanso entre el último partido posible de una ronda y la siguiente. */
+export const PLAYOFF_ROUND_GAP_DAYS = 4;
+
+/**
+ * Arranque de los playoffs: el miércoles siguiente a la última jornada de liga.
+ *
+ * Tres días de margen es lo que tarda cualquier liga real en montar el cuadro y
+ * vender las entradas; y deja los playoffs en el calendario de mayo y junio, que
+ * es donde se juegan.
+ */
+export function firstPlayoffDate(lastRegularMatchday: Date): Date {
+  return new Date(lastRegularMatchday.getTime() + PLAYOFF_GAME_GAP_DAYS * DAY_MS);
+}
+
+/** Fecha del enésimo partido de una serie que arranca ese día. */
+export function playoffGameDate(roundStart: Date, seriesGame: number): Date {
+  return new Date(roundStart.getTime() + (seriesGame - 1) * PLAYOFF_GAME_GAP_DAYS * DAY_MS);
+}
+
+/**
+ * Arranque de la ronda siguiente, contando siempre con que la anterior llegue
+ * al último partido. Una serie que se resuelve antes deja hueco muerto, igual
+ * que en una temporada real: el cuadro no se adelanta porque haya un 3-0.
+ */
+export function nextPlayoffRoundStart(roundStart: Date, bestOf: number): Date {
+  const lastGame = playoffGameDate(roundStart, bestOf);
+  return new Date(lastGame.getTime() + PLAYOFF_ROUND_GAP_DAYS * DAY_MS);
+}

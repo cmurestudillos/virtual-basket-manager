@@ -70,7 +70,7 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
     <header class="flex items-center justify-between">
       <div>
         <p class="text-sm text-court-300">
-          Jornada {{ state.round }} · {{ formatMatchDate(state.scheduledOn) }}
+          {{ state.roundLabel }} · {{ formatMatchDate(state.scheduledOn) }}
         </p>
       </div>
       <RouterLink :to="{ name: 'dashboard' }" class="text-sm text-court-300 hover:text-court-100">

@@ -23,6 +23,8 @@ export const IPC_CHANNELS = {
   seasonGetNextGame: 'season:getNextGame',
   seasonAdvanceDay: 'season:advanceDay',
   seasonAdvanceToNextGame: 'season:advanceToNextGame',
+  seasonGetPlayoffs: 'season:getPlayoffs',
+  seasonStartNext: 'season:startNext',
   rotationGet: 'rotation:get',
   rotationSave: 'rotation:save',
   rotationAuto: 'rotation:auto',

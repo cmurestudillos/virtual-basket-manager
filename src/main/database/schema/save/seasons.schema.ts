@@ -13,7 +13,13 @@ export const seasonsTable = sqliteTable('seasons', {
   /** Jornada de liga regular en curso. */
   currentRound: integer('current_round').notNull().default(1),
   /** `regular`, `playoffs` o `finished`. */
-  stage: text('stage').notNull().default('regular')
+  stage: text('stage').notNull().default('regular'),
+  /**
+   * Campeón, cuando lo hay. Es el único dato de la temporada que sobrevive a la
+   * temporada: el palmarés de la partida se lee de aquí, y no de recalcular los
+   * playoffs de hace diez años.
+   */
+  championTeamId: text('champion_team_id')
 });
 
 export type SeasonRow = typeof seasonsTable.$inferSelect;

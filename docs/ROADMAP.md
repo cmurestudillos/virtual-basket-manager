@@ -4,7 +4,7 @@ Inventario de todo lo que tendría un manager de baloncesto completo, sacado de
 **PC Basket 6.5** y de **International Basketball Manager**. Nada de esto está
 decidido: la idea es que marques qué entra, qué se recorta y qué se descarta.
 
-Estado: ✅ hecho · ⬜ propuesto.
+Estado: ✅ hecho · ⬜ propuesto · ⛔ bloqueado por otra pieza.
 
 Tamaño orientativo: **S** una tarde · **M** un par de días · **L** una semana o
 más.
@@ -58,13 +58,23 @@ se juega. Si no suman 200 el motor reparte en proporción, así que una rotació
 medio cuadrar sigue siendo jugable. La pizarra y la rotación del usuario son las
 únicas editables — las de la IA se leen, que es lo que hará falta para el ojeo.
 
-### Fase 3 — que haya campeón
+### Fase 3 — que haya campeón (hecha)
 
-|     | Pieza            | Detalle                                                           |     |
-| --- | ---------------- | ----------------------------------------------------------------- | --- |
-| ⬜  | **Playoffs**     | 8 equipos, cuartos al mejor de 3 y semis/final al mejor de 5      | M   |
-| ⬜  | Factor cancha    | Por posición en la liga regular                                   | S   |
-| ⬜  | Fin de temporada | Campeón, ascensos y descensos, arranque de la temporada siguiente | M   |
+|     | Pieza                | Detalle                                                            |     |
+| --- | -------------------- | ------------------------------------------------------------------ | --- |
+| ✅  | **Playoffs**         | 8 equipos, cuartos al mejor de 3 y semis/final al mejor de 5       | M   |
+| ✅  | Factor cancha        | Por posición en la liga regular: 2-1 al mejor de 3 y 2-2-1 al de 5 | S   |
+| ✅  | Fin de temporada     | Campeón guardado y arranque de la temporada siguiente              | M   |
+| ⛔  | Ascensos y descensos | Necesitan una segunda división, que está en el Bloque 4            | M   |
+
+El cuadro es fijo (1-8, 2-7, 3-6, 4-5; el 1-8 se cruza con el 4-5) y vive en la
+misma tabla de partidos que la liga, con `series_id`: por eso una eliminatoria
+nunca cuenta en la clasificación. Los partidos que sobran al decidirse una serie
+se borran, así que un 2-0 no deja un tercer partido colgado en el calendario.
+
+**Ascensos y descensos se quedan fuera a propósito**: el mundo del juego es una
+sola liga de 18 equipos, así que no hay ni de dónde subir ni adónde bajar.
+Entran con la segunda división del Bloque 4.
 
 ## Bloque 2 — El club
 
