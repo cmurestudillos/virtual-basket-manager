@@ -32,6 +32,8 @@ export const IPC_CHANNELS = {
   tacticsSave: 'tactics:save',
   statsTeamSeason: 'stats:teamSeason',
   statsLeaders: 'stats:leaders',
+  trainingGetPlan: 'training:getPlan',
+  trainingSavePlan: 'training:savePlan',
   matchStart: 'match:start',
   matchAdvancePeriod: 'match:advancePeriod',
   matchGet: 'match:get'

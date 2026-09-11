@@ -32,6 +32,8 @@ export interface RotationSlotView {
   secondaryPosition: Position | null;
   overall: number;
   condition: number;
+  /** Días de baja; 0 = disponible. Un lesionado no sale a la pista. */
+  injuryDaysLeft: number;
   depth: number;
   slotPosition: Position;
   targetMinutes: number;

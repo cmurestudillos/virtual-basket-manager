@@ -8,6 +8,7 @@ import type { MatchApi } from '@shared/contracts/match.contract';
 import type { RotationApi } from '@shared/contracts/rotation.contract';
 import type { TacticsApi } from '@shared/contracts/tactics.contract';
 import type { StatsApi } from '@shared/contracts/stats.contract';
+import type { TrainingApi } from '@shared/contracts/training.contract';
 
 export interface VbmApi {
   settings: SettingsApi;
@@ -19,6 +20,7 @@ export interface VbmApi {
   rotation: RotationApi;
   tactics: TacticsApi;
   stats: StatsApi;
+  training: TrainingApi;
   match: MatchApi;
 }
 

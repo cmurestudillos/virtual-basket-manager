@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import type { RotationSlotView, TeamRotation } from '@shared/contracts/rotation.contract';
 import { POSITION_LABELS, outOfPositionPenalty } from '@shared/domain/positions';
 import { LINEUP_SIZE, MAX_TARGET_MINUTES } from '@shared/domain/rotation';
+import { injuryLabel } from '@shared/domain/injuries';
 
 const props = defineProps<{ teamId: string }>();
 
@@ -81,8 +82,15 @@ function playerOf(slot: RotationSlotView): Partial<RotationSlotView> {
     position: slot.position,
     secondaryPosition: slot.secondaryPosition,
     overall: slot.overall,
-    condition: slot.condition
+    condition: slot.condition,
+    injuryDaysLeft: slot.injuryDaysLeft
   };
+}
+
+/** Un lesionado sigue en la lista, pero el motor no lo viste. */
+function optionLabel(slot: RotationSlotView): string {
+  const injury = slot.injuryDaysLeft > 0 ? ` · lesionado ${injuryLabel(slot.injuryDaysLeft)}` : '';
+  return `${slot.playerName} (${slot.position} · ${slot.overall})${injury}`;
 }
 
 /** Mueve a un suplente arriba o abajo en el orden del banquillo. */
@@ -196,12 +204,17 @@ function messageOf(cause: unknown): string {
                   @change="assignStarter(slot.depth, ($event.target as HTMLSelectElement).value)"
                 >
                   <option v-for="option in slots" :key="option.playerId" :value="option.playerId">
-                    {{ option.playerName }} ({{ option.position }} · {{ option.overall }})
+                    {{ optionLabel(option) }}
                   </option>
                 </select>
               </td>
               <td class="numeric font-semibold">{{ slot.overall }}</td>
-              <td class="numeric text-court-300">{{ slot.condition }}</td>
+              <td
+                class="numeric"
+                :class="slot.injuryDaysLeft > 0 ? 'text-red-400' : 'text-court-300'"
+              >
+                {{ slot.injuryDaysLeft > 0 ? injuryLabel(slot.injuryDaysLeft) : slot.condition }}
+              </td>
               <td class="numeric" :class="fitOf(slot) < 100 ? 'text-line-500' : 'text-court-600'">
                 {{ fitOf(slot) }}%
               </td>
@@ -243,7 +256,12 @@ function messageOf(cause: unknown): string {
               <td>{{ slot.playerName }}</td>
               <td class="text-court-300">{{ slot.position }}</td>
               <td class="numeric font-semibold">{{ slot.overall }}</td>
-              <td class="numeric text-court-300">{{ slot.condition }}</td>
+              <td
+                class="numeric"
+                :class="slot.injuryDaysLeft > 0 ? 'text-red-400' : 'text-court-300'"
+              >
+                {{ slot.injuryDaysLeft > 0 ? injuryLabel(slot.injuryDaysLeft) : slot.condition }}
+              </td>
               <td class="numeric">
                 <input
                   type="number"

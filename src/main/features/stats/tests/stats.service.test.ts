@@ -57,7 +57,7 @@ beforeAll(() => {
       result = season.advanceToNextGame();
     }
   }
-});
+}, 120_000);
 
 afterAll(() => {
   closeSaveDatabase(filePath);

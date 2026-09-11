@@ -56,8 +56,17 @@ export const playersTable = sqliteTable('players', {
   /** Forma física 0-100 con la que llega al siguiente partido. */
   condition: integer('condition').notNull().default(100),
   morale: integer('morale').notNull().default(70),
-  /** Partidos que le quedan de baja; 0 = disponible. */
-  gamesInjured: integer('games_injured').notNull().default(0),
+  /**
+   * Días de baja que le quedan; 0 = disponible.
+   *
+   * En días del calendario y no en partidos: una baja de tres semanas se lleva
+   * tres jornadas de liga, pero seis partidos de playoff.
+   */
+  injuryDaysLeft: integer('injury_days_left').notNull().default(0),
+  /** Qué tiene: «Esguince de tobillo». Nulo si está sano. */
+  injuryName: text('injury_name'),
+  /** Foco de entrenamiento propio; nulo = el del bloque. */
+  trainingFocus: text('training_focus'),
 
   // --- Contrato ---
   wageCents: integer('wage_cents').notNull().default(0),

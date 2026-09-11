@@ -1,5 +1,6 @@
 import { DEFAULT_TACTICS } from '@shared/domain/tactics';
 import { buildAutomaticRotation } from '@shared/domain/rotation';
+import { DEFAULT_TRAINING_FOCUS, DEFAULT_TRAINING_INTENSITY } from '@shared/domain/training';
 import type { SaveDatabase } from '../../database/client';
 import {
   competitionsTable,
@@ -7,7 +8,8 @@ import {
   playersTable,
   rotationSlotsTable,
   teamsTable,
-  teamTacticsTable
+  teamTacticsTable,
+  teamTrainingTable
 } from '../../database/schema/save';
 import type { Dataset } from './dataset';
 
@@ -41,6 +43,13 @@ export function seedSave(
           defensiveIntensity: DEFAULT_TACTICS.defensiveIntensity,
           offensiveReboundEffort: DEFAULT_TACTICS.offensiveReboundEffort,
           focusPlayerId: null
+        })
+        .run();
+      tx.insert(teamTrainingTable)
+        .values({
+          teamId: team.id,
+          intensity: DEFAULT_TRAINING_INTENSITY,
+          focus: DEFAULT_TRAINING_FOCUS
         })
         .run();
     }
@@ -87,7 +96,9 @@ export function seedSave(
           potential: player.potential,
           condition: 100,
           morale: 70,
-          gamesInjured: 0,
+          injuryDaysLeft: 0,
+          injuryName: null,
+          trainingFocus: null,
           wageCents: player.wageCents,
           contractUntil: new Date(player.contractUntil),
           valueCents: player.valueCents

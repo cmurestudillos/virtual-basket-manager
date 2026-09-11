@@ -2,7 +2,11 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createRng } from '../../src/shared/engine/basketball/rng';
 import { POSITIONS, type Position } from '../../src/shared/domain/positions';
-import { ATTRIBUTE_KEYS, type PlayerAttributes } from '../../src/shared/domain/attributes';
+import {
+  ATTRIBUTE_KEYS,
+  overallForPosition,
+  type PlayerAttributes
+} from '../../src/shared/domain/attributes';
 
 /**
  * Generador del dataset con el que arranca una partida nueva.
@@ -356,6 +360,12 @@ for (const team of teams) {
     );
 
     const { firstName, lastName } = uniqueName();
+    const attributes = attributesFor(position, level);
+    // El techo se mide contra la media real del jugador en su puesto, no contra
+    // el `level` con el que se generó: los sesgos por posición suben esa media
+    // por encima del nivel base, y un potencial por debajo de lo que ya vale
+    // significaría que nadie mejora nunca por mucho que entrene.
+    const overall = overallForPosition(attributes, position);
 
     players.push({
       id: `${team.id}-p${slot + 1}`,
@@ -371,8 +381,8 @@ for (const team of teams) {
       // La envergadura suele pasar de la altura; es lo que explica tapones y
       // robos mejor que la altura sola.
       wingspanCm: height + rng.int(0, 9),
-      attributes: attributesFor(position, level),
-      potential: clamp(level + Math.max(0, 24 - age) * 1.6 + rng.int(-3, 6), level, 95),
+      attributes,
+      potential: clamp(overall + Math.max(0, 24 - age) * 1.6 + rng.int(-3, 6), overall, 97),
       wageCents: Math.round(Math.pow(level / 10, 3.1) * 1_200) * 100,
       contractUntil: `${SEASON_START_YEAR + rng.int(1, 4)}-06-30`,
       valueCents: Math.round(Math.pow(level / 10, 3.6) * 9_000) * 100

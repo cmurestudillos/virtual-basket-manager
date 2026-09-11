@@ -90,6 +90,27 @@ Un jugador puede ocupar un hueco que no es el suyo, con penalización por
 distancia en la escala 1-5: de escolta a alero casi no se nota, de base a pívot
 sí. La pantalla lo enseña como porcentaje de encaje antes de jugar, no después.
 
+## Estado físico
+
+La frescura dentro del partido la lleva el motor; entre partidos manda la
+**forma** (0-100), que es con la que el jugador llega al siguiente. Un partido
+completo cuesta unos 24 puntos con 80 de resistencia, y se recuperan unos 11 al
+día: con jornada semanal se llega entero, con playoffs cada tres días no.
+
+Las **lesiones** se cuentan en días de calendario, no en partidos, justo para
+que esa diferencia se note. El riesgo de cada partido sale de tres cosas, y las
+tres son consecuencia de decisiones del entrenador: minutos jugados, forma con
+la que llegó y edad. Un lesionado no se viste, así que la rotación tiene que
+apañarse sin él.
+
+El **entrenamiento** se resuelve cada lunes del calendario del juego. El foco
+—del bloque, o propio de un jugador— decide qué atributos se trabajan y la
+intensidad 1-10 cuánto: más intensidad mejora antes, cansa más y lesiona más. El
+potencial es un techo de verdad: cuanto más cerca está el jugador, menos sube, y
+al llegar deja de crecer. Pasados los treinta ya no mejora, y empieza a perder
+velocidad, salto y resistencia. La semana de recuperación no mejora a nadie:
+devuelve forma y quita riesgo.
+
 ## Los playoffs
 
 La liga regular no corona campeón: reparte el **factor cancha**. Ocho equipos,

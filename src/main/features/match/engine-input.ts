@@ -34,12 +34,18 @@ export function buildEngineTeam(db: SaveDatabase, teamId: string): EngineTeam {
     .orderBy(asc(rotationSlotsTable.depth))
     .all();
 
-  const byId = new Map(roster.map((row) => [row.id, row]));
+  // Los lesionados no se visten. Si no quedaran cinco sanos —plantilla
+  // diezmada— se convoca igualmente a quien haga falta: un partido no se
+  // suspende, y es mejor jugar tocado que no presentarse.
+  const healthy = roster.filter((row) => row.injuryDaysLeft === 0);
+  const available = healthy.length >= LINEUP_SIZE ? healthy : roster;
+
+  const byId = new Map(available.map((row) => [row.id, row]));
   // El orden de la rotación manda: el motor reparte minutos por profundidad, y
   // un jugador que esté en la plantilla pero no en la rotación va al final.
   const ordered = [
     ...rotation.map((slot) => byId.get(slot.playerId)).filter((row): row is PlayerRow => !!row),
-    ...roster.filter((row) => !rotation.some((slot) => slot.playerId === row.id))
+    ...available.filter((row) => !rotation.some((slot) => slot.playerId === row.id))
   ];
 
   const tactics = db
@@ -57,11 +63,15 @@ export function buildEngineTeam(db: SaveDatabase, teamId: string): EngineTeam {
     // por profundidad: si el usuario cambia de sitio a dos titulares, el base
     // debe seguir saliendo de base.
     starters: rotation
-      .filter((slot) => slot.depth < LINEUP_SIZE)
+      .filter((slot) => slot.depth < LINEUP_SIZE && byId.has(slot.playerId))
       .slice(0, LINEUP_SIZE)
       .sort((a, b) => slotOrder(a.slotPosition) - slotOrder(b.slotPosition))
       .map((slot) => slot.playerId),
-    minutesTargets: Object.fromEntries(rotation.map((slot) => [slot.playerId, slot.targetMinutes])),
+    minutesTargets: Object.fromEntries(
+      rotation
+        .filter((slot) => byId.has(slot.playerId))
+        .map((slot) => [slot.playerId, slot.targetMinutes])
+    ),
     tactics: toTactics(tactics)
   };
 }

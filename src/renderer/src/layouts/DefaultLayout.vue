@@ -11,6 +11,7 @@ const sections = [
   { name: 'dashboard', label: 'Club' },
   { name: 'squad', label: 'Plantilla' },
   { name: 'lineup', label: 'Alineación' },
+  { name: 'training', label: 'Entrenamiento' },
   { name: 'stats', label: 'Estadísticas' },
   { name: 'competition', label: 'Competición' }
 ];

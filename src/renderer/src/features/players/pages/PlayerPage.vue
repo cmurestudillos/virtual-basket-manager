@@ -3,6 +3,8 @@ import { onMounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { PlayerSummary } from '@shared/contracts/players.contract';
 import { ATTRIBUTE_GROUPS, ATTRIBUTE_LABELS } from '@shared/domain/attributes';
+import { conditionLabel } from '@shared/domain/conditioning';
+import { injuryLabel } from '@shared/domain/injuries';
 import { POSITION_LABELS } from '@shared/domain/positions';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
 
@@ -59,7 +61,7 @@ function barColor(value: number): string {
       </RouterLink>
     </header>
 
-    <div class="grid grid-cols-6 gap-4">
+    <div class="grid grid-cols-7 gap-4">
       <article class="rounded border border-court-700 p-3">
         <p class="text-xs text-court-300">Media</p>
         <p class="text-2xl font-semibold text-ball-500">{{ player.overall }}</p>
@@ -83,6 +85,23 @@ function barColor(value: number): string {
       <article class="rounded border border-court-700 p-3">
         <p class="text-xs text-court-300">Sueldo</p>
         <p class="text-lg">{{ formatMoney(player.wageCents) }}</p>
+      </article>
+      <article
+        class="rounded border p-3"
+        :class="player.injuryDaysLeft > 0 ? 'border-red-900' : 'border-court-700'"
+      >
+        <p class="text-xs text-court-300">Estado</p>
+        <p v-if="player.injuryDaysLeft > 0" class="text-lg text-red-400">
+          {{ player.injuryName }}
+        </p>
+        <p v-else class="text-lg">{{ conditionLabel(player.condition) }}</p>
+        <p class="text-sm text-court-300">
+          {{
+            player.injuryDaysLeft > 0
+              ? injuryLabel(player.injuryDaysLeft)
+              : `Forma ${player.condition}`
+          }}
+        </p>
       </article>
     </div>
 

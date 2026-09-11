@@ -55,7 +55,8 @@ export function toPlayerSummary(row: PlayerRow, today: Date): PlayerSummary {
     potential: row.potential,
     condition: row.condition,
     morale: row.morale,
-    gamesInjured: row.gamesInjured,
+    injuryDaysLeft: row.injuryDaysLeft,
+    injuryName: row.injuryName,
     wageCents: row.wageCents,
     valueCents: row.valueCents
   };

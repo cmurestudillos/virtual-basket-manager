@@ -150,8 +150,11 @@ describe('SeasonService', () => {
     expect(games.filter((game) => game.seriesId === null)).toHaveLength(306);
     expect(games.every((game) => game.homeScore !== null)).toBe(true);
 
-    // 24 fichas por partido: el acta completa de la temporada.
-    expect(db.select().from(gamePlayerStatsTable).all()).toHaveLength(games.length * 24);
+    // Hasta 24 fichas por partido, y menos cuando hay gente en la enfermería:
+    // un lesionado no se viste, así que no aparece en el acta.
+    const lines = db.select().from(gamePlayerStatsTable).all();
+    expect(lines.length).toBeLessThanOrEqual(games.length * 24);
+    expect(lines.length).toBeGreaterThan(games.length * 21);
 
     const standings = season.getStandings();
     expect(standings).toHaveLength(18);

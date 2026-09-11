@@ -161,6 +161,7 @@ function toSlotView(entry: RotationEntry, player: PlayerSummary): RotationSlotVi
     secondaryPosition: player.secondaryPosition,
     overall: player.overall,
     condition: player.condition,
+    injuryDaysLeft: player.injuryDaysLeft,
     depth: entry.depth,
     slotPosition: entry.slotPosition,
     targetMinutes: entry.targetMinutes,
