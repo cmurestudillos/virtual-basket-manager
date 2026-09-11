@@ -53,9 +53,24 @@ export const router = createRouter({
           component: () => import('@renderer/features/training/pages/TrainingPage.vue')
         },
         {
+          path: 'youth',
+          name: 'youth',
+          component: () => import('@renderer/features/youth/pages/YouthPage.vue')
+        },
+        {
           path: 'stats',
           name: 'stats',
           component: () => import('@renderer/features/stats/pages/StatsPage.vue')
+        },
+        {
+          path: 'market',
+          name: 'market',
+          component: () => import('@renderer/features/market/pages/MarketPage.vue')
+        },
+        {
+          path: 'finances',
+          name: 'finances',
+          component: () => import('@renderer/features/club/pages/FinancesPage.vue')
         },
         {
           path: 'competition',

@@ -206,6 +206,21 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
     <!-- Previa: todavía no se ha jugado nada -->
     <section v-else class="rounded border border-court-700 p-5">
       <h2 class="text-sm uppercase tracking-wide text-court-300">Previa</h2>
+
+      <!-- Lo que el analista ha sacado del rival. -->
+      <div v-if="state.scouting" class="mt-3 rounded border border-court-700 bg-court-900 p-3">
+        <p class="text-xs uppercase tracking-wide text-court-300">
+          Informe del analista · {{ state.scouting.teamName }}
+        </p>
+        <p class="mt-1 text-sm">
+          {{ state.scouting.offensiveSystem }} en ataque y {{ state.scouting.defensiveSystem }} en
+          defensa · ritmo {{ state.scouting.pace }} · intensidad
+          {{ state.scouting.defensiveIntensity }}
+        </p>
+        <p v-if="state.scouting.focusPlayerName" class="text-sm text-court-300">
+          Van a buscar a {{ state.scouting.focusPlayerName }}
+        </p>
+      </div>
       <div class="mt-3 grid grid-cols-2 gap-6">
         <div v-for="side in [state.home, state.away]" :key="side.teamId">
           <p class="mb-2 text-sm">{{ side.teamName }} · cinco inicial</p>

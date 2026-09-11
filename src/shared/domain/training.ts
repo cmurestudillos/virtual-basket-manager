@@ -112,6 +112,8 @@ export interface TrainingSessionInput {
   focus: TrainingFocus;
   /** 1-10. */
   intensity: number;
+  /** Lo que aporta el entrenador ayudante: 1 si no hay ninguno. */
+  staffBoost?: number;
   rng: Rng;
 }
 
@@ -140,7 +142,7 @@ export function trainWeek(input: TrainingSessionInput): AttributeChange[] {
       if (input.attributes[key] >= MAX_ATTRIBUTE) {
         continue;
       }
-      if (input.rng.chance(0.1 * ageFactor * intensity * headroom)) {
+      if (input.rng.chance(0.1 * ageFactor * intensity * headroom * (input.staffBoost ?? 1))) {
         changes.push({ key, delta: 1 });
       }
     }

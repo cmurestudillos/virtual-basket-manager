@@ -2,6 +2,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import { dirname, resolve } from 'node:path';
 import { createRng } from '../../src/shared/engine/basketball/rng';
 import { POSITIONS, type Position } from '../../src/shared/domain/positions';
+import { FIRST_NAMES, LAST_NAMES } from '../../src/shared/domain/names';
 import {
   ATTRIBUTE_KEYS,
   overallForPosition,
@@ -48,72 +49,6 @@ const CITIES = [
 ];
 
 const CLUB_PREFIXES = ['CB', 'Club Baloncesto', 'Basket', 'BC'];
-
-const FIRST_NAMES = [
-  'Álvaro',
-  'Íñigo',
-  'Rubén',
-  'Sergi',
-  'Mateo',
-  'Nicolás',
-  'Adrián',
-  'Óscar',
-  'Bruno',
-  'Guillem',
-  'Héctor',
-  'Pau',
-  'Marcos',
-  'Ignacio',
-  'Diego',
-  'Aitor',
-  'Jonás',
-  'Emilio',
-  'Rodrigo',
-  'Kilian',
-  'Darius',
-  'Milan',
-  'Tomas',
-  'Andrei',
-  'Ousmane',
-  'Dwayne',
-  'Marcus',
-  'Trevor',
-  'Kendrick',
-  'Lamar'
-];
-
-const LAST_NAMES = [
-  'Arroyo',
-  'Bermúdez',
-  'Cifuentes',
-  'Delgado',
-  'Escobar',
-  'Fuentes',
-  'Gallardo',
-  'Herrera',
-  'Iriarte',
-  'Jáuregui',
-  'Lorenzo',
-  'Maldonado',
-  'Nogales',
-  'Olmedo',
-  'Peñarroya',
-  'Quesada',
-  'Robledo',
-  'Salgado',
-  'Terrazas',
-  'Ugarte',
-  'Vidal',
-  'Zabala',
-  'Novak',
-  'Petrovic',
-  'Vasiliev',
-  'Kowalski',
-  'Diallo',
-  'Okafor',
-  'Brooks',
-  'Whitaker'
-];
 
 const NATIONALITIES = [
   'ESP',
@@ -431,7 +366,18 @@ function clamp(value: number, min: number, max: number): number {
 mkdirSync(dirname(OUTPUT), { recursive: true });
 writeFileSync(
   OUTPUT,
-  `${JSON.stringify({ version: 1, seed: SEED, seasonStartYear: SEASON_START_YEAR, competitions, teams, players }, null, 2)}\n`,
+  `${JSON.stringify(
+    {
+      version: 1,
+      seed: SEED,
+      seasonStartYear: SEASON_START_YEAR,
+      competitions,
+      teams,
+      players
+    },
+    null,
+    2
+  )}\n`,
   'utf8'
 );
 

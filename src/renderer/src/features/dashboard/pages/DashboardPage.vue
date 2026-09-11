@@ -7,6 +7,8 @@ import type {
   StandingEntry
 } from '@shared/contracts/season.contract';
 import type { TeamSummary } from '@shared/contracts/teams.contract';
+import type { BoardView } from '@shared/contracts/club.contract';
+import { SEASON_VERDICT_LABELS } from '@shared/domain/board';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { formatMatchDate, formatMoney } from '@renderer/shared/format';
@@ -19,6 +21,7 @@ const team = ref<TeamSummary | null>(null);
 const standings = ref<StandingEntry[]>([]);
 const recent = ref<FixtureEntry[]>([]);
 const playoffs = ref<PlayoffBracket | null>(null);
+const board = ref<BoardView | null>(null);
 
 const myPosition = computed(() => standings.value.find((row) => row.isManaged));
 const stage = computed(() => seasonStore.season?.stage ?? 'regular');
@@ -73,6 +76,7 @@ async function reload(): Promise<void> {
     .reverse();
   // El cuadro sólo existe cuando acaba la liga regular; antes no hay nada que pedir.
   playoffs.value = stage.value === 'regular' ? null : await window.api.season.getPlayoffs();
+  board.value = await window.api.club.getBoard();
 }
 
 async function advance(mode: 'day' | 'nextGame'): Promise<void> {
@@ -144,8 +148,13 @@ function fixtureRound(fixture: FixtureEntry): string {
         </p>
       </article>
       <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Presupuesto</p>
-        <p class="mt-1 text-lg">{{ formatMoney(team.budgetCents) }}</p>
+        <p class="text-xs uppercase tracking-wide text-court-300">Caja</p>
+        <p class="mt-1 text-lg" :class="team.budgetCents < 0 ? 'text-red-400' : ''">
+          {{ formatMoney(team.budgetCents) }}
+        </p>
+        <RouterLink :to="{ name: 'finances' }" class="text-xs text-court-300 hover:text-ball-400">
+          Ver finanzas
+        </RouterLink>
       </article>
       <article class="rounded border border-court-700 p-4">
         <p class="text-xs uppercase tracking-wide text-court-300">Pabellón</p>
@@ -154,7 +163,40 @@ function fixtureRound(fixture: FixtureEntry): string {
       </article>
     </div>
 
-    <section class="rounded border border-court-700 p-5">
+    <!-- El consejo -->
+    <section
+      v-if="board"
+      class="rounded border px-5 py-4"
+      :class="board.dismissed ? 'border-red-900' : 'border-court-700'"
+    >
+      <div class="flex items-center justify-between gap-6">
+        <div>
+          <h2 class="text-sm uppercase tracking-wide text-court-300">El consejo</h2>
+          <p v-if="board.dismissed" class="mt-1 text-lg text-red-400">
+            Te han destituido. La partida se queda como está.
+          </p>
+          <template v-else>
+            <p class="mt-1 text-lg">{{ board.objectiveLabel }}</p>
+            <p class="text-sm text-court-300">
+              Hace falta acabar {{ board.targetPosition }}º o mejor ·
+              {{ SEASON_VERDICT_LABELS[board.verdict].toLowerCase() }} con lo de ahora
+            </p>
+          </template>
+        </div>
+        <div class="text-right">
+          <p class="text-xs uppercase tracking-wide text-court-300">Confianza</p>
+          <p
+            class="text-2xl font-semibold"
+            :class="board.confidence >= 30 ? 'text-ball-500' : 'text-red-400'"
+          >
+            {{ board.confidence }}
+          </p>
+          <p class="text-sm text-court-300">{{ board.confidenceLabel }}</p>
+        </div>
+      </div>
+    </section>
+
+    <section v-if="!board?.dismissed" class="rounded border border-court-700 p-5">
       <h2 class="text-sm uppercase tracking-wide text-court-300">
         {{ stage === 'finished' ? 'Temporada terminada' : 'Próximo partido' }}
       </h2>

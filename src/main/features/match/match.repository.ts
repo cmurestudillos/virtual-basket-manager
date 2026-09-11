@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { Position } from '@shared/domain/positions';
 import { RULESETS, type Ruleset } from '@shared/domain/rulesets';
 import type { GameResult, PeriodScore } from '@shared/engine/basketball';
@@ -12,9 +12,11 @@ import {
   rotationSlotsTable,
   seasonsTable,
   teamsTable,
+  teamTacticsTable,
   type CompetitionRow,
   type GamePlayerStatsRow,
-  type GameRow
+  type GameRow,
+  type TeamTacticsRow
 } from '../../database/schema/save';
 
 export interface PlayerCard {
@@ -75,7 +77,11 @@ export class MatchRepository {
    * titulares primero y suplentes después, no alfabéticamente.
    */
   playerCards(teamId: string): Map<string, PlayerCard> {
-    const roster = this.db.select().from(playersTable).where(eq(playersTable.teamId, teamId)).all();
+    const roster = this.db
+      .select()
+      .from(playersTable)
+      .where(and(eq(playersTable.teamId, teamId), eq(playersTable.isYouth, false)))
+      .all();
     const depths = new Map(
       this.db
         .select()
@@ -97,6 +103,19 @@ export class MatchRepository {
         }
       ])
     );
+  }
+
+  /** Pizarra de un equipo: lo que el analista es capaz de leerle al rival. */
+  teamTactics(teamId: string): TeamTacticsRow | null {
+    return (
+      this.db.select().from(teamTacticsTable).where(eq(teamTacticsTable.teamId, teamId)).get() ??
+      null
+    );
+  }
+
+  playerName(playerId: string): string | null {
+    const row = this.db.select().from(playersTable).where(eq(playersTable.id, playerId)).get();
+    return row ? `${row.firstName} ${row.lastName}` : null;
   }
 
   listBoxScores(gameId: string): GamePlayerStatsRow[] {

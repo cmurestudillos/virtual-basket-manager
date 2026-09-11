@@ -67,6 +67,19 @@ export const playersTable = sqliteTable('players', {
   injuryName: text('injury_name'),
   /** Foco de entrenamiento propio; nulo = el del bloque. */
   trainingFocus: text('training_focus'),
+  /**
+   * De la cantera: no se viste, no entra en la rotación y no aparece en el
+   * acta. Promocionar es poner esto a `false`, no mover al jugador de tabla.
+   */
+  isYouth: integer('is_youth', { mode: 'boolean' }).notNull().default(false),
+  /**
+   * Cesión: club al que pertenece mientras juega en otro. `teamId` sigue siendo
+   * dónde juega hoy —así el motor, la rotación y el acta no se enteran de nada—
+   * y esto dice a quién vuelve cuando acabe.
+   */
+  loanFromTeamId: text('loan_from_team_id'),
+  /** Hasta cuándo dura la cesión. */
+  loanUntil: integer('loan_until', { mode: 'timestamp_ms' }),
 
   // --- Contrato ---
   wageCents: integer('wage_cents').notNull().default(0),

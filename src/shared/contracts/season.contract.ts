@@ -85,7 +85,9 @@ export interface PlayoffBracket {
 export type AdvanceResult =
   | { status: 'userGame'; gameId: string; date: number }
   | { status: 'advanced'; date: number; playedGameIds: string[] }
-  | { status: 'seasonOver'; date: number };
+  | { status: 'seasonOver'; date: number }
+  /** El consejo te ha destituido: el reloj no avanza más en esta partida. */
+  | { status: 'dismissed'; date: number };
 
 export interface SeasonApi {
   getCurrent: () => Promise<SeasonSummary>;

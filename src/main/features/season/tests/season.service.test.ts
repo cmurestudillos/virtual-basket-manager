@@ -7,7 +7,7 @@ import {
   openSaveDatabase,
   type SaveDatabase
 } from '../../../database/save-database';
-import { gamesTable, gamePlayerStatsTable } from '../../../database/schema/save';
+import { boardTable, gamesTable, gamePlayerStatsTable } from '../../../database/schema/save';
 import { loadDataset } from '../../saves/dataset';
 import { seedSave } from '../../saves/save-seeder';
 import { MatchService } from '../../match/match.service';
@@ -131,13 +131,18 @@ describe('SeasonService', () => {
   // Son los 306 partidos de liga más los del cuadro, todos simulados posesión a
   // posesión y con su acta escrita en SQLite: no cabe en el tiempo por defecto.
   it('juega una temporada completa de 34 jornadas', { timeout: 180_000 }, () => {
+    // El consejo, fuera de este test: los resultados de una partida dependen de
+    // su semilla, así que en una de cada tantas la temporada acaba en despido y
+    // el reloj se para a mitad. Lo que aquí se comprueba no va de eso.
+    db.delete(boardTable).run();
+
     let guard = 0;
     for (;;) {
       guard += 1;
       expect(guard).toBeLessThan(500);
 
       const result = season.advanceToNextGame();
-      if (result.status === 'seasonOver') {
+      if (result.status === 'seasonOver' || result.status === 'dismissed') {
         break;
       }
       if (result.status === 'userGame') {

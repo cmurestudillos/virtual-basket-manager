@@ -60,6 +60,23 @@ export interface MatchState {
   finished: boolean;
   /** Cuál de los dos es el equipo del usuario; `null` en un partido ajeno. */
   managedSide: 'home' | 'away' | null;
+  /**
+   * Lo que el analista ha sacado del rival. `null` si no hay analista, si no
+   * llega al nivel que hace falta o si el partido no es del usuario.
+   */
+  scouting: MatchScouting | null;
+}
+
+/** Informe del analista sobre el rival, para la previa. */
+export interface MatchScouting {
+  teamId: string;
+  teamName: string;
+  offensiveSystem: string;
+  defensiveSystem: string;
+  pace: number;
+  defensiveIntensity: number;
+  /** Su referencia ofensiva, si tienen una designada. */
+  focusPlayerName: string | null;
 }
 
 export interface MatchApi {

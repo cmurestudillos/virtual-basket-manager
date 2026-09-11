@@ -1,4 +1,4 @@
-import { asc, eq, inArray, gt } from 'drizzle-orm';
+import { and, asc, eq, inArray, gt } from 'drizzle-orm';
 import type { AttributeKey } from '@shared/domain/attributes';
 import type { SaveDatabase } from '../../database/client';
 import {
@@ -60,11 +60,12 @@ export class FitnessRepository {
     return this.db.select().from(teamsTable).where(eq(teamsTable.id, teamId)).get()?.name ?? null;
   }
 
+  /** Plan de entrenamiento: se enseña el primer equipo, no la cantera. */
   listRoster(teamId: string): PlayerRow[] {
     return this.db
       .select()
       .from(playersTable)
-      .where(eq(playersTable.teamId, teamId))
+      .where(and(eq(playersTable.teamId, teamId), eq(playersTable.isYouth, false)))
       .orderBy(asc(playersTable.lastName))
       .all();
   }

@@ -7,9 +7,10 @@ import { resolve } from 'node:path';
  * Arnés de verificación de la aplicación real.
  *
  * Arranca Electron y recorre el flujo completo: menú, nueva partida, club,
- * plantilla, ficha, alineación, pizarra, entrenamiento, partido jugado cuarto a
- * cuarto, clasificación, calendario, cuadro de playoffs y estadísticas. Deja
- * una captura de cada pantalla en `.dev-data/shots`.
+ * plantilla, ficha, alineación, pizarra, entrenamiento, finanzas, cuerpo
+ * técnico, cantera, mercado, partido jugado cuarto a cuarto, clasificación,
+ * calendario, cuadro de playoffs y estadísticas. Deja una captura de cada
+ * pantalla en `.dev-data/shots`.
  *
  * Es la única forma de saber que algo funciona de verdad: los tests unitarios
  * no ven ni una pantalla en blanco ni un `window.api` que no llegó a exponerse.
@@ -108,6 +109,80 @@ const plan = await page.locator('footer').first().innerText();
 console.log('plan:', plan.split('\n').join(' · '));
 await page.screenshot({ path: `${SHOTS}/08-entrenamiento.png` });
 
+// --- Bloque 2, fase 2: el dinero -------------------------------------------
+
+await page.getByRole('link', { name: 'Finanzas' }).click();
+await page.waitForTimeout(1500);
+const caja = await page.locator('article').first().innerText();
+console.log('caja:', caja.split('\n').join(' · '));
+const consejo = await page.locator('section').first().innerText();
+console.log('consejo:', consejo.split('\n').join(' · '));
+
+// Bajar el precio de la entrada tiene que llenar más el pabellón.
+const aforoAntes = (await page.locator('dl dd').nth(3).innerText()).trim();
+await page.locator('input[type="number"]').first().fill('12');
+await page.getByRole('button', { name: 'Guardar' }).click();
+await page.waitForTimeout(1500);
+console.log(
+  'asistencia prevista:',
+  aforoAntes,
+  '->',
+  (await page.locator('dl dd').nth(3).innerText()).trim()
+);
+console.log('apuntes en el libro:', await page.locator('tbody tr').count());
+await page.screenshot({ path: `${SHOTS}/09-finanzas.png` });
+
+// --- Bloque 2, fase 3: cuerpo técnico y cantera ----------------------------
+
+await page.getByRole('link', { name: 'Entrenamiento' }).click();
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: 'Cuerpo técnico' }).click();
+await page.waitForTimeout(1200);
+console.log('técnicos en pantalla:', await page.locator('tbody tr').count());
+await page.screenshot({ path: `${SHOTS}/10-cuerpo-tecnico.png` });
+
+await page.getByRole('link', { name: 'Cantera' }).click();
+await page.waitForTimeout(1500);
+const cantera = await page.locator('article').first().innerText();
+console.log('cantera:', cantera.split('\n').join(' · '));
+console.log('juveniles:', await page.locator('tbody tr').count());
+await page.getByRole('button', { name: 'Promocionar' }).first().click();
+await page.waitForTimeout(1500);
+console.log(
+  'tras promocionar:',
+  (await page.locator('article').nth(2).innerText()).split('\n').join(' · ')
+);
+await page.screenshot({ path: `${SHOTS}/11-cantera.png` });
+
+// --- Bloque 3: el mercado --------------------------------------------------
+
+await page.getByRole('link', { name: 'Mercado' }).click();
+await page.waitForTimeout(1500);
+const mercado = await page.locator('h1').first().innerText();
+console.log('mercado:', mercado, '·', await page.locator('tbody tr').count(), 'fichables');
+
+// Se ficha al primer agente libre de la lista, con lo que pide.
+await page.getByRole('checkbox').first().check();
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: 'Ofertar' }).nth(1).click();
+await page.waitForTimeout(800);
+await page.getByRole('button', { name: 'Ofertar' }).first().click();
+await page.waitForTimeout(1500);
+const respuesta = await page.locator('main p').last().innerText();
+console.log('oferta:', respuesta);
+await page.screenshot({ path: `${SHOTS}/12-mercado.png` });
+
+// Cesiones: se cede al último de la plantilla y se comprueba que sale del club.
+await page.getByRole('button', { name: 'Contratos' }).click();
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: 'Ceder' }).last().click();
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Cesiones' }).click();
+await page.waitForTimeout(1200);
+const cesiones = await page.locator('tbody tr').first().innerText();
+console.log('cesión:', cesiones.split('\t').join(' · '));
+await page.screenshot({ path: `${SHOTS}/12b-cesiones.png` });
+
 // --- Fase 1: temporada -----------------------------------------------------
 
 await page.getByRole('link', { name: 'Club' }).click();
@@ -118,7 +193,7 @@ console.log('próximo partido:', await page.locator('section').first().innerText
 await page.getByRole('button', { name: 'Ir a la jornada' }).click();
 await page.waitForTimeout(2500);
 console.log('url tras avanzar:', page.url());
-await page.screenshot({ path: `${SHOTS}/09-previa.png` });
+await page.screenshot({ path: `${SHOTS}/13-previa.png` });
 
 // Cuarto a cuarto, que es como se juega en modo resultado.
 for (let quarter = 1; quarter <= 4; quarter += 1) {
@@ -128,7 +203,7 @@ for (let quarter = 1; quarter <= 4; quarter += 1) {
   await page.waitForTimeout(1500);
   const scoreboard = await page.locator('section').first().innerText();
   console.log(`tras el cuarto ${quarter}:`, scoreboard.split('\n').slice(0, 4).join(' '));
-  await page.screenshot({ path: `${SHOTS}/10-cuarto-${quarter}.png` });
+  await page.screenshot({ path: `${SHOTS}/14-cuarto-${quarter}.png` });
 }
 
 // Prórrogas, si las hubo.
@@ -138,7 +213,7 @@ for (let extra = 0; extra < 4; extra += 1) {
   await button.click();
   await page.waitForTimeout(1500);
 }
-await page.screenshot({ path: `${SHOTS}/11-acta.png` });
+await page.screenshot({ path: `${SHOTS}/15-acta.png` });
 console.log('actas en pantalla:', await page.locator('table').count());
 
 await page.getByRole('link', { name: 'Volver al club' }).click();
@@ -155,31 +230,31 @@ console.log('plantilla tras el partido:', primeraFila.split('\n').join(' · '));
 await page.getByRole('link', { name: 'Competición' }).click();
 await page.waitForTimeout(1500);
 console.log('equipos en la clasificación:', await page.locator('tbody tr').count());
-await page.screenshot({ path: `${SHOTS}/12-clasificacion.png` });
+await page.screenshot({ path: `${SHOTS}/16-clasificacion.png` });
 
 await page.getByRole('button', { name: 'Calendario' }).click();
 await page.waitForTimeout(1200);
 console.log('partidos de la jornada:', await page.locator('ul li').count());
-await page.screenshot({ path: `${SHOTS}/13-calendario.png` });
+await page.screenshot({ path: `${SHOTS}/17-calendario.png` });
 
 // El cuadro de playoffs todavía no existe en la jornada 1, pero la pantalla
 // tiene que explicarlo en vez de quedarse en blanco.
 await page.getByRole('button', { name: 'Playoffs' }).click();
 await page.waitForTimeout(1200);
 console.log('playoffs:', await page.locator('main p').first().innerText());
-await page.screenshot({ path: `${SHOTS}/14-playoffs.png` });
+await page.screenshot({ path: `${SHOTS}/18-playoffs.png` });
 
 // --- Fase 2: estadísticas de temporada -------------------------------------
 
 await page.getByRole('link', { name: 'Estadísticas' }).click();
 await page.waitForTimeout(1500);
 console.log('jugadores con estadística:', await page.locator('tbody tr').count());
-await page.screenshot({ path: `${SHOTS}/15-estadisticas.png` });
+await page.screenshot({ path: `${SHOTS}/19-estadisticas.png` });
 
 await page.getByRole('button', { name: 'Líderes de la liga' }).click();
 await page.waitForTimeout(1200);
 console.log('líderes en la tabla:', await page.locator('tbody tr').count());
-await page.screenshot({ path: `${SHOTS}/16-lideres.png` });
+await page.screenshot({ path: `${SHOTS}/20-lideres.png` });
 
 // --- Fase 3: playoffs y fin de temporada -----------------------------------
 
@@ -195,19 +270,19 @@ await page
 await page.waitForTimeout(2500);
 const finDeTemporada = await page.locator('section').first().innerText();
 console.log('fin de temporada:', finDeTemporada.split('\n').join(' · '));
-await page.screenshot({ path: `${SHOTS}/17-campeon.png` });
+await page.screenshot({ path: `${SHOTS}/21-campeon.png` });
 
 await page.getByRole('link', { name: 'Competición' }).click();
 await page.waitForTimeout(1800);
 console.log('series en el cuadro:', await page.locator('main li').count());
-await page.screenshot({ path: `${SHOTS}/18-cuadro.png` });
+await page.screenshot({ path: `${SHOTS}/22-cuadro.png` });
 
 // Con la temporada entera jugada hay desgaste y enfermería de verdad.
 await page.getByRole('link', { name: 'Entrenamiento' }).click();
 await page.waitForTimeout(1500);
 const disponibles = await page.locator('footer').first().innerText();
 console.log('estado de la plantilla en junio:', disponibles.split('\n')[0]);
-await page.screenshot({ path: `${SHOTS}/19-parte-medico.png` });
+await page.screenshot({ path: `${SHOTS}/23-parte-medico.png` });
 
 await page.getByRole('link', { name: 'Club' }).click();
 await page.waitForTimeout(1500);
@@ -215,7 +290,7 @@ await page.getByRole('button', { name: /^Empezar temporada/ }).click();
 await page.waitForTimeout(2500);
 const cabecera = await page.locator('header').first().innerText();
 console.log('cabecera tras el salto:', cabecera.replace(/\n/g, ' · '));
-await page.screenshot({ path: `${SHOTS}/20-temporada-siguiente.png` });
+await page.screenshot({ path: `${SHOTS}/24-temporada-siguiente.png` });
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);

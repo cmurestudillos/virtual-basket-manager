@@ -26,10 +26,18 @@ import {
   trainWeek,
   type TrainingFocus
 } from '@shared/domain/training';
+import {
+  injuryDurationFactor,
+  injuryRiskFactor,
+  recoveryBoost,
+  trainingBoost,
+  wearFactor
+} from '@shared/domain/staff';
 import { createRng, seedFromString } from '@shared/engine/basketball/rng';
 import type { SaveDatabase } from '../../database/save-database';
 import type { PlayerRow } from '../../database/schema/save';
 import { ageAt } from '../players/players.mapper';
+import { EMPTY_STAFF, StaffService, type StaffLevels } from '../staff/staff.service';
 import { FitnessRepository, type PlayerFitnessUpdate } from './fitness.repository';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -62,8 +70,12 @@ export class NotManagedTeamError extends Error {
  * es una liga.
  */
 export class FitnessService {
+  private readonly staffService: StaffService;
+
   /** Ver el porqué del resolutor en {@link SeasonService}. */
-  constructor(private readonly resolveDb: () => SaveDatabase) {}
+  constructor(private readonly resolveDb: () => SaveDatabase) {
+    this.staffService = new StaffService(resolveDb);
+  }
 
   getPlan(teamId: string): TeamTrainingPlan {
     const validated = teamIdRequestSchema.parse({ teamId });
@@ -137,6 +149,7 @@ export class FitnessService {
       repository.listPlayersById(lines.map((line) => line.playerId)).map((row) => [row.id, row])
     );
 
+    const staffByTeam = new Map<string, StaffLevels>();
     const updates: PlayerFitnessUpdate[] = [];
     for (const line of lines) {
       const row = rows.get(line.playerId);
@@ -145,6 +158,7 @@ export class FitnessService {
       }
 
       const minutesPlayed = line.secondsPlayed / 60;
+      const staff = this.staffLevelsOf(row.teamId, staffByTeam);
       const injury =
         row.injuryDaysLeft > 0
           ? null
@@ -155,13 +169,20 @@ export class FitnessService {
                 condition: row.condition,
                 age: ageAt(row.birthDate, playedOn),
                 stamina: row.stamina
-              })
+              }) * injuryRiskFactor(staff.physio)
             );
 
       updates.push({
         playerId: row.id,
-        condition: conditionAfterGame(row.condition, minutesPlayed, row.stamina),
-        injuryDaysLeft: injury?.days ?? row.injuryDaysLeft,
+        condition: conditionAfterGame(
+          row.condition,
+          minutesPlayed,
+          row.stamina,
+          wearFactor(staff.fitness)
+        ),
+        injuryDaysLeft: injury
+          ? Math.max(1, Math.round(injury.days * injuryDurationFactor(staff.physio)))
+          : row.injuryDaysLeft,
         injuryName: injury?.name ?? row.injuryName
       });
     }
@@ -184,10 +205,13 @@ export class FitnessService {
     }
 
     const repository = new FitnessRepository(this.resolveDb());
+    const staffByTeam = new Map<string, StaffLevels>();
     repository.applyUpdates(
       repository
         .listAllPlayers()
-        .map((row) => restUpdate(row, days))
+        .map((row) =>
+          restUpdate(row, days, recoveryBoost(this.staffLevelsOf(row.teamId, staffByTeam).fitness))
+        )
         .filter(changesSomething)
     );
 
@@ -223,12 +247,15 @@ export class FitnessService {
     const plans = repository.listPlans();
     const dateKey = date.toISOString().slice(0, 10);
 
+    const staffByTeam = new Map<string, StaffLevels>();
     const updates: PlayerFitnessUpdate[] = [];
     for (const row of repository.listAllPlayers()) {
       // Sin equipo no hay plan, y lesionado no se entrena: se recupera.
       if (!row.teamId || row.injuryDaysLeft > 0) {
         continue;
       }
+
+      const staff = this.staffLevelsOf(row.teamId, staffByTeam);
 
       const plan = plans.get(row.teamId);
       const intensity = plan?.intensity ?? DEFAULT_TRAINING_INTENSITY;
@@ -245,6 +272,7 @@ export class FitnessService {
         age,
         focus,
         intensity,
+        staffBoost: trainingBoost(staff.assistant),
         rng
       });
 
@@ -260,19 +288,46 @@ export class FitnessService {
 
       const injury = rollInjury(
         rng,
-        recovering ? 0 : trainingInjuryRisk({ intensity, condition: row.condition, age })
+        recovering
+          ? 0
+          : trainingInjuryRisk({ intensity, condition: row.condition, age }) *
+              injuryRiskFactor(staff.physio)
       );
 
       updates.push({
         playerId: row.id,
         condition,
-        injuryDaysLeft: injury?.days ?? 0,
+        injuryDaysLeft: injury
+          ? Math.max(1, Math.round(injury.days * injuryDurationFactor(staff.physio)))
+          : 0,
         injuryName: injury?.name ?? null,
         attributes: changes.length > 0 ? changedAttributes(row, changes) : undefined
       });
     }
 
     repository.applyUpdates(updates);
+  }
+
+  // ------------------------------------------------------------------------
+
+  /**
+   * Nivel del cuerpo técnico de un equipo, cacheado por tanda: un día de
+   * calendario toca a los 216 jugadores de la liga y sin caché serían 216
+   * consultas para leer dieciocho respuestas.
+   */
+  private staffLevelsOf(teamId: string | null, cache: Map<string, StaffLevels>): StaffLevels {
+    if (!teamId) {
+      return EMPTY_STAFF;
+    }
+
+    const cached = cache.get(teamId);
+    if (cached) {
+      return cached;
+    }
+
+    const levels = this.staffService.levels(teamId);
+    cache.set(teamId, levels);
+    return levels;
   }
 }
 
@@ -289,12 +344,16 @@ function changesSomething(update: PlayerFitnessUpdate & { previous: PlayerRow })
   );
 }
 
-function restUpdate(row: PlayerRow, days: number): PlayerFitnessUpdate & { previous: PlayerRow } {
+function restUpdate(
+  row: PlayerRow,
+  days: number,
+  recoveryFactor: number
+): PlayerFitnessUpdate & { previous: PlayerRow } {
   const injuryDaysLeft = Math.max(0, row.injuryDaysLeft - days);
 
   return {
     playerId: row.id,
-    condition: conditionAfterRest(row.condition, days, row.stamina),
+    condition: conditionAfterRest(row.condition, days, row.stamina, recoveryFactor),
     injuryDaysLeft,
     injuryName: injuryDaysLeft > 0 ? row.injuryName : null,
     previous: row

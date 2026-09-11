@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import { POSITIONS, type Position } from '@shared/domain/positions';
 import { LINEUP_SIZE } from '@shared/domain/rotation';
 import type { TeamTactics } from '@shared/domain/tactics';
@@ -26,7 +26,12 @@ export function buildEngineTeam(db: SaveDatabase, teamId: string): EngineTeam {
     throw new Error(`No existe el equipo ${teamId}`);
   }
 
-  const roster = db.select().from(playersTable).where(eq(playersTable.teamId, teamId)).all();
+  // Los juveniles no se visten: para el motor, la plantilla es el primer equipo.
+  const roster = db
+    .select()
+    .from(playersTable)
+    .where(and(eq(playersTable.teamId, teamId), eq(playersTable.isYouth, false)))
+    .all();
   const rotation = db
     .select()
     .from(rotationSlotsTable)

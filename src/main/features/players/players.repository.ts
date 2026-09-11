@@ -1,17 +1,22 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { SaveDatabase } from '../../database/client';
 import { gameStateTable, playersTable, type PlayerRow } from '../../database/schema/save';
 
 export class PlayersRepository {
   constructor(private readonly db: SaveDatabase) {}
 
+  /** El primer equipo: los juveniles tienen su propia pantalla. */
   listByTeam(teamId: string): PlayerRow[] {
     return this.db
       .select()
       .from(playersTable)
-      .where(eq(playersTable.teamId, teamId))
+      .where(and(eq(playersTable.teamId, teamId), eq(playersTable.isYouth, false)))
       .orderBy(asc(playersTable.lastName))
       .all();
+  }
+
+  managedTeamId(): string | null {
+    return this.db.select().from(gameStateTable).get()?.managedTeamId ?? null;
   }
 
   findById(id: string): PlayerRow | null {

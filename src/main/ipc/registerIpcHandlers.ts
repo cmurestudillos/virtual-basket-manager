@@ -8,6 +8,10 @@ import { registerRotationIpcHandlers } from '../features/rotation/rotation.ipc-h
 import { registerTacticsIpcHandlers } from '../features/tactics/tactics.ipc-handler';
 import { registerStatsIpcHandlers } from '../features/stats/stats.ipc-handler';
 import { registerFitnessIpcHandlers } from '../features/fitness/fitness.ipc-handler';
+import { registerClubIpcHandlers } from '../features/club/club.ipc-handler';
+import { registerStaffIpcHandlers } from '../features/staff/staff.ipc-handler';
+import { registerYouthIpcHandlers } from '../features/youth/youth.ipc-handler';
+import { registerMarketIpcHandlers } from '../features/market/market.ipc-handler';
 import { registerMatchIpcHandlers } from '../features/match/match.ipc-handler';
 
 /**
@@ -25,5 +29,9 @@ export function registerIpcHandlers(): void {
   registerTacticsIpcHandlers();
   registerStatsIpcHandlers();
   registerFitnessIpcHandlers();
+  registerClubIpcHandlers();
+  registerStaffIpcHandlers();
+  registerYouthIpcHandlers();
+  registerMarketIpcHandlers();
   registerMatchIpcHandlers();
 }

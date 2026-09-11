@@ -29,6 +29,34 @@
       "when": 1789110982845,
       "tag": "0003_narrow_purifiers",
       "breakpoints": true
+    },
+    {
+      "idx": 4,
+      "version": "6",
+      "when": 1789113480525,
+      "tag": "0004_warm_korath",
+      "breakpoints": true
+    },
+    {
+      "idx": 5,
+      "version": "6",
+      "when": 1789115206435,
+      "tag": "0005_melodic_bucky",
+      "breakpoints": true
+    },
+    {
+      "idx": 6,
+      "version": "6",
+      "when": 1789115239460,
+      "tag": "0006_mute_the_hand",
+      "breakpoints": true
+    },
+    {
+      "idx": 7,
+      "version": "6",
+      "when": 1789119194958,
+      "tag": "0007_daffy_major_mapleleaf",
+      "breakpoints": true
     }
   ]
 }
