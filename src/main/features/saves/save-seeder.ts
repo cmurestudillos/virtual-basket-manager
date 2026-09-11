@@ -38,6 +38,17 @@ const FREE_STAFF = 14;
 /** Y jugadores sin equipo. */
 const FREE_AGENTS = 20;
 
+/**
+ * Banderas de los agentes libres.
+ *
+ * La del club del usuario pesa la mitad —el cupo de formación se mide contra
+ * ella y tiene que haber a quién fichar— y el resto viene del mercado global.
+ */
+function freeAgentNationalities(dataset: Dataset, managedTeamId: string): string[] {
+  const home = dataset.teams.find((team) => team.id === managedTeamId)?.country ?? 'ESP';
+  return [home, home, home, 'USA', 'USA', 'SRB', 'FRA', 'ARG'];
+}
+
 export function seedSave(
   db: SaveDatabase,
   dataset: Dataset,
@@ -181,7 +192,10 @@ export function seedSave(
       count: FREE_AGENTS,
       rng: createRng(seedFromString('agentes-libres')),
       seasonStartYear: dataset.seasonStartYear,
-      nationality: 'ESP'
+      // Del país del club que se dirige y de los cuatro de más peso del mundo:
+      // así siempre hay gente de casa para el cupo y gente de fuera para
+      // llenar la plantilla sin gastarlo.
+      nationalities: freeAgentNationalities(dataset, options.managedTeamId)
     })) {
       tx.insert(playersTable).values(row).run();
     }

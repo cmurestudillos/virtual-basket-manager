@@ -24,7 +24,7 @@ import { StatsService } from '../stats.service';
 
 const MIGRATIONS = resolve('drizzle/save');
 const SEED_DIRECTORY = resolve('resources/seed-data');
-const MANAGED_TEAM = 'team-1';
+const MANAGED_TEAM = 'liga-nacional-1';
 const ROUNDS_PLAYED = 4;
 
 let directory: string;

@@ -1,10 +1,9 @@
-# Virtual Basket Manager
+# Triple Manager
 
 Manager de baloncesto de escritorio, inspirado en **PC Basket 6.5** y en
 **International Basketball Manager**.
 
-Electron + Vue 3 + TypeScript + SQLite. Nombre de trabajo: el definitivo se
-decidirá más adelante.
+Electron + Vue 3 + TypeScript + SQLite.
 
 > Estado: **temporada completa jugable**. Motor de partido, calendario de 34
 > jornadas, partido del usuario cuarto a cuarto, clasificación, alineación y
@@ -12,7 +11,9 @@ decidirá más adelante.
 > temporada siguiente, estado físico con entrenamiento, fatiga y lesiones, y la
 > economía del club con pabellón, afición y consejo, el club por dentro con
 > cuerpo técnico y cantera, y mercado completo con fichajes, contratos,
-> cesiones, cupos y tope salarial — ver [docs/ROADMAP.md](docs/ROADMAP.md).
+> cesiones, cupos y tope salarial, Copa a partido único, segunda división con
+> ascensos y un mundo de 21 ligas con Euroliga, Eurocup, Europe League y
+> American League — ver [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Arranque
 

@@ -1,5 +1,6 @@
 import { BrowserWindow, shell } from 'electron';
 import { is } from '@electron-toolkit/utils';
+import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { getAppDatabase } from '../database/client';
 import { SettingsRepository } from '../features/settings/settings.repository';
@@ -16,11 +17,20 @@ function resolveStartupSize(): { width: number; height: number } {
   return parsed ?? parseWindowResolution(DEFAULT_WINDOW_RESOLUTION)!;
 }
 
+/**
+ * Icono de la ventana en desarrollo.
+ *
+ * El de la aplicación empaquetada lo pone el instalador; esto es sólo para que
+ * la ventana de `pnpm dev` y el arnés no salgan con el icono de Electron.
+ */
+const DEV_ICON = join(__dirname, '../../assets/iconos/icono_256.png');
+
 export function createMainWindow(): BrowserWindow {
   const { width, height } = resolveStartupSize();
   const mainWindow = new BrowserWindow({
     width,
     height,
+    ...(existsSync(DEV_ICON) ? { icon: DEV_ICON } : {}),
     minWidth: 1024,
     minHeight: 700,
     show: false,

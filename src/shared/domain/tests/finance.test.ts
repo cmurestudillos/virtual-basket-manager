@@ -8,7 +8,8 @@ import {
   monthlyWagesCents,
   seasonPrizeCents,
   seasonSponsorshipCents,
-  seasonTvRightsCents
+  seasonTvRightsCents,
+  tierFactor
 } from '../finance';
 
 describe('nóminas y mantenimiento', () => {
@@ -58,6 +59,18 @@ describe('premios', () => {
   it('sin liga detrás, sólo cobra el campeón', () => {
     expect(seasonPrizeCents(0, 0, false)).toBe(0);
     expect(seasonPrizeCents(0, 0, true)).toBe(CHAMPION_PRIZE_CENTS);
+  });
+
+  it('en segunda se cobra una fracción de lo de primera', () => {
+    // Tiene que doler: si bajar costara poco dinero, el descenso sería sólo un
+    // cambio de rivales y la mitad de abajo de la tabla no se jugaría nada.
+    expect(seasonPrizeCents(1, 18, false, 2)).toBe(
+      Math.round(seasonPrizeCents(1, 18, false) * tierFactor(2))
+    );
+    expect(tierFactor(2)).toBeLessThan(0.5);
+    expect(tierFactor(1)).toBe(1);
+    // Y una categoría que no existe no multiplica el premio.
+    expect(tierFactor(0)).toBe(1);
   });
 });
 

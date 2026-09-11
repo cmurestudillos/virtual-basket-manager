@@ -42,7 +42,7 @@ beforeAll(() => {
   db = openSaveDatabase(filePath, MIGRATIONS);
 
   seedSave(db, loadDataset(SEED_DIRECTORY), {
-    managedTeamId: 'team-1',
+    managedTeamId: 'liga-nacional-1',
     managerName: 'Carlos'
   });
 });
@@ -53,15 +53,24 @@ afterAll(() => {
 });
 
 describe('seedSave', () => {
+  // Contra el dataset y no contra un número escrito a mano: lo que se comprueba
+  // aquí es que en la partida entra *todo* lo que el dataset trae, y eso tiene
+  // que seguir valiendo el día que se añada otra división.
+  const dataset = loadDataset(SEED_DIRECTORY);
+
   it('deja el mundo completo dentro del fichero de la partida', () => {
     const players = db.select().from(playersTable).all();
 
-    expect(db.select().from(competitionsTable).all()).toHaveLength(2);
-    expect(db.select().from(teamsTable).all()).toHaveLength(18);
-    // Doce fichas por equipo, más la cantera de cada club, más los agentes
+    expect(db.select().from(competitionsTable).all()).toHaveLength(dataset.competitions.length);
+    expect(db.select().from(teamsTable).all()).toHaveLength(dataset.teams.length);
+    // Las fichas del dataset, más la cantera de cada club, más los agentes
     // libres con los que arranca el mercado.
-    expect(players.filter((row) => !row.isYouth && row.teamId !== null)).toHaveLength(216);
-    expect(players.filter((row) => row.isYouth).length).toBeGreaterThanOrEqual(18 * 3);
+    expect(players.filter((row) => !row.isYouth && row.teamId !== null)).toHaveLength(
+      dataset.players.length
+    );
+    expect(players.filter((row) => row.isYouth).length).toBeGreaterThanOrEqual(
+      dataset.teams.length * 3
+    );
     expect(players.filter((row) => row.teamId === null).length).toBeGreaterThan(10);
   });
 
@@ -69,19 +78,42 @@ describe('seedSave', () => {
     const staff = db.select().from(staffTable).all();
 
     // Cinco puestos por club, y los libres del mercado por encima.
-    expect(staff.filter((row) => row.teamId !== null)).toHaveLength(18 * 5);
+    expect(staff.filter((row) => row.teamId !== null)).toHaveLength(dataset.teams.length * 5);
     expect(staff.filter((row) => row.teamId === null).length).toBeGreaterThan(5);
   });
 
+  it('siembra el mundo entero: cada liga con sus equipos y ninguna vacía', () => {
+    const teams = db.select().from(teamsTable).all();
+    const competitions = db.select().from(competitionsTable).all();
+    const leagues = competitions.filter((row) => row.format === 'league');
+
+    expect(leagues.length).toBeGreaterThanOrEqual(20);
+    for (const competition of leagues) {
+      const size = teams.filter((row) => row.competitionId === competition.id).length;
+      // Par y con gente: un calendario de todos contra todos no sale con
+      // impares, y una liga vacía reventaría al generar su temporada.
+      expect(size).toBeGreaterThanOrEqual(10);
+      expect(size % 2).toBe(0);
+    }
+
+    // Y las dos divisiones españolas, que son de donde sale quién sube y baja.
+    expect(teams.filter((row) => row.competitionId === 'liga-nacional')).toHaveLength(18);
+    expect(teams.filter((row) => row.competitionId === 'liga-plata')).toHaveLength(18);
+    // Las continentales no tienen equipos propios: los toman prestados.
+    for (const competition of competitions.filter((row) => row.format === 'continental')) {
+      expect(teams.filter((row) => row.competitionId === competition.id)).toHaveLength(0);
+    }
+  });
+
   it('da pizarra por defecto a todos los equipos, no sólo al del usuario', () => {
-    expect(db.select().from(teamTacticsTable).all()).toHaveLength(18);
+    expect(db.select().from(teamTacticsTable).all()).toHaveLength(dataset.teams.length);
   });
 
   it('deja a cada equipo con una rotación de doce y cinco titulares', () => {
     const slots = db
       .select()
       .from(rotationSlotsTable)
-      .where(eq(rotationSlotsTable.teamId, 'team-5'))
+      .where(eq(rotationSlotsTable.teamId, 'liga-nacional-5'))
       .all();
 
     expect(slots).toHaveLength(12);
@@ -120,7 +152,7 @@ describe('seedSave', () => {
     const slots = db
       .select()
       .from(rotationSlotsTable)
-      .where(eq(rotationSlotsTable.teamId, 'team-1'))
+      .where(eq(rotationSlotsTable.teamId, 'liga-nacional-1'))
       .all();
 
     const total = slots.reduce((sum, slot) => sum + slot.targetMinutes, 0);
@@ -130,7 +162,7 @@ describe('seedSave', () => {
   it('guarda el estado de la partida con el equipo dirigido y la fecha del juego', () => {
     const state = db.select().from(gameStateTable).get();
 
-    expect(state?.managedTeamId).toBe('team-1');
+    expect(state?.managedTeamId).toBe('liga-nacional-1');
     expect(state?.managerName).toBe('Carlos');
     expect(state?.seasonNumber).toBe(1);
     // Pretemporada: 1 de septiembre del año en que arranca la temporada.

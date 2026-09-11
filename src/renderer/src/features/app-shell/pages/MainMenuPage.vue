@@ -5,7 +5,7 @@ const version = __APP_VERSION__;
 <template>
   <div class="flex h-screen flex-col items-center justify-center gap-10">
     <div class="text-center">
-      <h1 class="text-5xl font-bold tracking-tight text-ball-500">Virtual Basket Manager</h1>
+      <h1 class="text-5xl font-bold tracking-tight text-ball-500">Triple Manager</h1>
       <p class="mt-2 text-court-300">Manager de baloncesto</p>
     </div>
 

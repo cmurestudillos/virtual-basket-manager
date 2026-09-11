@@ -57,6 +57,13 @@
       "when": 1789119194958,
       "tag": "0007_daffy_major_mapleleaf",
       "breakpoints": true
+    },
+    {
+      "idx": 8,
+      "version": "6",
+      "when": 1789125535396,
+      "tag": "0008_tiny_sentry",
+      "breakpoints": true
     }
   ]
 }

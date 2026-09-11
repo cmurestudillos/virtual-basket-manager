@@ -90,15 +90,33 @@ export function seasonSponsorshipCents(reputation: number, capacity: number): nu
  * Acabar arriba paga, pero nunca tanto como para que una buena temporada
  * arregle una gestión mala: el grueso del dinero está en el día a día.
  */
-export function seasonPrizeCents(position: number, teams: number, champion: boolean): number {
+export function seasonPrizeCents(
+  position: number,
+  teams: number,
+  champion: boolean,
+  tier = 1
+): number {
   if (teams <= 0 || position <= 0) {
-    return champion ? CHAMPION_PRIZE_CENTS : 0;
+    return Math.round((champion ? CHAMPION_PRIZE_CENTS : 0) * tierFactor(tier));
   }
 
   const share = Math.max(0, teams - position + 1) / teams;
-  const league = Math.round(share * share * 600_000_00);
-  return league + (champion ? CHAMPION_PRIZE_CENTS : 0);
+  const league = share * share * 600_000_00;
+  return Math.round((league + (champion ? CHAMPION_PRIZE_CENTS : 0)) * tierFactor(tier));
 }
+
+/**
+ * Cuánto paga una categoría comparada con la primera.
+ *
+ * La diferencia tiene que doler: si en segunda se cobrara casi lo mismo, bajar
+ * sería un contratiempo deportivo y no el agujero en la caja que es de verdad.
+ */
+export function tierFactor(tier: number): number {
+  return 1 / Math.pow(3, Math.max(0, tier - 1));
+}
+
+/** Lo que el club se lleva por subir de categoría, aparte de lo deportivo. */
+export const PROMOTION_PRIZE_CENTS = 500_000_00;
 
 export const CHAMPION_PRIZE_CENTS = 400_000_00;
 

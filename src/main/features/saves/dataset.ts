@@ -9,8 +9,8 @@ import type { Position } from '@shared/domain/positions';
  *
  * Se lee sin validar con Zod a propósito: no es entrada de usuario sino un
  * fichero que genera este mismo repositorio (`pnpm seed:generate`), y validar
- * 216 fichas en el arranque de cada partida sólo añadiría latencia. Si el
- * fichero está mal, el generador es el sitio donde arreglarlo.
+ * cuatro mil fichas en el arranque de cada partida sólo añadiría latencia. Si
+ * el fichero está mal, el generador es el sitio donde arreglarlo.
  */
 
 export interface DatasetCompetition {
@@ -18,6 +18,8 @@ export interface DatasetCompetition {
   name: string;
   shortName: string;
   country: string;
+  /** `EUR`, `AME` u `OCE`. */
+  continent: string;
   rulesetId: string;
   tier: number;
   format: string;

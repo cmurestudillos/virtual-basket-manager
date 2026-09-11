@@ -7,7 +7,10 @@ export function registerSeasonIpcHandlers(): void {
   const service = new SeasonService(requireActiveSaveDatabase);
 
   ipcMain.handle(IPC_CHANNELS.seasonGetCurrent, () => service.getCurrent());
-  ipcMain.handle(IPC_CHANNELS.seasonGetStandings, () => service.getStandings());
+  ipcMain.handle(IPC_CHANNELS.seasonGetStandings, (_event, competitionId?: string) =>
+    service.getStandings(competitionId)
+  );
+  ipcMain.handle(IPC_CHANNELS.seasonListLeagues, () => service.listLeagues());
   ipcMain.handle(IPC_CHANNELS.seasonListFixtures, (_event, round?: number) =>
     service.listFixtures(round)
   );
@@ -18,5 +21,10 @@ export function registerSeasonIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.seasonAdvanceDay, () => service.advanceDay());
   ipcMain.handle(IPC_CHANNELS.seasonAdvanceToNextGame, () => service.advanceToNextGame());
   ipcMain.handle(IPC_CHANNELS.seasonGetPlayoffs, () => service.getPlayoffs());
+  ipcMain.handle(IPC_CHANNELS.seasonGetCup, () => service.getCup());
+  ipcMain.handle(IPC_CHANNELS.seasonListContinental, () => service.listContinental());
+  ipcMain.handle(IPC_CHANNELS.seasonGetContinental, (_event, competitionId?: string) =>
+    service.getContinental(competitionId)
+  );
   ipcMain.handle(IPC_CHANNELS.seasonStartNext, () => service.startNextSeason());
 }

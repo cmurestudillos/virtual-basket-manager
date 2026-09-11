@@ -1,13 +1,19 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   closeSaveDatabase,
   openSaveDatabase,
   type SaveDatabase
 } from '../../../database/save-database';
-import { boardTable, gamesTable, gamePlayerStatsTable } from '../../../database/schema/save';
+import {
+  boardTable,
+  gamesTable,
+  gamePlayerStatsTable,
+  type GameRow
+} from '../../../database/schema/save';
 import { loadDataset } from '../../saves/dataset';
 import { seedSave } from '../../saves/save-seeder';
 import { MatchService } from '../../match/match.service';
@@ -24,7 +30,7 @@ import { SeasonService } from '../season.service';
 
 const MIGRATIONS = resolve('drizzle/save');
 const SEED_DIRECTORY = resolve('resources/seed-data');
-const MANAGED_TEAM = 'team-1';
+const MANAGED_TEAM = 'liga-nacional-1';
 
 let directory: string;
 let filePath: string;
@@ -63,6 +69,11 @@ function playUserGame(gameId: string): number {
   return state.playedPeriods;
 }
 
+/** Los partidos de una temporada concreta; en la partida hay varias a la vez. */
+function leagueGames(seasonId: string): GameRow[] {
+  return db.select().from(gamesTable).where(eq(gamesTable.seasonId, seasonId)).all();
+}
+
 describe('SeasonService', () => {
   it('crea el calendario de la temporada la primera vez que se le pregunta', () => {
     const current = season.getCurrent();
@@ -70,7 +81,11 @@ describe('SeasonService', () => {
     expect(current.competitionName).toBe('Liga Nacional');
     expect(current.seasonNumber).toBe(1);
     expect(current.totalRounds).toBe(34);
-    expect(db.select().from(gamesTable).all()).toHaveLength(306); // 34 * 9
+    expect(leagueGames(current.id)).toHaveLength(306); // 34 * 9
+    // Y con ella arrancan la segunda división —sin la que no habría de dónde
+    // sacar quién asciende— y las tres competiciones europeas, de 120 partidos
+    // de fase de liga cada una.
+    expect(db.select().from(gamesTable).all()).toHaveLength(306 * 2 + 120 * 3);
   });
 
   it('no vuelve a generar el calendario en llamadas siguientes', () => {
@@ -79,7 +94,7 @@ describe('SeasonService', () => {
     const second = season.getCurrent();
 
     expect(second.id).toBe(first.id);
-    expect(db.select().from(gamesTable).all()).toHaveLength(306);
+    expect(leagueGames(first.id)).toHaveLength(306);
   });
 
   it('para en seco cuando le toca jugar al equipo del usuario', () => {
@@ -123,17 +138,22 @@ describe('SeasonService', () => {
     const after = season.advanceDay();
     expect(after.status).toBe('advanced');
     if (after.status === 'advanced') {
-      // Los otros ocho partidos de la jornada, ya sin el del usuario.
-      expect(after.playedGameIds).toHaveLength(8);
+      // Los otros ocho de la jornada, ya sin el del usuario, más los nueve de
+      // la segunda división: ese día se juega en las dos categorías.
+      expect(after.playedGameIds).toHaveLength(17);
     }
   });
 
   // Son los 306 partidos de liga más los del cuadro, todos simulados posesión a
   // posesión y con su acta escrita en SQLite: no cabe en el tiempo por defecto.
-  it('juega una temporada completa de 34 jornadas', { timeout: 180_000 }, () => {
+  it('juega una temporada completa de 34 jornadas', { timeout: 300_000 }, () => {
     // El consejo, fuera de este test: los resultados de una partida dependen de
     // su semilla, así que en una de cada tantas la temporada acaba en despido y
     // el reloj se para a mitad. Lo que aquí se comprueba no va de eso.
+    //
+    // El objetivo se crea con la temporada, así que primero hay que provocarlo:
+    // borrar la tabla antes de que exista no borra nada.
+    season.getCurrent();
     db.delete(boardTable).run();
 
     let guard = 0;
@@ -151,8 +171,12 @@ describe('SeasonService', () => {
     }
 
     const games = db.select().from(gamesTable).all();
-    // La liga regular son 306; el resto, ya jugados, son los de los playoffs.
-    expect(games.filter((game) => game.seriesId === null)).toHaveLength(306);
+    const leagueId = season.getCurrent().id;
+    // La liga regular son 306; el resto, ya jugados, son los de los playoffs y
+    // los de la Copa, que tiene su propia temporada.
+    expect(
+      games.filter((game) => game.seasonId === leagueId && game.seriesId === null)
+    ).toHaveLength(306);
     expect(games.every((game) => game.homeScore !== null)).toBe(true);
 
     // Hasta 24 fichas por partido, y menos cuando hay gente en la enfermería:

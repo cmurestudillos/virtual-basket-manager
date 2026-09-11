@@ -6,6 +6,7 @@ import { mkdirSync } from 'node:fs';
 import { join, resolve } from 'node:path';
 import { savesTable } from '../src/main/database/schema/app';
 import { openSaveDatabase, type SaveDatabase } from '../src/main/database/save-database';
+import { boardTable } from '../src/main/database/schema/save';
 import { loadDataset } from '../src/main/features/saves/dataset';
 import { seedSave } from '../src/main/features/saves/save-seeder';
 import { MatchService } from '../src/main/features/match/match.service';
@@ -27,7 +28,7 @@ import { SeasonService } from '../src/main/features/season/season.service';
 
 const DEV_DATA = resolve('.dev-data');
 const SAVES = join(DEV_DATA, 'saves');
-const MANAGED_TEAM = 'team-1';
+const MANAGED_TEAM = 'liga-nacional-1';
 const NAME = 'Temporada terminada';
 
 mkdirSync(SAVES, { recursive: true });
@@ -46,10 +47,17 @@ const season = new SeasonService(resolveDb);
 const match = new MatchService(resolveDb);
 
 console.log('jugando la temporada entera…');
-for (let guard = 0; guard < 600; guard += 1) {
+for (let guard = 0; guard < 900; guard += 1) {
   const result = season.advanceToNextGame();
   if (result.status === 'seasonOver') {
     break;
+  }
+  if (result.status === 'dismissed') {
+    // Esto es un generador de partidas de prueba, no un test del consejo: si
+    // la semilla de este año da una mala racha, se le devuelve la confianza y
+    // se sigue. Sin esto, el arnés depende de que el equipo vaya bien.
+    db.update(boardTable).set({ confidence: 100, dismissed: false }).run();
+    continue;
   }
   if (result.status === 'userGame') {
     // El partido del usuario lo juega aquí el propio motor, cuarto a cuarto,

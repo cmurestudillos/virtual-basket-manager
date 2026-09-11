@@ -9,11 +9,15 @@
  * Funciones puras: ni base de datos ni azar.
  */
 
-export type BoardObjective = 'survive' | 'midtable' | 'playoffs' | 'semifinals' | 'title';
+import { PROMOTION_SLOTS } from './promotion';
+
+export type BoardObjective =
+  'survive' | 'midtable' | 'promotion' | 'playoffs' | 'semifinals' | 'title';
 
 export const BOARD_OBJECTIVES = [
   'survive',
   'midtable',
+  'promotion',
   'playoffs',
   'semifinals',
   'title'
@@ -22,13 +26,23 @@ export const BOARD_OBJECTIVES = [
 export const BOARD_OBJECTIVE_LABELS: Record<BoardObjective, string> = {
   survive: 'Mantener la categoría',
   midtable: 'Pelear la zona media',
+  promotion: 'Ascender de categoría',
   playoffs: 'Clasificarse para los playoffs',
   semifinals: 'Llegar a semifinales',
   title: 'Ganar el título'
 };
 
-/** Qué le piden a un club según lo que es. */
-export function objectiveForReputation(reputation: number): BoardObjective {
+/**
+ * Qué le piden a un club según lo que es y dónde juega.
+ *
+ * La categoría manda sobre la reputación: en segunda no se pide un título que
+ * no existe, se pide subir. Y un recién descendido, que baja con la reputación
+ * más alta de su nueva liga, es justo al que más se le exige allí.
+ */
+export function objectiveForReputation(reputation: number, tier = 1): BoardObjective {
+  if (tier > 1) {
+    return reputation >= 22 ? 'promotion' : 'midtable';
+  }
   if (reputation >= 80) return 'title';
   if (reputation >= 68) return 'semifinals';
   if (reputation >= 52) return 'playoffs';
@@ -50,6 +64,8 @@ export function targetPositionFor(objective: BoardObjective, teams: number): num
       return 4;
     case 'playoffs':
       return 8;
+    case 'promotion':
+      return PROMOTION_SLOTS;
     case 'midtable':
       return Math.max(1, Math.round(teams / 2));
     case 'survive':
@@ -69,12 +85,21 @@ export const DISMISSAL_CONFIDENCE = 0;
  *
  * No es sólo ganar o perder: perder contra quien tienes que ganar pesa más que
  * caer en la cancha del primero. `expectedToWin` es esa diferencia.
+ *
+ * `secondary` es para las competiciones que **no** son aquella en la que el
+ * consejo puso el objetivo —Europa, sobre todo—. Ahí pesa la mitad, y como el
+ * resultado se trunca hacia cero, una derrota razonable no resta nada y una
+ * victoria grande sí suma: a nadie lo echan por perder en la Euroliga, pero
+ * hacer un buen papel allí compra paciencia. Sin esto, quince partidos contra
+ * la élite del continente bastaban para vaciar la confianza de un club que iba
+ * bien en su liga.
  */
 export function confidenceAfterGame(
   confidence: number,
-  outcome: { won: boolean; expectedToWin: boolean }
+  outcome: { won: boolean; expectedToWin: boolean; secondary?: boolean }
 ): number {
-  const delta = outcome.won ? (outcome.expectedToWin ? 1 : 3) : outcome.expectedToWin ? -3 : -1;
+  const base = outcome.won ? (outcome.expectedToWin ? 1 : 3) : outcome.expectedToWin ? -3 : -1;
+  const delta = outcome.secondary ? Math.trunc(base / 2) : base;
 
   return clamp(confidence + delta, DISMISSAL_CONFIDENCE, MAX_CONFIDENCE);
 }
@@ -91,8 +116,14 @@ export function confidenceAfterMonth(
   status: { position: number; targetPosition: number; balanceCents: number }
 ): number {
   const gap = status.targetPosition - status.position;
-  // Por encima del objetivo suma, por debajo resta, y el tamaño importa.
-  const sporting = clamp(gap, -4, 4);
+  // Por encima del objetivo suma, por debajo resta, y el tamaño importa. Pero
+  // no simétricamente: ir por detrás resta como mucho la mitad de lo que suma
+  // ir por delante. Con nueve revisiones al año y el mismo peso en las dos
+  // direcciones, a cualquier club al que se le pida el título se le acababa la
+  // paciencia en enero por ir tercero, y el veredicto de fin de temporada
+  // —que es donde se juzga de verdad— no llegaba a contar.
+  const sporting = clamp(gap, -2, 4);
+  // Lo que sí es tajante es la caja: estar en números rojos es cosa tuya.
   const financial = status.balanceCents < 0 ? -4 : 0;
 
   return clamp(confidence + sporting + financial, DISMISSAL_CONFIDENCE, MAX_CONFIDENCE);
@@ -134,6 +165,10 @@ export function seasonVerdict(input: {
     case 'playoffs':
       if (input.playoffRound >= 2) return 'exceeded';
       return input.playoffRound >= 1 ? 'met' : 'failed';
+    // Subir y quedarse a las puertas no se parecen en nada, y en segunda no hay
+    // cuadro que valga: el objetivo se mide sólo contra el puesto.
+    case 'promotion':
+      return input.position <= target ? 'met' : 'failed';
     default:
       if (input.playoffRound >= 1) return 'exceeded';
       return input.position <= target ? 'met' : 'failed';
@@ -144,6 +179,23 @@ export function seasonVerdict(input: {
 export function confidenceAfterSeason(confidence: number, verdict: SeasonVerdict): number {
   const delta = verdict === 'exceeded' ? 25 : verdict === 'met' ? 10 : -30;
   return clamp(confidence + delta, DISMISSAL_CONFIDENCE, MAX_CONFIDENCE);
+}
+
+/**
+ * Subir o bajar de categoría.
+ *
+ * Pesa aún más que el veredicto de la temporada, y a propósito: un descenso se
+ * lleva por delante al entrenador mucho más a menudo que un mal año sin más.
+ */
+export function confidenceAfterDivisionChange(
+  confidence: number,
+  direction: 'promoted' | 'relegated'
+): number {
+  return clamp(
+    confidence + (direction === 'promoted' ? 25 : -25),
+    DISMISSAL_CONFIDENCE,
+    MAX_CONFIDENCE
+  );
 }
 
 /** Cómo describe el consejo su paciencia ahora mismo. */

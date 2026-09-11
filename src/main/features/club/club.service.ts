@@ -25,6 +25,7 @@ import {
   expansionCostCents,
   monthlyMaintenanceCents,
   monthlyWagesCents,
+  PROMOTION_PRIZE_CENTS,
   seasonPrizeCents,
   seasonSponsorshipCents,
   seasonTvRightsCents,
@@ -324,7 +325,7 @@ export class ClubService {
   payPrizes(
     seasonId: string,
     date: Date,
-    result: { position: number; teams: number; champion: boolean }
+    result: { position: number; teams: number; champion: boolean; tier?: number }
   ): void {
     const repository = new ClubRepository(this.resolveDb());
     const teamId = repository.managedTeamId();
@@ -340,7 +341,30 @@ export class ClubService {
       description: result.champion
         ? `Campeón de liga · ${result.position}º de la fase regular`
         : `${result.position}º de la fase regular`,
-      amountCents: seasonPrizeCents(result.position, result.teams, result.champion)
+      amountCents: seasonPrizeCents(
+        result.position,
+        result.teams,
+        result.champion,
+        result.tier ?? 1
+      )
+    });
+  }
+
+  /** El premio por subir de categoría, que se cobra aparte del de la liga. */
+  payPromotion(seasonId: string, date: Date): void {
+    const repository = new ClubRepository(this.resolveDb());
+    const teamId = repository.managedTeamId();
+    if (!teamId) {
+      return;
+    }
+
+    repository.record({
+      teamId,
+      seasonId,
+      happenedOn: date,
+      type: 'prize',
+      description: 'Ascenso de categoría',
+      amountCents: PROMOTION_PRIZE_CENTS
     });
   }
 
