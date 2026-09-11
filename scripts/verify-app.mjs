@@ -6,8 +6,9 @@ import { resolve } from 'node:path';
  * Arnés de verificación de la aplicación real.
  *
  * Arranca Electron y recorre el flujo completo: menú, nueva partida, club,
- * plantilla, ficha, partido jugado cuarto a cuarto, clasificación y calendario.
- * Deja una captura de cada pantalla en `.dev-data/shots`.
+ * plantilla, ficha, alineación, pizarra, partido jugado cuarto a cuarto,
+ * clasificación, calendario y estadísticas. Deja una captura de cada pantalla
+ * en `.dev-data/shots`.
  *
  * Es la única forma de saber que algo funciona de verdad: los tests unitarios
  * no ven ni una pantalla en blanco ni un `window.api` que no llegó a exponerse.
@@ -66,6 +67,30 @@ await page.waitForTimeout(1200);
 console.log('ficha:', await page.locator('h1').first().innerText());
 await page.screenshot({ path: `${SHOTS}/05-ficha.png` });
 
+// --- Fase 2: decisiones del entrenador -------------------------------------
+
+await page.getByRole('link', { name: 'Alineación' }).click();
+await page.waitForTimeout(1200);
+console.log('huecos de la rotación:', await page.locator('tbody tr').count());
+
+// Un cambio de titular y un reparto de minutos distinto, que es justo lo que
+// esta pantalla existe para hacer.
+await page.locator('select').first().selectOption({ index: 6 });
+await page.locator('input[type="number"]').first().fill('34');
+await page.getByRole('button', { name: 'Guardar' }).click();
+await page.waitForTimeout(1200);
+console.log('rotación:', (await page.locator('footer').first().innerText()).split('\n')[0]);
+await page.screenshot({ path: `${SHOTS}/06-alineacion.png` });
+
+await page.getByRole('button', { name: 'Pizarra' }).click();
+await page.waitForTimeout(1000);
+await page.locator('select').first().selectOption('fastbreak');
+await page.locator('select').nth(1).selectOption('zone23');
+await page.getByRole('button', { name: 'Guardar' }).click();
+await page.waitForTimeout(1200);
+console.log('pizarra guardada:', await page.locator('footer p').first().innerText());
+await page.screenshot({ path: `${SHOTS}/07-pizarra.png` });
+
 // --- Fase 1: temporada -----------------------------------------------------
 
 await page.getByRole('link', { name: 'Club' }).click();
@@ -76,7 +101,7 @@ console.log('próximo partido:', await page.locator('section').first().innerText
 await page.getByRole('button', { name: 'Ir a la jornada' }).click();
 await page.waitForTimeout(2500);
 console.log('url tras avanzar:', page.url());
-await page.screenshot({ path: `${SHOTS}/06-previa.png` });
+await page.screenshot({ path: `${SHOTS}/08-previa.png` });
 
 // Cuarto a cuarto, que es como se juega en modo resultado.
 for (let quarter = 1; quarter <= 4; quarter += 1) {
@@ -86,7 +111,7 @@ for (let quarter = 1; quarter <= 4; quarter += 1) {
   await page.waitForTimeout(1500);
   const scoreboard = await page.locator('section').first().innerText();
   console.log(`tras el cuarto ${quarter}:`, scoreboard.split('\n').slice(0, 4).join(' '));
-  await page.screenshot({ path: `${SHOTS}/07-cuarto-${quarter}.png` });
+  await page.screenshot({ path: `${SHOTS}/09-cuarto-${quarter}.png` });
 }
 
 // Prórrogas, si las hubo.
@@ -96,7 +121,7 @@ for (let extra = 0; extra < 4; extra += 1) {
   await button.click();
   await page.waitForTimeout(1500);
 }
-await page.screenshot({ path: `${SHOTS}/08-acta.png` });
+await page.screenshot({ path: `${SHOTS}/10-acta.png` });
 console.log('actas en pantalla:', await page.locator('table').count());
 
 await page.getByRole('link', { name: 'Volver al club' }).click();
@@ -107,12 +132,24 @@ await page.waitForTimeout(3000);
 await page.getByRole('link', { name: 'Competición' }).click();
 await page.waitForTimeout(1500);
 console.log('equipos en la clasificación:', await page.locator('tbody tr').count());
-await page.screenshot({ path: `${SHOTS}/09-clasificacion.png` });
+await page.screenshot({ path: `${SHOTS}/11-clasificacion.png` });
 
 await page.getByRole('button', { name: 'Calendario' }).click();
 await page.waitForTimeout(1200);
 console.log('partidos de la jornada:', await page.locator('ul li').count());
-await page.screenshot({ path: `${SHOTS}/10-calendario.png` });
+await page.screenshot({ path: `${SHOTS}/12-calendario.png` });
+
+// --- Fase 2: estadísticas de temporada -------------------------------------
+
+await page.getByRole('link', { name: 'Estadísticas' }).click();
+await page.waitForTimeout(1500);
+console.log('jugadores con estadística:', await page.locator('tbody tr').count());
+await page.screenshot({ path: `${SHOTS}/13-estadisticas.png` });
+
+await page.getByRole('button', { name: 'Líderes de la liga' }).click();
+await page.waitForTimeout(1200);
+console.log('líderes en la tabla:', await page.locator('tbody tr').count());
+await page.screenshot({ path: `${SHOTS}/14-lideres.png` });
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);

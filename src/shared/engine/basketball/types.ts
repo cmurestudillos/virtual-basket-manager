@@ -22,6 +22,13 @@ export interface EngineTeam {
   players: EnginePlayer[];
   /** Cinco inicial: ids en orden PG, SG, SF, PF, C. */
   starters: readonly string[];
+  /**
+   * Minutos objetivo por jugador (id -> minutos de partido), tal y como los
+   * reparte el entrenador en la pantalla de rotación. Si no viene, o suma cero,
+   * el motor reparte por profundidad: los equipos que nadie ha tocado siguen
+   * saliendo a jugar con una rotación razonable.
+   */
+  minutesTargets?: Readonly<Record<string, number>>;
   tactics: TeamTactics;
 }
 

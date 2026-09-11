@@ -1,5 +1,6 @@
 import { asc, eq } from 'drizzle-orm';
-import type { Position } from '@shared/domain/positions';
+import { POSITIONS, type Position } from '@shared/domain/positions';
+import { LINEUP_SIZE } from '@shared/domain/rotation';
 import type { TeamTactics } from '@shared/domain/tactics';
 import { DEFAULT_TACTICS } from '@shared/domain/tactics';
 import type { EnginePlayer, EngineTeam } from '@shared/engine/basketball';
@@ -51,9 +52,24 @@ export function buildEngineTeam(db: SaveDatabase, teamId: string): EngineTeam {
     id: team.id,
     name: team.name,
     players: ordered.map(toEnginePlayer),
-    starters: rotation.slice(0, 5).map((slot) => slot.playerId),
+    // El motor coloca a los titulares en los huecos 1 a 5 por el orden en el
+    // que los recibe, así que se ordenan por el hueco que tienen asignado y no
+    // por profundidad: si el usuario cambia de sitio a dos titulares, el base
+    // debe seguir saliendo de base.
+    starters: rotation
+      .filter((slot) => slot.depth < LINEUP_SIZE)
+      .slice(0, LINEUP_SIZE)
+      .sort((a, b) => slotOrder(a.slotPosition) - slotOrder(b.slotPosition))
+      .map((slot) => slot.playerId),
+    minutesTargets: Object.fromEntries(rotation.map((slot) => [slot.playerId, slot.targetMinutes])),
     tactics: toTactics(tactics)
   };
+}
+
+function slotOrder(slotPosition: string): number {
+  const index = POSITIONS.indexOf(slotPosition as Position);
+  // Un hueco desconocido va al final en vez de colarse en el puesto de base.
+  return index < 0 ? POSITIONS.length : index;
 }
 
 function toEnginePlayer(row: PlayerRow): EnginePlayer {

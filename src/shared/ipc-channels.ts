@@ -23,6 +23,13 @@ export const IPC_CHANNELS = {
   seasonGetNextGame: 'season:getNextGame',
   seasonAdvanceDay: 'season:advanceDay',
   seasonAdvanceToNextGame: 'season:advanceToNextGame',
+  rotationGet: 'rotation:get',
+  rotationSave: 'rotation:save',
+  rotationAuto: 'rotation:auto',
+  tacticsGet: 'tactics:get',
+  tacticsSave: 'tactics:save',
+  statsTeamSeason: 'stats:teamSeason',
+  statsLeaders: 'stats:leaders',
   matchStart: 'match:start',
   matchAdvancePeriod: 'match:advancePeriod',
   matchGet: 'match:get'

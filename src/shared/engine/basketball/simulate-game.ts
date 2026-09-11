@@ -1,6 +1,7 @@
 import { overallForPosition } from '@shared/domain/attributes';
 import { emptyPlayerBoxScore, type PlayerBoxScore } from '@shared/domain/box-score';
 import { POSITIONS, type Position } from '@shared/domain/positions';
+import { LINEUP_SIZE } from '@shared/domain/rotation';
 import {
   DEFENSIVE_SYSTEM_PROFILES,
   OFFENSIVE_SYSTEM_PROFILES,
@@ -81,8 +82,10 @@ const REST_THRESHOLD = 74;
  * Cuota de partido de cada puesto de la rotación, del titular más usado al
  * duodécimo. Suma 5, que son los huecos de pista: repartida así da una rotación
  * de nueve hombres con titulares en torno a 30 minutos, que es lo que se ve en
- * una plantilla FIBA. Más adelante esto será lo que el usuario ajuste desde la
- * pantalla de rotación en vez de una constante.
+ * una plantilla FIBA.
+ *
+ * Es el reparto de reserva: cuando el equipo trae minutos objetivo —los que
+ * pone el usuario en la pantalla de rotación— mandan esos.
  */
 const MINUTES_TARGET_BY_DEPTH = [
   0.8, 0.75, 0.72, 0.7, 0.68, 0.4, 0.35, 0.3, 0.18, 0.07, 0.03, 0.02
@@ -143,8 +146,9 @@ export class GameSimulation {
     this.ruleset = input.ruleset;
     this.seed = input.seed ?? seedFromString(input.gameId);
     this.rng = createRng(this.seed);
-    this.homeState = buildTeamState(input.home, true);
-    this.awayState = buildTeamState(input.away, false);
+    const regulationMinutes = this.ruleset.periods * this.ruleset.periodMinutes;
+    this.homeState = buildTeamState(input.home, true, regulationMinutes);
+    this.awayState = buildTeamState(input.away, false, regulationMinutes);
     this.averagePossession = averagePossessionSeconds(this.homeState, this.awayState);
     // El salto inicial decide quién empieza; a partir de ahí se alterna.
     this.offenseIsHome = this.rng.chance(jumpBallHomeChance(this.homeState, this.awayState));
@@ -283,7 +287,7 @@ export function simulateGame(input: SimulateGameInput): GameResult {
 // Construcción del estado
 // --------------------------------------------------------------------------
 
-function buildTeamState(team: EngineTeam, isHome: boolean): TeamState {
+function buildTeamState(team: EngineTeam, isHome: boolean, regulationMinutes: number): TeamState {
   const startersInOrder = resolveStarters(team);
   const states: PlayerState[] = team.players.map((player) => {
     const starterIndex = startersInOrder.indexOf(player.id);
@@ -301,7 +305,7 @@ function buildTeamState(team: EngineTeam, isHome: boolean): TeamState {
     };
   });
 
-  assignMinutesTargets(states, startersInOrder);
+  assignMinutesTargets(states, startersInOrder, team.minutesTargets, regulationMinutes);
 
   return {
     team,
@@ -316,11 +320,28 @@ function buildTeamState(team: EngineTeam, isHome: boolean): TeamState {
 }
 
 /**
- * Reparte las cuotas de minutos: los cinco titulares se llevan los cinco
- * primeros tramos y el resto del banquillo se ordena por nivel en su propia
- * posición. Determinista: mismo equipo, mismo reparto.
+ * Reparte las cuotas de minutos.
+ *
+ * Si el equipo trae minutos objetivo del entrenador, mandan esos: se pasan a
+ * cuota de partido y se normalizan a los cinco huecos de pista. La
+ * normalización es lo que hace que una rotación descuadrada siga siendo
+ * jugable — si el usuario reparte 150 minutos en vez de 200, sus jugadores no
+ * se quedan sentados un cuarto entero, juegan en la proporción que él pidió.
+ *
+ * Sin minutos objetivo, los cinco titulares se llevan los cinco primeros tramos
+ * y el resto del banquillo se ordena por nivel. Determinista en los dos casos:
+ * mismo equipo, mismo reparto.
  */
-function assignMinutesTargets(states: PlayerState[], startersInOrder: readonly string[]): void {
+function assignMinutesTargets(
+  states: PlayerState[],
+  startersInOrder: readonly string[],
+  minutesTargets: EngineTeam['minutesTargets'],
+  regulationMinutes: number
+): void {
+  if (applyExplicitMinutes(states, minutesTargets, regulationMinutes)) {
+    return;
+  }
+
   const starters = startersInOrder
     .map((id) => states.find((state) => state.player.id === id))
     .filter((state): state is PlayerState => state !== undefined);
@@ -336,6 +357,31 @@ function assignMinutesTargets(states: PlayerState[], startersInOrder: readonly s
   [...starters, ...bench].forEach((state, depth) => {
     state.minutesTarget = MINUTES_TARGET_BY_DEPTH[depth] ?? 0;
   });
+}
+
+/** Devuelve `false` si no hay minutos que aplicar, para que decida el reparto por defecto. */
+function applyExplicitMinutes(
+  states: PlayerState[],
+  minutesTargets: EngineTeam['minutesTargets'],
+  regulationMinutes: number
+): boolean {
+  if (!minutesTargets || regulationMinutes <= 0) {
+    return false;
+  }
+
+  const shares = states.map(
+    (state) => Math.max(0, minutesTargets[state.player.id] ?? 0) / regulationMinutes
+  );
+  const total = shares.reduce((sum, share) => sum + share, 0);
+  if (total <= 0) {
+    return false;
+  }
+
+  const factor = LINEUP_SIZE / total;
+  states.forEach((state, index) => {
+    state.minutesTarget = (shares[index] as number) * factor;
+  });
+  return true;
 }
 
 /**

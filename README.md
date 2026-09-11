@@ -6,9 +6,10 @@ Manager de baloncesto de escritorio, inspirado en **PC Basket 6.5** y en
 Electron + Vue 3 + TypeScript + SQLite. Nombre de trabajo: el definitivo se
 decidirá más adelante.
 
-> Estado: **esqueleto**. Hay motor de partido funcionando, base de datos,
-> partidas guardadas y unas cuantas pantallas. No hay temporada todavía — ver
-> [docs/ROADMAP.md](docs/ROADMAP.md).
+> Estado: **liga regular jugable**. Motor de partido, calendario de 34 jornadas,
+> partido del usuario cuarto a cuarto, clasificación, alineación y pizarra
+> editables y estadísticas de temporada. Faltan los playoffs y todo lo demás —
+> ver [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Arranque
 

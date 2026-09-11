@@ -13,6 +13,17 @@ import type {
   StandingEntry
 } from '@shared/contracts/season.contract';
 import type { MatchApi, MatchState } from '@shared/contracts/match.contract';
+import type {
+  RotationApi,
+  SaveRotationRequest,
+  TeamRotation
+} from '@shared/contracts/rotation.contract';
+import type {
+  SaveTacticsRequest,
+  TacticsApi,
+  TeamTacticsView
+} from '@shared/contracts/tactics.contract';
+import type { LeaderBoard, PlayerSeasonStats, StatsApi } from '@shared/contracts/stats.contract';
 
 /**
  * Puente entre renderer y proceso principal.
@@ -68,6 +79,29 @@ const season: SeasonApi = {
     ipcRenderer.invoke(IPC_CHANNELS.seasonAdvanceToNextGame) as Promise<AdvanceResult>
 };
 
+const rotation: RotationApi = {
+  get: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.rotationGet, teamId) as Promise<TeamRotation>,
+  save: (request: SaveRotationRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.rotationSave, request) as Promise<TeamRotation>,
+  auto: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.rotationAuto, teamId) as Promise<TeamRotation>
+};
+
+const tactics: TacticsApi = {
+  get: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.tacticsGet, teamId) as Promise<TeamTacticsView>,
+  save: (request: SaveTacticsRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.tacticsSave, request) as Promise<TeamTacticsView>
+};
+
+const stats: StatsApi = {
+  teamSeason: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.statsTeamSeason, teamId) as Promise<PlayerSeasonStats[]>,
+  leaders: (category: string, limit?: number) =>
+    ipcRenderer.invoke(IPC_CHANNELS.statsLeaders, category, limit) as Promise<LeaderBoard>
+};
+
 const match: MatchApi = {
   start: (gameId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.matchStart, gameId) as Promise<MatchState>,
@@ -77,6 +111,17 @@ const match: MatchApi = {
     ipcRenderer.invoke(IPC_CHANNELS.matchGet, gameId) as Promise<MatchState | null>
 };
 
-export const api = { settings, saves, teams, players, gameState, season, match };
+export const api = {
+  settings,
+  saves,
+  teams,
+  players,
+  gameState,
+  season,
+  rotation,
+  tactics,
+  stats,
+  match
+};
 
 contextBridge.exposeInMainWorld('api', api);
