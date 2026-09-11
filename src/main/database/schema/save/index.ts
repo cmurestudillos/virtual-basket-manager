@@ -3,6 +3,7 @@ export * from './teams.schema';
 export * from './players.schema';
 export * from './rotations.schema';
 export * from './tactics.schema';
+export * from './training.schema';
 export * from './seasons.schema';
 export * from './games.schema';
 export * from './game-player-stats.schema';

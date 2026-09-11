@@ -29,6 +29,16 @@ export default defineConfig({
     // renderer piden jsdom uno a uno con un docblock @vitest-environment.
     environment: 'node',
     setupFiles: ['./vitest.setup.ts'],
+    /*
+     * Los tests de este proyecto simulan partidos de baloncesto de verdad —
+     * cientos de posesiones cada uno— y varios juegan jornadas enteras. Con el
+     * tope por defecto de cinco segundos, en una máquina cargada fallaba uno al
+     * azar por tiempo y no por estar mal: de ahí estos topes, generosos a
+     * propósito. Los tests que juegan una temporada entera siguen declarando el
+     * suyo, mucho mayor.
+     */
+    testTimeout: 30_000,
+    hookTimeout: 120_000,
     exclude: ['node_modules/**', 'out/**', 'dist/**', '.dev-data/**'],
     coverage: {
       provider: 'v8',

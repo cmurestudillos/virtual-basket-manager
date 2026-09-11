@@ -5,6 +5,7 @@ import type { BoxScoreLine, MatchState, MatchTeamState } from '@shared/contracts
 import { GameSimulation, type GameResult } from '@shared/engine/basketball';
 import type { SaveDatabase } from '../../database/save-database';
 import type { GameRow } from '../../database/schema/save';
+import { FitnessService } from '../fitness/fitness.service';
 import { buildEngineTeam } from './engine-input';
 import { MatchRepository, type PlayerCard } from './match.repository';
 
@@ -81,7 +82,9 @@ export class MatchService {
     const result = simulation.result;
 
     if (simulation.isFinished) {
-      repository.saveResult(game, result, repository.currentDate());
+      const playedOn = repository.currentDate();
+      repository.saveResult(game, result, playedOn);
+      applyPhysicalEffects(db, game.id, result, playedOn);
       sessions.delete(gameId);
     }
 
@@ -149,8 +152,30 @@ export class MatchService {
 
     const result = simulation.result;
     repository.saveResult(game, result, playedOn);
+    applyPhysicalEffects(db, game.id, result, playedOn);
     return result;
   }
+}
+
+/**
+ * Lo que el partido deja en las piernas: desgaste y, a veces, enfermería.
+ *
+ * Se hace aquí y no en el servicio de temporada porque el partido del usuario
+ * termina dentro de este servicio, a botonazos, y el de la IA en una tacada: es
+ * el único punto por el que pasan los dos.
+ */
+function applyPhysicalEffects(
+  db: SaveDatabase,
+  gameId: string,
+  result: GameResult,
+  playedOn: Date
+): void {
+  const lines = [...result.home.boxScores, ...result.away.boxScores].map((line) => ({
+    playerId: line.playerId,
+    secondsPlayed: line.secondsPlayed
+  }));
+
+  new FitnessService(() => db).applyGameEffects(gameId, lines, playedOn);
 }
 
 function requireUnplayedGame(repository: MatchRepository, gameId: string): GameRow {

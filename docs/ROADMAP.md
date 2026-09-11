@@ -78,15 +78,28 @@ Entran con la segunda división del Bloque 4.
 
 ## Bloque 2 — El club
 
-|     | Pieza               | Detalle                                                        |     |
-| --- | ------------------- | -------------------------------------------------------------- | --- |
-| ⬜  | Entrenamiento       | Foco por jugador o por bloque; afecta a atributos y a lesiones | M   |
-| ⬜  | Lesiones y fatiga   | Estado físico entre partidos, bajas por semanas                | M   |
-| ⬜  | Cuerpo técnico      | Ayudante, preparador físico, médico, analista, ojeador         | M   |
-| ⬜  | Finanzas            | Presupuesto, taquilla, TV, patrocinio, nóminas                 | L   |
-| ⬜  | Pabellón y afición  | Aforo, abonados, ambiente, ampliación                          | M   |
-| ⬜  | Consejo y objetivos | Expectativas, confianza, despido                               | M   |
-| ⬜  | Cantera             | Juveniles, promoción al primer equipo                          | M   |
+### Fase 1 — estado físico (hecha)
+
+|     | Pieza             | Detalle                                                          |     |
+| --- | ----------------- | ---------------------------------------------------------------- | --- |
+| ✅  | Entrenamiento     | Foco por bloque y por jugador, intensidad 1-10; mueve atributos  | M   |
+| ✅  | Lesiones y fatiga | Forma entre partidos, bajas en días de calendario y parte médico | M   |
+
+La forma baja con los minutos jugados y sube con los días de descanso; el
+riesgo de lesión sale de los minutos, de cómo llegaba el jugador y de su edad.
+Se entrena cada lunes del calendario, y el techo de potencial manda: un veterano
+en su techo no sube, y a partir de los treinta pierde piernas. Todo ello vale
+para los equipos de la IA igual que para el del usuario.
+
+### Resto del bloque
+
+|     | Pieza               | Detalle                                                |     |
+| --- | ------------------- | ------------------------------------------------------ | --- |
+| ⬜  | Cuerpo técnico      | Ayudante, preparador físico, médico, analista, ojeador | M   |
+| ⬜  | Finanzas            | Presupuesto, taquilla, TV, patrocinio, nóminas         | L   |
+| ⬜  | Pabellón y afición  | Aforo, abonados, ambiente, ampliación                  | M   |
+| ⬜  | Consejo y objetivos | Expectativas, confianza, despido                       | M   |
+| ⬜  | Cantera             | Juveniles, promoción al primer equipo                  | M   |
 
 ## Bloque 3 — Mercado
 

@@ -27,6 +27,7 @@ import {
 import { computeStandings, type PlayedGame, type StandingRow } from '@shared/domain/standings';
 import type { SaveDatabase } from '../../database/save-database';
 import type { CompetitionRow, GameRow, NewGameRow, SeasonRow } from '../../database/schema/save';
+import { FitnessService } from '../fitness/fitness.service';
 import { MatchService } from '../match/match.service';
 import { SeasonRepository } from './season.repository';
 
@@ -62,6 +63,7 @@ interface SeriesState {
 
 export class SeasonService {
   private readonly matchService: MatchService;
+  private readonly fitnessService: FitnessService;
 
   /**
    * La conexión llega como resolutor y no como instancia porque la partida
@@ -71,6 +73,7 @@ export class SeasonService {
    */
   constructor(private readonly resolveDb: () => SaveDatabase) {
     this.matchService = new MatchService(resolveDb);
+    this.fitnessService = new FitnessService(resolveDb);
   }
 
   /**
@@ -186,6 +189,8 @@ export class SeasonService {
 
     const nextDate = new Date(state.currentDate.getTime() + DAY_MS);
     repository.setCurrentDate(nextDate);
+    // El día que pasa cura, cansa menos y, si es lunes, entrena.
+    this.fitnessService.advanceDays(state.currentDate, nextDate);
 
     return { status: 'advanced', date: nextDate.getTime(), playedGameIds };
   }
@@ -210,6 +215,9 @@ export class SeasonService {
     const today = repository.gameState().currentDate;
     if (nextScheduled.getTime() > today.getTime()) {
       repository.setCurrentDate(nextScheduled);
+      // Los días que se saltan también cuentan: sin esto, ir a la jornada
+      // saldría gratis y nadie se recuperaría ni entrenaría nunca.
+      this.fitnessService.advanceDays(today, nextScheduled);
     }
 
     for (let guard = 0; guard < MAX_DAYS_SKIPPED; guard += 1) {
@@ -270,8 +278,12 @@ export class SeasonService {
       throw new SeasonNotFinishedError();
     }
 
+    const today = repository.gameState().currentDate;
+    const nextSeasonStart = new Date(Date.UTC(season.startYear + 1, 8, 1));
     repository.setSeasonNumber(season.seasonNumber + 1);
-    repository.setCurrentDate(new Date(Date.UTC(season.startYear + 1, 8, 1)));
+    repository.setCurrentDate(nextSeasonStart);
+    // El verano devuelve a todos a cien; las bajas largas siguen corriendo.
+    this.fitnessService.startNewSeason(today, nextSeasonStart);
 
     return this.getCurrent();
   }

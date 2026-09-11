@@ -1,6 +1,8 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue';
 import type { PlayerSummary } from '@shared/contracts/players.contract';
+import { conditionLabel } from '@shared/domain/conditioning';
+import { injuryLabel } from '@shared/domain/injuries';
 import { POSITION_LABELS } from '@shared/domain/positions';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
@@ -33,6 +35,8 @@ onMounted(async () => {
             <th>Nac.</th>
             <th class="numeric">Media</th>
             <th class="numeric">Pot.</th>
+            <th>Forma</th>
+            <th>Estado</th>
             <th class="numeric">T3</th>
             <th class="numeric">Reb</th>
             <th class="numeric">Pase</th>
@@ -61,6 +65,16 @@ onMounted(async () => {
             <td class="text-court-300">{{ player.nationality }}</td>
             <td class="numeric font-semibold">{{ player.overall }}</td>
             <td class="numeric text-court-300">{{ player.potential }}</td>
+            <td :class="player.condition >= 75 ? 'text-court-300' : 'text-line-500'">
+              {{ conditionLabel(player.condition) }}
+            </td>
+            <td :class="player.injuryDaysLeft > 0 ? 'text-red-400' : 'text-court-600'">
+              {{
+                player.injuryDaysLeft > 0
+                  ? `${player.injuryName} · ${injuryLabel(player.injuryDaysLeft)}`
+                  : '—'
+              }}
+            </td>
             <td class="numeric">{{ player.attributes.threePoint }}</td>
             <td class="numeric">{{ player.attributes.defensiveRebound }}</td>
             <td class="numeric">{{ player.attributes.passing }}</td>

@@ -8,8 +8,9 @@ decidirá más adelante.
 
 > Estado: **temporada completa jugable**. Motor de partido, calendario de 34
 > jornadas, partido del usuario cuarto a cuarto, clasificación, alineación y
-> pizarra editables, estadísticas, playoffs al formato ACB y arranque de la
-> temporada siguiente. Faltan club, mercado y todo lo demás — ver
+> pizarra editables, estadísticas, playoffs al formato ACB, arranque de la
+> temporada siguiente y estado físico con entrenamiento, fatiga y lesiones.
+> Faltan finanzas, mercado y todo lo demás — ver
 > [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Arranque

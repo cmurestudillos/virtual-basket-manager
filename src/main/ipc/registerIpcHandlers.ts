@@ -7,6 +7,7 @@ import { registerSeasonIpcHandlers } from '../features/season/season.ipc-handler
 import { registerRotationIpcHandlers } from '../features/rotation/rotation.ipc-handler';
 import { registerTacticsIpcHandlers } from '../features/tactics/tactics.ipc-handler';
 import { registerStatsIpcHandlers } from '../features/stats/stats.ipc-handler';
+import { registerFitnessIpcHandlers } from '../features/fitness/fitness.ipc-handler';
 import { registerMatchIpcHandlers } from '../features/match/match.ipc-handler';
 
 /**
@@ -23,5 +24,6 @@ export function registerIpcHandlers(): void {
   registerRotationIpcHandlers();
   registerTacticsIpcHandlers();
   registerStatsIpcHandlers();
+  registerFitnessIpcHandlers();
   registerMatchIpcHandlers();
 }

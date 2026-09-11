@@ -20,7 +20,10 @@ export interface PlayerSummary {
   potential: number;
   condition: number;
   morale: number;
-  gamesInjured: number;
+  /** Días de baja que le quedan; 0 = disponible. */
+  injuryDaysLeft: number;
+  /** Qué tiene, si tiene algo. */
+  injuryName: string | null;
   wageCents: number;
   valueCents: number;
 }

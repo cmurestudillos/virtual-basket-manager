@@ -25,6 +25,11 @@ import type {
   TeamTacticsView
 } from '@shared/contracts/tactics.contract';
 import type { LeaderBoard, PlayerSeasonStats, StatsApi } from '@shared/contracts/stats.contract';
+import type {
+  SaveTrainingPlanRequest,
+  TeamTrainingPlan,
+  TrainingApi
+} from '@shared/contracts/training.contract';
 
 /**
  * Puente entre renderer y proceso principal.
@@ -106,6 +111,13 @@ const stats: StatsApi = {
     ipcRenderer.invoke(IPC_CHANNELS.statsLeaders, category, limit) as Promise<LeaderBoard>
 };
 
+const training: TrainingApi = {
+  getPlan: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.trainingGetPlan, teamId) as Promise<TeamTrainingPlan>,
+  savePlan: (request: SaveTrainingPlanRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.trainingSavePlan, request) as Promise<TeamTrainingPlan>
+};
+
 const match: MatchApi = {
   start: (gameId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.matchStart, gameId) as Promise<MatchState>,
@@ -125,6 +137,7 @@ export const api = {
   rotation,
   tactics,
   stats,
+  training,
   match
 };
 

@@ -1,0 +1,1 @@
+ALTER TABLE `players` DROP COLUMN `games_injured`;
