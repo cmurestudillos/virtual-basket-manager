@@ -58,7 +58,8 @@ export function toPlayerSummary(row: PlayerRow, today: Date): PlayerSummary {
     injuryDaysLeft: row.injuryDaysLeft,
     injuryName: row.injuryName,
     wageCents: row.wageCents,
-    valueCents: row.valueCents
+    valueCents: row.valueCents,
+    uncertainty: 0
   };
 }
 

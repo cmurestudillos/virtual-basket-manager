@@ -64,7 +64,12 @@ function barColor(value: number): string {
     <div class="grid grid-cols-7 gap-4">
       <article class="rounded border border-court-700 p-3">
         <p class="text-xs text-court-300">Media</p>
-        <p class="text-2xl font-semibold text-ball-500">{{ player.overall }}</p>
+        <p class="text-2xl font-semibold text-ball-500">
+          {{ player.overall
+          }}<span v-if="player.uncertainty > 0" class="text-sm text-court-300">
+            ±{{ player.uncertainty }}</span
+          >
+        </p>
       </article>
       <article class="rounded border border-court-700 p-3">
         <p class="text-xs text-court-300">Potencial</p>
@@ -104,6 +109,13 @@ function barColor(value: number): string {
         </p>
       </article>
     </div>
+
+    <p v-if="player.uncertainty > 0" class="text-sm text-line-500">
+      No es tu jugador: esto es lo que ha visto tu ojeador, con un margen de ±{{
+        player.uncertainty
+      }}
+      en cada atributo.
+    </p>
 
     <div class="grid grid-cols-3 gap-4">
       <section

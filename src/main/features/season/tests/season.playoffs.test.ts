@@ -9,7 +9,7 @@ import {
   openSaveDatabase,
   type SaveDatabase
 } from '../../../database/save-database';
-import { gamesTable } from '../../../database/schema/save';
+import { boardTable, gamesTable } from '../../../database/schema/save';
 import { loadDataset } from '../../saves/dataset';
 import { seedSave } from '../../saves/save-seeder';
 import { MatchService } from '../../match/match.service';
@@ -61,7 +61,9 @@ function closeSave(): void {
 function playUntilOver(onUserGame?: () => void): void {
   for (let guard = 0; guard < 600; guard += 1) {
     const result = season.advanceToNextGame();
-    if (result.status === 'seasonOver') {
+    // El despido también para el reloj: aquí se comprueban los playoffs, no la
+    // paciencia del consejo, que tiene sus propios tests.
+    if (result.status === 'seasonOver' || result.status === 'dismissed') {
       return;
     }
     if (result.status === 'userGame') {
@@ -80,6 +82,9 @@ describe('playoffs', () => {
   // 306 partidos de liga más el cuadro, todos posesión a posesión.
   beforeAll(() => {
     openSave('vbm-playoffs-');
+    // Ver el porqué en el test de temporada completa: el consejo se queda fuera.
+    season.getCurrent();
+    db.delete(boardTable).run();
 
     // Liga regular completa: se para en cuanto aparece el cuadro.
     for (let guard = 0; guard < 600; guard += 1) {
@@ -94,7 +99,7 @@ describe('playoffs', () => {
       if (season.getCurrent().stage !== 'regular') {
         break;
       }
-      if (result.status === 'seasonOver') {
+      if (result.status === 'seasonOver' || result.status === 'dismissed') {
         break;
       }
     }
@@ -211,6 +216,12 @@ describe('playoffs', () => {
   });
 
   it('arranca la temporada siguiente con calendario nuevo', () => {
+    // La temporada puede haber acabado con el consejo harto —los resultados
+    // dependen de la semilla de cada partida— y a un destituido no le dejan
+    // empezar otra. Aquí interesa el calendario, así que se le devuelve la
+    // confianza; el despido se prueba en los tests del club.
+    db.update(boardTable).set({ confidence: 100, dismissed: false }).run();
+
     const next = season.startNextSeason();
 
     expect(next.seasonNumber).toBe(2);

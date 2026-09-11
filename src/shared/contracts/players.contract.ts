@@ -26,6 +26,11 @@ export interface PlayerSummary {
   injuryName: string | null;
   wageCents: number;
   valueCents: number;
+  /**
+   * Margen de error de lo que estás viendo, en puntos de atributo. 0 en los
+   * tuyos, que los conoces; en los de fuera, lo que diga tu ojeador.
+   */
+  uncertainty: number;
 }
 
 export interface PlayersApi {

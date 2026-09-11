@@ -1,10 +1,25 @@
 import { efficiencyRating, points, type PlayerBoxScore } from '@shared/domain/box-score';
 import { buildPlayoffFormat } from '@shared/domain/playoffs';
+import { analystRevealsRival } from '@shared/domain/staff';
+import {
+  DEFENSIVE_SYSTEM_LABELS,
+  OFFENSIVE_SYSTEM_LABELS,
+  type DefensiveSystem,
+  type OffensiveSystem
+} from '@shared/domain/tactics';
 import type { Position } from '@shared/domain/positions';
-import type { BoxScoreLine, MatchState, MatchTeamState } from '@shared/contracts/match.contract';
+import type {
+  BoxScoreLine,
+  MatchScouting,
+  MatchState,
+  MatchTeamState
+} from '@shared/contracts/match.contract';
 import { GameSimulation, type GameResult } from '@shared/engine/basketball';
 import type { SaveDatabase } from '../../database/save-database';
 import type { GameRow } from '../../database/schema/save';
+import { StaffService } from '../staff/staff.service';
+import { BoardService } from '../club/board.service';
+import { ClubService } from '../club/club.service';
 import { FitnessService } from '../fitness/fitness.service';
 import { buildEngineTeam } from './engine-input';
 import { MatchRepository, type PlayerCard } from './match.repository';
@@ -54,7 +69,7 @@ export class MatchService {
     });
     sessions.set(gameId, simulation);
 
-    return toMatchState(repository, game, simulation.result, simulation.isFinished);
+    return toMatchState(db, repository, game, simulation.result, simulation.isFinished);
   }
 
   /** Juega el siguiente cuarto; si con él acaba el partido, lo guarda. */
@@ -85,10 +100,11 @@ export class MatchService {
       const playedOn = repository.currentDate();
       repository.saveResult(game, result, playedOn);
       applyPhysicalEffects(db, game.id, result, playedOn);
+      applyClubEffects(db, game, result, playedOn, roundLabel(repository, game));
       sessions.delete(gameId);
     }
 
-    return toMatchState(repository, game, result, simulation.isFinished);
+    return toMatchState(db, repository, game, result, simulation.isFinished);
   }
 
   /** Acta de un partido ya jugado, leída de la base de datos. */
@@ -128,7 +144,8 @@ export class MatchService {
       playedPeriods: repository.parsePeriodScores(game).length,
       regulationPeriods: repository.rulesetForGame(game.id).periods,
       finished: true,
-      managedSide: managedSideOf(game, managedTeamId)
+      managedSide: managedSideOf(game, managedTeamId),
+      scouting: scoutRival(db, repository, game, managedTeamId)
     };
   }
 
@@ -153,6 +170,7 @@ export class MatchService {
     const result = simulation.result;
     repository.saveResult(game, result, playedOn);
     applyPhysicalEffects(db, game.id, result, playedOn);
+    applyClubEffects(db, game, result, playedOn, roundLabel(repository, game));
     return result;
   }
 }
@@ -178,6 +196,33 @@ function applyPhysicalEffects(
   new FitnessService(() => db).applyGameEffects(gameId, lines, playedOn);
 }
 
+/**
+ * Y lo que el partido deja en la caja y en el ánimo del consejo: taquilla y
+ * ambiente si se jugaba en casa, y confianza siempre que juegue el usuario.
+ */
+function applyClubEffects(
+  db: SaveDatabase,
+  game: GameRow,
+  result: GameResult,
+  playedOn: Date,
+  label: string
+): void {
+  const outcome = {
+    homeTeamId: game.homeTeamId,
+    awayTeamId: game.awayTeamId,
+    homeScore: result.home.score,
+    awayScore: result.away.score
+  };
+
+  new ClubService(() => db).collectHomeGame({
+    ...outcome,
+    seasonId: game.seasonId,
+    date: playedOn,
+    label
+  });
+  new BoardService(() => db).afterManagedGame(outcome);
+}
+
 function requireUnplayedGame(repository: MatchRepository, gameId: string): GameRow {
   const game = repository.findGame(gameId);
   if (!game) {
@@ -190,6 +235,7 @@ function requireUnplayedGame(repository: MatchRepository, gameId: string): GameR
 }
 
 function toMatchState(
+  db: SaveDatabase,
   repository: MatchRepository,
   game: GameRow,
   result: GameResult,
@@ -224,7 +270,48 @@ function toMatchState(
     playedPeriods: result.periods.length,
     regulationPeriods: repository.rulesetForGame(game.id).periods,
     finished,
-    managedSide: managedSideOf(game, managedTeamId)
+    managedSide: managedSideOf(game, managedTeamId),
+    scouting: scoutRival(db, repository, game, managedTeamId)
+  };
+}
+
+/**
+ * Lo que el analista saca del rival antes de jugar.
+ *
+ * Es el único efecto del puesto y por eso es concreto: sistemas, ritmo,
+ * intensidad y a quién van a buscar. Sin analista —o con uno de aprendiz— no se
+ * ve nada, que es lo que hace que contratarlo signifique algo.
+ */
+function scoutRival(
+  db: SaveDatabase,
+  repository: MatchRepository,
+  game: GameRow,
+  managedTeamId: string | null
+): MatchScouting | null {
+  const side = managedSideOf(game, managedTeamId);
+  if (!side || !managedTeamId) {
+    return null;
+  }
+
+  const level = new StaffService(() => db).levels(managedTeamId).analyst;
+  if (!analystRevealsRival(level)) {
+    return null;
+  }
+
+  const rivalId = side === 'home' ? game.awayTeamId : game.homeTeamId;
+  const tactics = repository.teamTactics(rivalId);
+  if (!tactics) {
+    return null;
+  }
+
+  return {
+    teamId: rivalId,
+    teamName: repository.teamName(rivalId),
+    offensiveSystem: OFFENSIVE_SYSTEM_LABELS[tactics.offensiveSystem as OffensiveSystem],
+    defensiveSystem: DEFENSIVE_SYSTEM_LABELS[tactics.defensiveSystem as DefensiveSystem],
+    pace: tactics.pace,
+    defensiveIntensity: tactics.defensiveIntensity,
+    focusPlayerName: tactics.focusPlayerId ? repository.playerName(tactics.focusPlayerId) : null
   };
 }
 

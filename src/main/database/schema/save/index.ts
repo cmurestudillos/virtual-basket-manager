@@ -7,4 +7,7 @@ export * from './training.schema';
 export * from './seasons.schema';
 export * from './games.schema';
 export * from './game-player-stats.schema';
+export * from './staff.schema';
+export * from './finance.schema';
+export * from './board.schema';
 export * from './game-state.schema';

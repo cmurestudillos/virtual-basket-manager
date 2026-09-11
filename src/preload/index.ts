@@ -30,6 +30,32 @@ import type {
   TeamTrainingPlan,
   TrainingApi
 } from '@shared/contracts/training.contract';
+import type { StaffApi, StaffRequest, TeamStaff } from '@shared/contracts/staff.contract';
+import type {
+  ContractEntry,
+  LoanEntry,
+  LoanRequest,
+  MarketApi,
+  MarketOfferResult,
+  MarketPlayer,
+  MarketSearchRequest,
+  MarketStatus,
+  OfferRequest,
+  RenewRequest
+} from '@shared/contracts/market.contract';
+import type {
+  PromotePlayerRequest,
+  UpgradeYouthRequest,
+  YouthAcademy,
+  YouthApi
+} from '@shared/contracts/youth.contract';
+import type {
+  BoardView,
+  ClubApi,
+  ClubFinances,
+  ExpandArenaRequest,
+  SetTicketPriceRequest
+} from '@shared/contracts/club.contract';
 
 /**
  * Puente entre renderer y proceso principal.
@@ -118,6 +144,52 @@ const training: TrainingApi = {
     ipcRenderer.invoke(IPC_CHANNELS.trainingSavePlan, request) as Promise<TeamTrainingPlan>
 };
 
+const club: ClubApi = {
+  getFinances: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.clubGetFinances, teamId) as Promise<ClubFinances>,
+  setTicketPrice: (request: SetTicketPriceRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.clubSetTicketPrice, request) as Promise<ClubFinances>,
+  expandArena: (request: ExpandArenaRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.clubExpandArena, request) as Promise<ClubFinances>,
+  getBoard: () => ipcRenderer.invoke(IPC_CHANNELS.clubGetBoard) as Promise<BoardView>
+};
+
+const staff: StaffApi = {
+  get: (teamId: string) => ipcRenderer.invoke(IPC_CHANNELS.staffGet, teamId) as Promise<TeamStaff>,
+  hire: (request: StaffRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.staffHire, request) as Promise<TeamStaff>,
+  fire: (request: StaffRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.staffFire, request) as Promise<TeamStaff>
+};
+
+const youth: YouthApi = {
+  get: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.youthGet, teamId) as Promise<YouthAcademy>,
+  promote: (request: PromotePlayerRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.youthPromote, request) as Promise<YouthAcademy>,
+  upgrade: (request: UpgradeYouthRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.youthUpgrade, request) as Promise<YouthAcademy>
+};
+
+const market: MarketApi = {
+  getStatus: () => ipcRenderer.invoke(IPC_CHANNELS.marketGetStatus) as Promise<MarketStatus>,
+  search: (request: MarketSearchRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.marketSearch, request) as Promise<MarketPlayer[]>,
+  offer: (request: OfferRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.marketOffer, request) as Promise<MarketOfferResult>,
+  listContracts: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.marketListContracts) as Promise<ContractEntry[]>,
+  renew: (request: RenewRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.marketRenew, request) as Promise<ContractEntry[]>,
+  release: (request: { playerId: string }) =>
+    ipcRenderer.invoke(IPC_CHANNELS.marketRelease, request) as Promise<ContractEntry[]>,
+  listLoans: () => ipcRenderer.invoke(IPC_CHANNELS.marketListLoans) as Promise<LoanEntry[]>,
+  loanOut: (request: LoanRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.marketLoanOut, request) as Promise<MarketOfferResult>,
+  loanIn: (request: LoanRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.marketLoanIn, request) as Promise<MarketOfferResult>
+};
+
 const match: MatchApi = {
   start: (gameId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.matchStart, gameId) as Promise<MatchState>,
@@ -138,6 +210,10 @@ export const api = {
   tactics,
   stats,
   training,
+  club,
+  staff,
+  youth,
+  market,
   match
 };
 

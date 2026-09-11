@@ -1,4 +1,4 @@
-import { asc, eq } from 'drizzle-orm';
+import { and, asc, eq } from 'drizzle-orm';
 import type { SaveDatabase } from '../../database/client';
 import {
   gameStateTable,
@@ -26,11 +26,12 @@ export class RotationRepository {
     return this.db.select().from(teamsTable).where(eq(teamsTable.id, teamId)).get()?.name ?? null;
   }
 
+  /** Sólo el primer equipo: un juvenil no entra en la rotación. */
   listRoster(teamId: string): PlayerRow[] {
     return this.db
       .select()
       .from(playersTable)
-      .where(eq(playersTable.teamId, teamId))
+      .where(and(eq(playersTable.teamId, teamId), eq(playersTable.isYouth, false)))
       .orderBy(asc(playersTable.lastName))
       .all();
   }

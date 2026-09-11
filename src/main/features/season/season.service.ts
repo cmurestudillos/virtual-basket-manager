@@ -27,7 +27,11 @@ import {
 import { computeStandings, type PlayedGame, type StandingRow } from '@shared/domain/standings';
 import type { SaveDatabase } from '../../database/save-database';
 import type { CompetitionRow, GameRow, NewGameRow, SeasonRow } from '../../database/schema/save';
+import { BoardService } from '../club/board.service';
+import { ClubService } from '../club/club.service';
 import { FitnessService } from '../fitness/fitness.service';
+import { MarketService } from '../market/market.service';
+import { YouthService } from '../youth/youth.service';
 import { MatchService } from '../match/match.service';
 import { SeasonRepository } from './season.repository';
 
@@ -39,6 +43,13 @@ export class NoManagedTeamError extends Error {
   constructor() {
     super('La partida no tiene equipo asignado');
     this.name = 'NoManagedTeamError';
+  }
+}
+
+export class DismissedError extends Error {
+  constructor() {
+    super('El consejo te ha destituido');
+    this.name = 'DismissedError';
   }
 }
 
@@ -64,6 +75,10 @@ interface SeriesState {
 export class SeasonService {
   private readonly matchService: MatchService;
   private readonly fitnessService: FitnessService;
+  private readonly clubService: ClubService;
+  private readonly boardService: BoardService;
+  private readonly youthService: YouthService;
+  private readonly marketService: MarketService;
 
   /**
    * La conexión llega como resolutor y no como instancia porque la partida
@@ -74,6 +89,10 @@ export class SeasonService {
   constructor(private readonly resolveDb: () => SaveDatabase) {
     this.matchService = new MatchService(resolveDb);
     this.fitnessService = new FitnessService(resolveDb);
+    this.clubService = new ClubService(resolveDb);
+    this.boardService = new BoardService(resolveDb);
+    this.youthService = new YouthService(resolveDb);
+    this.marketService = new MarketService(resolveDb);
   }
 
   /**
@@ -161,6 +180,10 @@ export class SeasonService {
     const state = repository.gameState();
     const managedTeamId = this.requireManagedTeam(repository);
 
+    if (this.boardService.isDismissed()) {
+      return { status: 'dismissed', date: state.currentDate.getTime() };
+    }
+
     if (season.stage === 'finished') {
       return { status: 'seasonOver', date: state.currentDate.getTime() };
     }
@@ -189,8 +212,7 @@ export class SeasonService {
 
     const nextDate = new Date(state.currentDate.getTime() + DAY_MS);
     repository.setCurrentDate(nextDate);
-    // El día que pasa cura, cansa menos y, si es lunes, entrena.
-    this.fitnessService.advanceDays(state.currentDate, nextDate);
+    this.advanceCalendar(repository, season, state.currentDate, nextDate);
 
     return { status: 'advanced', date: nextDate.getTime(), playedGameIds };
   }
@@ -216,8 +238,9 @@ export class SeasonService {
     if (nextScheduled.getTime() > today.getTime()) {
       repository.setCurrentDate(nextScheduled);
       // Los días que se saltan también cuentan: sin esto, ir a la jornada
-      // saldría gratis y nadie se recuperaría ni entrenaría nunca.
-      this.fitnessService.advanceDays(today, nextScheduled);
+      // saldría gratis y no habría ni recuperación, ni entrenamiento, ni
+      // nóminas que pagar.
+      this.advanceCalendar(repository, season, today, nextScheduled);
     }
 
     for (let guard = 0; guard < MAX_DAYS_SKIPPED; guard += 1) {
@@ -273,6 +296,12 @@ export class SeasonService {
    */
   startNextSeason(): SeasonSummary {
     const repository = new SeasonRepository(this.resolveDb());
+    // Lo primero, porque es lo más definitivo: a un destituido no le toca
+    // decidir si empieza otra temporada.
+    if (this.boardService.isDismissed()) {
+      throw new DismissedError();
+    }
+
     const season = this.ensureStage(repository);
     if (season.stage !== 'finished') {
       throw new SeasonNotFinishedError();
@@ -284,6 +313,8 @@ export class SeasonService {
     repository.setCurrentDate(nextSeasonStart);
     // El verano devuelve a todos a cien; las bajas largas siguen corriendo.
     this.fitnessService.startNewSeason(today, nextSeasonStart);
+    // Y el mercado se mueve solo: vencen contratos y la IA cubre sus huecos.
+    this.marketService.processOffseason(nextSeasonStart);
 
     return this.getCurrent();
   }
@@ -339,6 +370,13 @@ export class SeasonService {
     );
     repository.insertGames(games);
 
+    // Pretemporada del club: se renuevan los abonos y entran televisión y
+    // patrocinio. Y el consejo pone el objetivo del curso.
+    this.clubService.collectPreseason(season.id, state.currentDate);
+    this.boardService.ensureForSeason(season.seasonNumber, teamIds.length);
+    // Y sale la hornada del verano, para toda la liga.
+    this.youthService.runIntake(season.seasonNumber, startYear);
+
     return season;
   }
 
@@ -367,6 +405,7 @@ export class SeasonService {
         if (champion) {
           repository.setChampion(season.id, champion.teamId);
         }
+        this.closeClubSeason(repository, season, champion?.teamId ?? null);
         repository.setStage(season.id, 'finished');
       }
       return repository.findSeasonById(season.id) ?? season;
@@ -383,6 +422,80 @@ export class SeasonService {
     this.settlePlayoffs(repository, season, competition);
 
     return repository.findSeasonById(season.id) ?? season;
+  }
+
+  /**
+   * Lo que trae el paso del tiempo, además de partidos.
+   *
+   * Un día de calendario es descanso y, si toca, entrenamiento; el primero de
+   * mes es además nóminas, mantenimiento y revisión del consejo. Recibe el
+   * tramo entero porque el reloj avanza a saltos: «ir a la jornada» se come
+   * seis días de una vez y ninguno puede salir gratis.
+   */
+  private advanceCalendar(
+    repository: SeasonRepository,
+    season: SeasonRow,
+    from: Date,
+    to: Date
+  ): void {
+    this.fitnessService.advanceDays(from, to);
+
+    const months = monthStartsBetween(from, to);
+    if (months.length === 0) {
+      return;
+    }
+
+    const managedTeamId = repository.gameState().managedTeamId;
+    const position = this.regularStandings(repository, season).find(
+      (row) => row.teamId === managedTeamId
+    )?.position;
+
+    for (const monthStart of months) {
+      this.clubService.payMonthly(season.id, monthStart);
+      if (position !== undefined) {
+        this.boardService.monthlyReview(position);
+      }
+    }
+  }
+
+  /** Cierre de curso del club: premios en la caja y veredicto del consejo. */
+  private closeClubSeason(
+    repository: SeasonRepository,
+    season: SeasonRow,
+    championTeamId: string | null
+  ): void {
+    const managedTeamId = repository.gameState().managedTeamId;
+    const standings = this.regularStandings(repository, season);
+    const managed = standings.find((row) => row.teamId === managedTeamId);
+    if (!managed || !managedTeamId) {
+      return;
+    }
+
+    const result = {
+      position: managed.position,
+      teams: standings.length,
+      playoffRound: this.playoffRoundOf(repository, season, managedTeamId),
+      champion: championTeamId === managedTeamId
+    };
+
+    this.clubService.payPrizes(season.id, repository.gameState().currentDate, result);
+    this.boardService.closeSeason(result);
+  }
+
+  /** Hasta dónde llegó un equipo en el cuadro: 0 fuera, 1 cuartos, 2 semis, 3 final. */
+  private playoffRoundOf(repository: SeasonRepository, season: SeasonRow, teamId: string): number {
+    const competition = repository.competitionOfTeam(teamId);
+    if (competition.playoffTeams < 2) {
+      return 0;
+    }
+
+    return this.readSeries(repository, season, competition).reduce(
+      (deepest, entry) =>
+        entry.pairing.higherSeedTeamId === teamId || entry.pairing.lowerSeedTeamId === teamId
+          ? Math.max(deepest, entry.round)
+          : deepest,
+      0
+    );
   }
 
   /** Clasificación de la liga regular, sin contar los playoffs. */
@@ -466,7 +579,9 @@ export class SeasonService {
     }
 
     if (currentRound >= format.length) {
-      repository.setChampion(season.id, (inRound[0] as SeriesState).winnerTeamId as string);
+      const champion = (inRound[0] as SeriesState).winnerTeamId as string;
+      repository.setChampion(season.id, champion);
+      this.closeClubSeason(repository, season, champion);
       repository.setStage(season.id, 'finished');
       return;
     }
@@ -624,6 +739,24 @@ export class SeasonService {
       seriesGame: game.seriesGame
     }));
   }
+}
+
+/** Los primeros de mes que caen dentro del tramo `(from, to]`. */
+function monthStartsBetween(from: Date, to: Date): Date[] {
+  const days = Math.min(
+    MAX_DAYS_SKIPPED,
+    Math.max(0, Math.round((to.getTime() - from.getTime()) / DAY_MS))
+  );
+  const starts: Date[] = [];
+
+  for (let index = 1; index <= days; index += 1) {
+    const date = new Date(from.getTime() + index * DAY_MS);
+    if (date.getUTCDate() === 1) {
+      starts.push(date);
+    }
+  }
+
+  return starts;
 }
 
 function isPlayed(game: GameRow): boolean {

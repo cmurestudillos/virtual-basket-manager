@@ -91,28 +91,80 @@ Se entrena cada lunes del calendario, y el techo de potencial manda: un veterano
 en su techo no sube, y a partir de los treinta pierde piernas. Todo ello vale
 para los equipos de la IA igual que para el del usuario.
 
-### Resto del bloque
+### Fase 2 — el dinero (hecha)
 
-|     | Pieza               | Detalle                                                |     |
-| --- | ------------------- | ------------------------------------------------------ | --- |
-| ⬜  | Cuerpo técnico      | Ayudante, preparador físico, médico, analista, ojeador | M   |
-| ⬜  | Finanzas            | Presupuesto, taquilla, TV, patrocinio, nóminas         | L   |
-| ⬜  | Pabellón y afición  | Aforo, abonados, ambiente, ampliación                  | M   |
-| ⬜  | Consejo y objetivos | Expectativas, confianza, despido                       | M   |
-| ⬜  | Cantera             | Juveniles, promoción al primer equipo                  | M   |
+|     | Pieza               | Detalle                                                                   |     |
+| --- | ------------------- | ------------------------------------------------------------------------- | --- |
+| ✅  | Finanzas            | Libro de movimientos, abonos, TV, patrocinio, taquilla, nóminas y premios | L   |
+| ✅  | Pabellón y afición  | Aforo ampliable, abonados, ambiente y precio de la entrada                | M   |
+| ✅  | Consejo y objetivos | Objetivo por reputación, confianza y despido                              | M   |
+
+Cada apunte mueve la caja en la misma transacción, así que el libro y el saldo no
+pueden contar cosas distintas. El precio de la entrada es la primera decisión
+económica del juego: sube el ingreso por espectador, baja la asistencia y enfría
+el pabellón, y el ambiente decide cuántos abonados renuevan en verano. El consejo
+mira la tabla **y** la caja: estar en números rojos resta confianza aunque se gane.
+
+Sólo lleva libros el club del usuario: mientras no haya mercado, la contabilidad
+de los rivales no decide nada.
+
+### Fase 3 — la cantera y el banquillo (hecha)
+
+|     | Pieza          | Detalle                                                       |     |
+| --- | -------------- | ------------------------------------------------------------- | --- |
+| ✅  | Cuerpo técnico | Cinco puestos con efecto medible y mercado de técnicos libres | M   |
+| ✅  | Cantera        | Juveniles por instalaciones, hornada cada verano y promoción  | M   |
+
+Ningún puesto del cuerpo técnico es decorativo: el ayudante acelera el
+entrenamiento, el preparador ahorra desgaste y recupera antes, el médico acorta
+las bajas, el ojeador decide el margen de error con el que ves a un jugador que
+no es tuyo y el analista te enseña la pizarra del rival en la previa. Un puesto,
+un técnico: contratar a otro para el mismo sitio deja libre al que estaba.
+
+Un juvenil es un jugador más marcado como cantera: no se viste, no entra en la
+rotación y no aparece en el acta hasta que se le promociona, y para subirlo hace
+falta hueco en la plantilla (tope de catorce). Las instalaciones —ampliables
+pagando— deciden cuántos salen cada verano y con qué techo.
 
 ## Bloque 3 — Mercado
 
-|     | Pieza                   | Detalle                                                         |     |
-| --- | ----------------------- | --------------------------------------------------------------- | --- |
-| ⬜  | Fichajes y traspasos    | Ofertas, negociación de precio y ficha                          | L   |
-| ⬜  | Agentes libres          | Y rescisiones                                                   | M   |
-| ⬜  | Cesiones                |                                                                 | M   |
-| ⬜  | Contratos               | Vencimientos, renovaciones, cláusulas                           | M   |
-| ⬜  | Ojeo                    | Informes con incertidumbre real sobre lo que ves del jugador    | M   |
-| ⬜  | Mercado de la IA        | Que los rivales fichen entre ellos y la liga se mueva sola      | M   |
-| ⬜  | Cupos y límite salarial | Extranjeros y jugadores de formación (ACB) o _salary cap_ (NBA) | M   |
-| ⬜  | **Draft**               | Sólo si entra formato NBA                                       | M   |
+### Fase 1 — fichajes y contratos (hecha)
+
+|     | Pieza                | Detalle                                                                          |     |
+| --- | -------------------- | -------------------------------------------------------------------------------- | --- |
+| ✅  | Fichajes y traspasos | Ventanas de verano e invierno, oferta con traspaso y ficha, y respuesta razonada | L   |
+| ✅  | Agentes libres       | Bolsa de libres desde el primer día, y rescisiones que cuestan dinero            | M   |
+| ✅  | Contratos            | Vencimientos, renovaciones y salida libre de quien no renueva                    | M   |
+| ✅  | Ojeo                 | Lo que ves de un jugador de fuera lleva el margen de tu ojeador                  | M   |
+| ✅  | Mercado de la IA     | Vencen contratos en toda la liga y los clubes cortos cubren sus huecos           | M   |
+
+Un fichaje tiene que cuadrar tres cifras a la vez —lo que pide el club, lo que
+pide el jugador de ficha y lo que hay en caja— y el «no» llega siempre con su
+motivo, para poder volver a probar con otra cifra. La plantilla va de diez a
+catorce: ni se puede vaciar el vestuario ni acumular jugadores.
+
+### Fase 2 — cesiones, negociación y reglamento (hecha)
+
+|     | Pieza                 | Detalle                                                             |     |
+| --- | --------------------- | ------------------------------------------------------------------- | --- |
+| ✅  | Cesiones              | Ceder y pedir cedido hasta final de temporada, con vuelta en verano | M   |
+| ✅  | Negociación           | Contraoferta del club cuando la oferta se queda cerca               | M   |
+| ✅  | Cupos y tope salarial | Mínimo de jugadores de formación y tope de nómina del consejo       | M   |
+| ⛔  | **Draft**             | Necesita formato NBA, que es casi un juego aparte (Bloque 4)        | M   |
+
+Una cesión es un jugador cuyo club de hoy y cuyo dueño no coinciden: juega,
+entra en la rotación y sale en el acta con el que lo recibe, y vuelve el 30 de
+junio. Nadie cede a uno de sus seis mejores ni se queda por debajo del mínimo de
+plantilla.
+
+El reglamento va por delante del dinero: cuatro jugadores de formación —los del
+país del club— siempre inscritos, y una nómina que no puede pasar del tope que
+fija el consejo, medido contra lo que ingresa el club. No es un _salary cap_ de
+la NBA con excepciones y sanciones: es un consejo europeo que no firma lo que no
+se puede pagar.
+
+**El draft se queda fuera a propósito**: sólo tiene sentido con formato NBA, que
+está en el Bloque 4 y es casi un juego aparte.
 
 ## Bloque 4 — Más competiciones
 

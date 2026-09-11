@@ -12,7 +12,10 @@ const sections = [
   { name: 'squad', label: 'Plantilla' },
   { name: 'lineup', label: 'Alineación' },
   { name: 'training', label: 'Entrenamiento' },
+  { name: 'youth', label: 'Cantera' },
   { name: 'stats', label: 'Estadísticas' },
+  { name: 'market', label: 'Mercado' },
+  { name: 'finances', label: 'Finanzas' },
   { name: 'competition', label: 'Competición' }
 ];
 

@@ -9,7 +9,7 @@ import {
   openSaveDatabase,
   type SaveDatabase
 } from '../../../database/save-database';
-import { playersTable, type PlayerRow } from '../../../database/schema/save';
+import { boardTable, playersTable, type PlayerRow } from '../../../database/schema/save';
 import { loadDataset } from '../../saves/dataset';
 import { seedSave } from '../../saves/save-seeder';
 import { MatchService } from '../../match/match.service';
@@ -142,9 +142,12 @@ describe('desgaste de partido', () => {
     const jugado = side.boxScores.find((line) => line.secondsPlayed > 1200)!;
     const sinJugar = side.boxScores.find((line) => line.secondsPlayed === 0);
 
-    expect(player(jugado.playerId).condition).toBeLessThan(85);
+    // Cuánto baja depende del preparador físico que tenga el club, así que lo
+    // que se fija es la dirección: el que juega se cansa y el que no, no.
+    expect(player(jugado.playerId).condition).toBeLessThan(100);
     if (sinJugar) {
       expect(player(sinJugar.playerId).condition).toBe(100);
+      expect(player(jugado.playerId).condition).toBeLessThan(player(sinJugar.playerId).condition);
     }
   });
 
@@ -221,13 +224,21 @@ describe('lesiones', () => {
 
     expect(side.boxScores).toHaveLength(11);
     expect(side.boxScores.some((line) => line.playerId === fuera.id)).toBe(false);
-    expect(fitness.getPlan(MANAGED_TEAM).injuredCount).toBe(1);
+    // Sigue en la enfermería, y puede que no esté solo: el propio partido tiene
+    // su riesgo, así que aquí se comprueba el suyo y no un total exacto.
+    expect(player(fuera.id).injuryDaysLeft).toBeGreaterThan(0);
+    expect(fitness.getPlan(MANAGED_TEAM).injuredCount).toBeGreaterThanOrEqual(1);
   });
 
   it('una temporada deja lesiones por toda la liga', { timeout: 180_000 }, () => {
+    // El consejo, fuera: si la partida sale mal y hay despido, el reloj se para
+    // a mitad de temporada y este test dejaría de comprobar lo que dice.
+    season.getCurrent();
+    db.delete(boardTable).run();
+
     for (let guard = 0; guard < 600; guard += 1) {
       const result = season.advanceToNextGame();
-      if (result.status === 'seasonOver') {
+      if (result.status === 'seasonOver' || result.status === 'dismissed') {
         break;
       }
       if (result.status === 'userGame') {

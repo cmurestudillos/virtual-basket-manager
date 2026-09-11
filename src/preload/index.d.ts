@@ -9,6 +9,10 @@ import type { RotationApi } from '@shared/contracts/rotation.contract';
 import type { TacticsApi } from '@shared/contracts/tactics.contract';
 import type { StatsApi } from '@shared/contracts/stats.contract';
 import type { TrainingApi } from '@shared/contracts/training.contract';
+import type { ClubApi } from '@shared/contracts/club.contract';
+import type { StaffApi } from '@shared/contracts/staff.contract';
+import type { YouthApi } from '@shared/contracts/youth.contract';
+import type { MarketApi } from '@shared/contracts/market.contract';
 
 export interface VbmApi {
   settings: SettingsApi;
@@ -21,6 +25,10 @@ export interface VbmApi {
   tactics: TacticsApi;
   stats: StatsApi;
   training: TrainingApi;
+  club: ClubApi;
+  staff: StaffApi;
+  youth: YouthApi;
+  market: MarketApi;
   match: MatchApi;
 }
 

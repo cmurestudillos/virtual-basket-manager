@@ -15,6 +15,8 @@ export const useSeasonStore = defineStore('season', () => {
   const season = ref<SeasonSummary | null>(null);
   const nextGame = ref<FixtureEntry | null>(null);
   const busy = ref(false);
+  /** Si el consejo te ha destituido, el calendario ya no se mueve. */
+  const dismissed = ref(false);
 
   async function refresh(): Promise<void> {
     season.value = await window.api.season.getCurrent();
@@ -34,6 +36,8 @@ export const useSeasonStore = defineStore('season', () => {
       // releerlo: si no, el reloj de arriba se queda parado en el día anterior.
       await useGameStateStore().refresh();
       await refresh();
+
+      dismissed.value = result.status === 'dismissed';
 
       return result.status === 'userGame' ? result.gameId : null;
     } finally {
@@ -56,5 +60,5 @@ export const useSeasonStore = defineStore('season', () => {
     }
   }
 
-  return { season, nextGame, busy, refresh, advance, startNextSeason };
+  return { season, nextGame, busy, dismissed, refresh, advance, startNextSeason };
 });

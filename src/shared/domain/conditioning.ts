@@ -27,12 +27,19 @@ export function gameWear(minutesPlayed: number, stamina: number): number {
   return Math.max(0, minutesPlayed) * perMinute;
 }
 
+/**
+ * `wearFactor` es lo que aporta el preparador físico: 1 sin preparador, menos
+ * cuanto mejor sea. Llega como factor para que el dominio no tenga que saber
+ * que existe un cuerpo técnico.
+ */
 export function conditionAfterGame(
   condition: number,
   minutesPlayed: number,
-  stamina: number
+  stamina: number,
+  wearFactor = 1
 ): number {
-  return round(clamp(condition - gameWear(minutesPlayed, stamina), 0, MAX_CONDITION));
+  const wear = gameWear(minutesPlayed, stamina) * Math.max(0, wearFactor);
+  return round(clamp(condition - wear, 0, MAX_CONDITION));
 }
 
 /** Forma que recupera en un día de descanso. */
@@ -48,8 +55,14 @@ export function dailyRecovery(stamina: number): number {
  * seis veces de uno en uno. Esa equivalencia es la que permite que el reloj vaya
  * a saltos sin que el estado físico dependa de cómo lo hayas movido.
  */
-export function conditionAfterRest(condition: number, days: number, stamina: number): number {
-  const recovered = condition + Math.max(0, days) * dailyRecovery(stamina);
+export function conditionAfterRest(
+  condition: number,
+  days: number,
+  stamina: number,
+  recoveryFactor = 1
+): number {
+  const recovered =
+    condition + Math.max(0, days) * dailyRecovery(stamina) * Math.max(0, recoveryFactor);
   return round(clamp(recovered, 0, MAX_CONDITION));
 }
 

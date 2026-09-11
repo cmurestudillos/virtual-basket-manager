@@ -13,6 +13,7 @@ import {
   gameStateTable,
   playersTable,
   rotationSlotsTable,
+  staffTable,
   teamsTable,
   teamTacticsTable
 } from '../../../database/schema/save';
@@ -53,9 +54,23 @@ afterAll(() => {
 
 describe('seedSave', () => {
   it('deja el mundo completo dentro del fichero de la partida', () => {
+    const players = db.select().from(playersTable).all();
+
     expect(db.select().from(competitionsTable).all()).toHaveLength(2);
     expect(db.select().from(teamsTable).all()).toHaveLength(18);
-    expect(db.select().from(playersTable).all()).toHaveLength(216);
+    // Doce fichas por equipo, más la cantera de cada club, más los agentes
+    // libres con los que arranca el mercado.
+    expect(players.filter((row) => !row.isYouth && row.teamId !== null)).toHaveLength(216);
+    expect(players.filter((row) => row.isYouth).length).toBeGreaterThanOrEqual(18 * 3);
+    expect(players.filter((row) => row.teamId === null).length).toBeGreaterThan(10);
+  });
+
+  it('siembra cuerpo técnico a todos y un mercado de técnicos libres', () => {
+    const staff = db.select().from(staffTable).all();
+
+    // Cinco puestos por club, y los libres del mercado por encima.
+    expect(staff.filter((row) => row.teamId !== null)).toHaveLength(18 * 5);
+    expect(staff.filter((row) => row.teamId === null).length).toBeGreaterThan(5);
   });
 
   it('da pizarra por defecto a todos los equipos, no sólo al del usuario', () => {

@@ -90,6 +90,86 @@ Un jugador puede ocupar un hueco que no es el suyo, con penalización por
 distancia en la escala 1-5: de escolta a alero casi no se nota, de base a pívot
 sí. La pantalla lo enseña como porcentaje de encaje antes de jugar, no después.
 
+## El mercado
+
+Dos ventanas: verano (julio a septiembre) e invierno (enero). Fuera de ellas no
+se ficha, que es lo que obliga a llegar hecho a la temporada en vez de arreglar
+la plantilla en marzo.
+
+Un fichaje son **tres cifras que tienen que cuadrar a la vez**: lo que pide el
+club que lo tiene, lo que pide el jugador de ficha y lo que hay en caja. El
+precio de traspaso sale del valor del jugador corregido por contrato y edad —a
+quien le queda un año casi no se le puede pedir nada, porque en verano se va
+gratis— y la respuesta a una oferta llega con su motivo, no con un no a secas.
+
+La plantilla va de **diez a catorce**: por debajo no se rescinde ni se vende, y
+por encima no se ficha. Rescindir cuesta la mitad de lo que quedaba por pagar.
+Lo que ves de un jugador que no es tuyo pasa por el ojeador, así que fichar
+siempre es apostar.
+
+Cuando la oferta se queda cerca, el club **contraoferta** en vez de decir que no:
+pone su precio y tú decides. Por debajo de un 60 % de lo que pide, ni se sienta.
+
+Una **cesión** es un jugador cuyo club de hoy y cuyo dueño no coinciden: juega,
+entra en la rotación y sale en el acta con el que lo recibe, y vuelve a casa el
+30 de junio. Nadie cede a uno de sus seis mejores.
+
+El **reglamento** va por delante del dinero: cuatro jugadores de formación —los
+del país del club— siempre inscritos, y una nómina que no puede pasar del tope
+que fija el consejo, medido contra lo que ingresa el club en una temporada. No es
+un _salary cap_ de la NBA con excepciones y sanciones; es un consejo europeo que
+no firma lo que no se puede pagar.
+
+Entre temporadas el mercado se mueve solo: vuelven los cedidos, vencen los
+contratos de toda la liga —la IA renueva a la mayoría y el resto queda libre— y
+los clubes cortos de plantilla salen a buscar entre los libres. Al usuario no se
+le renueva nadie solo: lo que no renueve él, se va.
+
+## El cuerpo técnico y la cantera
+
+Cinco puestos, y ninguno decorativo: **ayudante** (el entrenamiento progresa más
+rápido), **preparador físico** (menos desgaste y mejor recuperación), **médico**
+(bajas más cortas y algo menos frecuentes), **ojeador** (el margen de error con
+el que ves a un jugador que no es tuyo, de ±14 sin ojeador a ±2 con una
+eminencia) y **analista** (te enseña la pizarra del rival en la previa). Si un
+puesto no cambiara nada medible, sobraría.
+
+La ficha crece al cuadrado con el nivel, así que hay que elegir dónde gastar. Un
+puesto admite un técnico: contratar a otro para el mismo sitio deja libre al que
+estaba, y el mercado de técnicos es la misma tabla sin equipo, igual que un
+agente libre es un jugador sin equipo.
+
+Un **juvenil** es un jugador más, marcado como cantera: no se viste, no entra en
+la rotación y no sale en el acta. Promocionar es quitarle la marca, y hace falta
+hueco en la plantilla. Las instalaciones (1-5) deciden cuántos salen cada verano
+y con qué techo; a los diecinueve, el que no sube se va libre.
+
+## El dinero
+
+Todo va en **céntimos enteros**. Cada movimiento se apunta en el libro del club y
+mueve la caja en la misma transacción: no hay dos cifras que puedan
+desincronizarse.
+
+Ingresos: abonos, televisión y patrocinio se cobran de una vez en pretemporada
+—los dos últimos escalan con la reputación elevada a 1,5, que es lo que explica
+que un grande pueda pagar cuatro veces más en fichas—, la taquilla entra partido
+a partido y los premios al cerrar el curso. Gastos: nóminas y mantenimiento del
+pabellón, el primero de cada mes. Con el precio por defecto y sin tocar nada,
+cualquier club termina la temporada ligeramente en positivo; lo que decide si
+gana o pierde dinero son las decisiones.
+
+El **precio de la entrada** es la primera de ellas. Sube el ingreso por
+espectador, baja la asistencia y enfría el ambiente; bajarlo llena el pabellón.
+Los abonados son el suelo de la asistencia —su asiento está pagado— y se renuevan
+en verano según el ambiente con el que acabó la temporada. El pabellón se puede
+ampliar pagando al contado, hasta 25.000 espectadores.
+
+El **consejo** pone un objetivo según la reputación del club: al grande le piden
+el título y al pequeño mantenerse. La confianza se mueve con cada partido —perder
+contra quien debías ganar pesa el triple— y con un repaso el primero de mes que
+mira la clasificación y la caja. A cero, despido: la partida se queda como está y
+el reloj deja de avanzar.
+
 ## Estado físico
 
 La frescura dentro del partido la lleva el motor; entre partidos manda la
