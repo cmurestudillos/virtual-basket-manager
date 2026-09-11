@@ -43,6 +43,16 @@ export const router = createRouter({
           component: () => import('@renderer/features/players/pages/PlayerPage.vue')
         },
         {
+          path: 'lineup',
+          name: 'lineup',
+          component: () => import('@renderer/features/lineup/pages/LineupPage.vue')
+        },
+        {
+          path: 'stats',
+          name: 'stats',
+          component: () => import('@renderer/features/stats/pages/StatsPage.vue')
+        },
+        {
           path: 'competition',
           name: 'competition',
           component: () => import('@renderer/features/competition/pages/CompetitionPage.vue')

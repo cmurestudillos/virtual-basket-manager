@@ -5,6 +5,9 @@ import type { PlayersApi } from '@shared/contracts/players.contract';
 import type { GameStateApi } from '@shared/contracts/game-state.contract';
 import type { SeasonApi } from '@shared/contracts/season.contract';
 import type { MatchApi } from '@shared/contracts/match.contract';
+import type { RotationApi } from '@shared/contracts/rotation.contract';
+import type { TacticsApi } from '@shared/contracts/tactics.contract';
+import type { StatsApi } from '@shared/contracts/stats.contract';
 
 export interface VbmApi {
   settings: SettingsApi;
@@ -13,6 +16,9 @@ export interface VbmApi {
   players: PlayersApi;
   gameState: GameStateApi;
   season: SeasonApi;
+  rotation: RotationApi;
+  tactics: TacticsApi;
+  stats: StatsApi;
   match: MatchApi;
 }
 

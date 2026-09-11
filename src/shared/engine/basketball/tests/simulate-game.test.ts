@@ -136,6 +136,56 @@ describe('simulateGame', () => {
     expect(Math.max(...banquillo)).toBeLessThan(Math.min(...titulares));
   });
 
+  it('los minutos objetivo del entrenador mandan sobre el reparto por defecto', () => {
+    const home = buildTestTeam('local', 60);
+    // El duodécimo pide más minutos que nadie y el titular casi ninguno: es lo
+    // que el usuario acaba de poner en la pantalla de rotación.
+    const undecimo = home.players[11]?.id as string;
+    const titular = home.players[0]?.id as string;
+    const result = simulateGame({
+      gameId: 'minutos-objetivo',
+      home: {
+        ...home,
+        minutesTargets: Object.fromEntries(
+          home.players.map((player) => [
+            player.id,
+            player.id === undecimo ? 38 : player.id === titular ? 2 : 16
+          ])
+        )
+      },
+      away: buildTestTeam('visitante', 60),
+      ruleset: FIBA_RULESET
+    });
+
+    const minutes = new Map(
+      result.home.boxScores.map((line) => [line.playerId, line.secondsPlayed / 60])
+    );
+
+    expect(minutes.get(undecimo) as number).toBeGreaterThan(minutes.get(titular) as number);
+    expect(minutes.get(undecimo) as number).toBeGreaterThan(25);
+  });
+
+  it('unos minutos objetivo a cero no dejan al equipo sin rotación', () => {
+    const home = buildTestTeam('local', 60);
+    const conCeros = simulateGame({
+      gameId: 'minutos-a-cero',
+      home: {
+        ...home,
+        minutesTargets: Object.fromEntries(home.players.map((player) => [player.id, 0]))
+      },
+      away: buildTestTeam('visitante', 60),
+      ruleset: FIBA_RULESET
+    });
+    const porDefecto = simulateGame({
+      gameId: 'minutos-a-cero',
+      home,
+      away: buildTestTeam('visitante', 60),
+      ruleset: FIBA_RULESET
+    });
+
+    expect(conCeros.home.boxScores).toEqual(porDefecto.home.boxScores);
+  });
+
   it('respeta el límite de faltas personales del reglamento', () => {
     for (let index = 0; index < 20; index += 1) {
       const result = play(`faltas-${index}`);

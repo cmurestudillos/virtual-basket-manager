@@ -10,6 +10,8 @@ const router = useRouter();
 const sections = [
   { name: 'dashboard', label: 'Club' },
   { name: 'squad', label: 'Plantilla' },
+  { name: 'lineup', label: 'Alineación' },
+  { name: 'stats', label: 'Estadísticas' },
   { name: 'competition', label: 'Competición' }
 ];
 

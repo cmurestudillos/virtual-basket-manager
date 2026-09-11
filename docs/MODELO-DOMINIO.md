@@ -73,6 +73,23 @@ cosmético.
 Más tres deslizadores 1-10: ritmo, intensidad defensiva e insistencia en el
 rebote ofensivo. Y un jugador designado como referencia ofensiva.
 
+## La rotación
+
+La plantilla entera está en la rotación: cinco titulares, cada uno en un hueco
+de pista del 1 al 5, y el resto por orden de banquillo. Cada jugador lleva sus
+**minutos objetivo**, y la suma de referencia es 200 — cinco huecos durante
+cuarenta minutos.
+
+El motor no exige que cuadren. Pasa los minutos a cuota de partido y los
+normaliza a los cinco huecos, así que una rotación de 150 minutos se juega en la
+proporción que pidió el entrenador en vez de dejar al equipo sentado un cuarto
+entero. Cuadrarla sigue siendo cosa del usuario: es lo que decide si el noveno
+juega diez minutos o dos.
+
+Un jugador puede ocupar un hueco que no es el suyo, con penalización por
+distancia en la escala 1-5: de escolta a alero casi no se nota, de base a pívot
+sí. La pantalla lo enseña como porcentaje de encaje antes de jugar, no después.
+
 ## El acta
 
 Se guarda **en crudo**: minutos, T2 c/i, T3 c/i, TL c/i, rebotes ofensivos y
@@ -86,6 +103,13 @@ De ahí salen, calculados: puntos, rebotes totales, porcentajes y la
 (puntos + rebotes + asistencias + robos + tapones + faltas recibidas)
 − (tiros fallados + pérdidas + faltas cometidas)
 ```
+
+De la suma de las actas sale la **estadística de temporada**: medias por
+partido, porcentajes y líderes de la liga. Tampoco se guarda nada de eso —
+se calcula al leer, sobre las actas en crudo. Para la tabla de líderes hay un
+mínimo de partidos disputados, la mitad de los que lleva la liga, como en la
+ACB: sin él, el que juega un partido, mete veinte puntos y se lesiona lidera la
+anotación hasta junio.
 
 ## El motor de partido (v0)
 

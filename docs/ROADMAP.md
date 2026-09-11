@@ -45,13 +45,18 @@ playoffs formato ACB (8 equipos, cuartos al mejor de 3 y semis/final al mejor de
 | ✅  | Clasificación           | Con el desempate de baloncesto: _average_ particular, no diferencia general | S   |
 | ✅  | Resultados y calendario | Jornada a jornada, con el acta de cada partido enlazada                     | M   |
 
-### Fase 2 — que las decisiones sean tuyas
+### Fase 2 — que las decisiones sean tuyas (hecha)
 
-|     | Pieza                     | Detalle                                                    |     |
-| --- | ------------------------- | ---------------------------------------------------------- | --- |
-| ⬜  | Alineación y rotación     | Cinco inicial y minutos objetivo, editables por el usuario | M   |
-| ⬜  | Pizarra táctica           | Los seis sistemas de cada lado y los tres deslizadores     | S   |
-| ⬜  | Estadísticas de temporada | Medias por jugador y líderes de la liga                    | M   |
+|     | Pieza                     | Detalle                                                                        |     |
+| --- | ------------------------- | ------------------------------------------------------------------------------ | --- |
+| ✅  | Alineación y rotación     | Cinco inicial por huecos y minutos objetivo, con encaje a la vista             | M   |
+| ✅  | Pizarra táctica           | Los seis sistemas de cada lado, los tres deslizadores y la referencia ofensiva | S   |
+| ✅  | Estadísticas de temporada | Medias por jugador y líderes de la liga en ocho categorías                     | M   |
+
+Los minutos objetivo llegan al motor: lo que se reparte en la pantalla es lo que
+se juega. Si no suman 200 el motor reparte en proporción, así que una rotación a
+medio cuadrar sigue siendo jugable. La pizarra y la rotación del usuario son las
+únicas editables — las de la IA se leen, que es lo que hará falta para el ojeo.
 
 ### Fase 3 — que haya campeón
 

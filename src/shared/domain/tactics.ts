@@ -34,6 +34,33 @@ export type DefensiveSystem =
   /** Mixta con un hombre al hombre sobre la estrella rival. */
   | 'boxAndOne';
 
+/**
+ * Los sistemas en el orden en el que se enseñan en la pizarra. Es la lista que
+ * recorre la interfaz y la que valida el contrato: así no hay dos sitios donde
+ * apuntar qué sistemas existen.
+ */
+export const OFFENSIVE_SYSTEMS = [
+  'inside',
+  'outside',
+  'fastbreak',
+  'pickAndRoll',
+  'isolation',
+  'motion'
+] as const satisfies readonly OffensiveSystem[];
+
+export const DEFENSIVE_SYSTEMS = [
+  'manToMan',
+  'zone23',
+  'zone32',
+  'zone131',
+  'fullCourtPress',
+  'boxAndOne'
+] as const satisfies readonly DefensiveSystem[];
+
+/** Deslizadores de la pizarra: todos van de 1 a 10. */
+export const SLIDER_MIN = 1;
+export const SLIDER_MAX = 10;
+
 export const OFFENSIVE_SYSTEM_LABELS: Record<OffensiveSystem, string> = {
   inside: 'Juego interior',
   outside: 'Juego exterior',
