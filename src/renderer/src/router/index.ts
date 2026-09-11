@@ -19,6 +19,15 @@ export const router = createRouter({
       component: () => import('@renderer/features/saves/pages/SavesListPage.vue')
     },
     {
+      // La guía de estilo no se enlaza desde el juego: no le sirve de nada al
+      // jugador. Existe como ruta para poder abrirla con `#/estilo` y para que
+      // el arnés le haga una captura en cada pasada, que es lo que evita que
+      // el kit se pudra sin que nadie se entere.
+      path: '/estilo',
+      name: 'style-guide',
+      component: () => import('@renderer/features/app-shell/pages/StyleGuidePage.vue')
+    },
+    {
       path: '/new-game',
       name: 'new-game',
       component: () => import('@renderer/features/saves/pages/NewGamePage.vue')

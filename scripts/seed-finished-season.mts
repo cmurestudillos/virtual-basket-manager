@@ -70,6 +70,11 @@ for (let guard = 0; guard < 900; guard += 1) {
   }
 }
 
+// Y al cerrar, otra vez: el veredicto de junio puede dejar la confianza a cero
+// aunque durante el año no llegara a saltar. Esto es una partida de prueba, no
+// un test del consejo, y tiene que poder abrirse y seguir jugándose.
+db.update(boardTable).set({ confidence: 100, dismissed: false }).run();
+
 const current = season.getCurrent();
 if (current.stage !== 'finished') {
   throw new Error(`la temporada quedó en fase ${current.stage}`);

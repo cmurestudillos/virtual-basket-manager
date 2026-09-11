@@ -2,6 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import type { StaffMember, TeamStaff } from '@shared/contracts/staff.contract';
 import { formatMoney } from '@renderer/shared/format';
+import { AppButton, AppSectionTitle } from '@renderer/shared/ui';
 
 const props = defineProps<{ teamId: string }>();
 
@@ -46,7 +47,7 @@ function fire(member: StaffMember): void {
   <div v-if="staff" class="flex flex-col gap-5">
     <section class="flex flex-col gap-2">
       <div class="flex items-baseline justify-between">
-        <h2 class="text-sm uppercase tracking-wide text-court-300">En nómina</h2>
+        <AppSectionTitle>En nómina</AppSectionTitle>
         <span class="text-sm text-court-300">
           {{ formatMoney(staff.monthlyWagesCents) }}/mes ·
           {{ formatMoney(staff.seasonWagesCents) }} al año
@@ -73,14 +74,7 @@ function fire(member: StaffMember): void {
               <td class="text-court-300">{{ member.effect }}</td>
               <td class="numeric">{{ formatMoney(member.wageCents) }}</td>
               <td>
-                <button
-                  type="button"
-                  class="rounded border border-court-600 px-3 py-1 text-xs hover:bg-court-800 disabled:opacity-40"
-                  :disabled="busy"
-                  @click="fire(member)"
-                >
-                  Despedir
-                </button>
+                <AppButton size="sm" :disabled="busy" @click="fire(member)"> Despedir </AppButton>
               </td>
             </tr>
             <tr v-for="vacancy in staff.vacancies" :key="vacancy.role">
@@ -95,7 +89,7 @@ function fire(member: StaffMember): void {
 
     <section class="flex flex-col gap-2">
       <div class="flex items-baseline justify-between">
-        <h2 class="text-sm uppercase tracking-wide text-court-300">Técnicos libres</h2>
+        <AppSectionTitle>Técnicos libres</AppSectionTitle>
         <select
           v-model="roleFilter"
           class="rounded border border-court-600 bg-court-900 px-2 py-1 text-sm"
@@ -130,14 +124,14 @@ function fire(member: StaffMember): void {
               <td class="text-court-300">{{ member.effect }}</td>
               <td class="numeric">{{ formatMoney(member.wageCents) }}</td>
               <td>
-                <button
-                  type="button"
-                  class="rounded bg-ball-600 px-3 py-1 text-xs font-semibold disabled:opacity-40"
+                <AppButton
+                  variant="primary"
+                  size="sm"
                   :disabled="busy || !staff.isManaged"
                   @click="hire(member)"
                 >
                   Contratar
-                </button>
+                </AppButton>
               </td>
             </tr>
           </tbody>
@@ -148,6 +142,6 @@ function fire(member: StaffMember): void {
       </span>
     </section>
 
-    <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
+    <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>
   </div>
 </template>

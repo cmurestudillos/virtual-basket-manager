@@ -4,6 +4,7 @@ import { useRouter } from 'vue-router';
 import type { SaveSummary } from '@shared/contracts/saves.contract';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatGameDate } from '@renderer/shared/format';
+import { AppButton, AppPageHeader } from '@renderer/shared/ui';
 
 const router = useRouter();
 const store = useGameStateStore();
@@ -41,7 +42,7 @@ async function remove(id: string): Promise<void> {
 <template>
   <div class="mx-auto flex h-screen max-w-4xl flex-col gap-6 p-8">
     <header class="flex items-center justify-between">
-      <h1 class="text-2xl font-semibold">Cargar partida</h1>
+      <AppPageHeader title="Cargar partida" />
       <RouterLink :to="{ name: 'main-menu' }" class="text-sm text-court-300 hover:text-court-100">
         Volver
       </RouterLink>
@@ -66,22 +67,8 @@ async function remove(id: string): Promise<void> {
           </p>
         </div>
         <div class="flex gap-2">
-          <button
-            type="button"
-            :disabled="busy"
-            class="rounded bg-ball-600 px-4 py-2 text-sm font-semibold hover:bg-ball-500 disabled:bg-court-700"
-            @click="load(save.id)"
-          >
-            Cargar
-          </button>
-          <button
-            type="button"
-            :disabled="busy"
-            class="rounded border border-court-600 px-4 py-2 text-sm hover:bg-court-800 disabled:opacity-50"
-            @click="remove(save.id)"
-          >
-            Borrar
-          </button>
+          <AppButton variant="primary" :disabled="busy" @click="load(save.id)"> Cargar </AppButton>
+          <AppButton :disabled="busy" @click="remove(save.id)"> Borrar </AppButton>
         </div>
       </li>
     </ul>

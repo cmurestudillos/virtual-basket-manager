@@ -12,6 +12,7 @@ import {
   type DefensiveSystem,
   type OffensiveSystem
 } from '@shared/domain/tactics';
+import { AppButton, AppScale } from '@renderer/shared/ui';
 
 const props = defineProps<{ teamId: string }>();
 
@@ -27,16 +28,21 @@ const sliders = [
   {
     key: 'pace' as const,
     label: 'Ritmo',
+    // Los extremos con nombre: lo que se decide no es «siete», es «más rápido
+    // de lo normal». El número solo no dice nada.
+    stops: ['Pausado', 'Normal', 'Corriendo'],
     hint: 'Más posesiones por partido y más desgaste'
   },
   {
     key: 'defensiveIntensity' as const,
     label: 'Intensidad defensiva',
+    stops: ['Blanda', 'Normal', 'Agresiva'],
     hint: 'Más robos, también más faltas'
   },
   {
     key: 'offensiveReboundEffort' as const,
     label: 'Rebote ofensivo',
+    stops: ['Replegando', 'Normal', 'Al ataque'],
     hint: 'Segundas opciones a cambio de encajar contraataques'
   }
 ];
@@ -137,22 +143,17 @@ async function save(): Promise<void> {
     </section>
 
     <section class="flex flex-col gap-4">
-      <div v-for="slider in sliders" :key="slider.key" class="flex flex-col gap-1">
-        <div class="flex items-baseline justify-between">
-          <span class="text-sm">{{ slider.label }}</span>
-          <span class="text-sm font-semibold text-ball-400">{{ board[slider.key] }}</span>
-        </div>
-        <input
-          type="range"
-          :min="SLIDER_MIN"
-          :max="SLIDER_MAX"
-          step="1"
-          class="accent-ball-500"
-          :value="board[slider.key]"
-          @input="setSlider(slider.key, Number(($event.target as HTMLInputElement).value))"
-        />
-        <span class="text-xs text-court-600">{{ slider.hint }}</span>
-      </div>
+      <AppScale
+        v-for="slider in sliders"
+        :key="slider.key"
+        :model-value="board[slider.key]"
+        :min="SLIDER_MIN"
+        :max="SLIDER_MAX"
+        :label="slider.label"
+        :stops="slider.stops"
+        :hint="slider.hint"
+        @update:model-value="setSlider(slider.key, $event)"
+      />
     </section>
 
     <label class="flex max-w-sm flex-col gap-1">
@@ -174,16 +175,9 @@ async function save(): Promise<void> {
     </label>
 
     <footer class="flex items-center gap-4">
-      <button
-        type="button"
-        class="rounded bg-ball-600 px-4 py-1 text-sm font-semibold disabled:opacity-40"
-        :disabled="busy || !dirty"
-        @click="save"
-      >
-        Guardar
-      </button>
-      <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
-      <p v-else-if="saved" class="text-sm text-emerald-400">Pizarra guardada.</p>
+      <AppButton variant="primary" :disabled="busy || !dirty" @click="save"> Guardar </AppButton>
+      <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>
+      <p v-else-if="saved" class="text-sm text-good-400">Pizarra guardada.</p>
     </footer>
   </div>
 </template>

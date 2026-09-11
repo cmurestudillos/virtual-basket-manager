@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { CatalogLeague, CatalogTeam } from '@shared/contracts/teams.contract';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
+import { AppButton, AppPageHeader } from '@renderer/shared/ui';
 
 const router = useRouter();
 const store = useGameStateStore();
@@ -26,6 +27,10 @@ const canCreate = computed(
 onMounted(async () => {
   teams.value = await window.api.teams.listCatalog();
   leagues.value = await window.api.teams.listLeagues();
+  // Se abre en la liga de casa y no en el mundo entero: el catálogo va por
+  // reputación, así que sin filtro lo encabezan los clubes americanos y el
+  // primer contacto con el juego sería una lista de trescientos equipos.
+  league.value = leagues.value.find((row) => row.isHome)?.competitionId ?? null;
 });
 
 /**
@@ -88,7 +93,7 @@ async function create(): Promise<void> {
 <template>
   <div class="mx-auto flex h-screen max-w-5xl flex-col gap-6 p-8">
     <header class="flex items-center justify-between">
-      <h1 class="text-2xl font-semibold">Nueva partida</h1>
+      <AppPageHeader title="Nueva partida" />
       <RouterLink :to="{ name: 'main-menu' }" class="text-sm text-court-300 hover:text-court-100">
         Volver
       </RouterLink>
@@ -100,30 +105,32 @@ async function create(): Promise<void> {
           Ligas
         </h2>
         <div class="flex-1 overflow-auto p-2 text-sm">
-          <button
-            type="button"
-            class="w-full rounded px-2 py-1 text-left"
-            :class="league === null ? 'bg-court-800 text-ball-400' : 'hover:bg-court-800'"
+          <AppButton
+            variant="ghost"
+            size="sm"
+            block
+            class="text-left"
+            :class="league === null ? 'bg-court-800 text-ball-400' : ''"
             @click="league = null"
           >
             Todo el mundo
-          </button>
+          </AppButton>
 
           <div v-for="[country, rows] in leaguesByCountry" :key="country" class="mt-3">
             <p class="px-2 text-xs uppercase tracking-wide text-court-600">{{ country }}</p>
-            <button
+            <AppButton
               v-for="row in rows"
               :key="row.competitionId"
-              type="button"
-              class="w-full rounded px-2 py-1 text-left"
-              :class="
-                league === row.competitionId ? 'bg-court-800 text-ball-400' : 'hover:bg-court-800'
-              "
+              variant="ghost"
+              size="sm"
+              block
+              class="text-left"
+              :class="league === row.competitionId ? 'bg-court-800 text-ball-400' : ''"
               @click="league = row.competitionId"
             >
               {{ row.name }}
               <span class="text-xs text-court-600">· {{ row.teams }}</span>
-            </button>
+            </AppButton>
           </div>
         </div>
       </nav>
@@ -193,14 +200,9 @@ async function create(): Promise<void> {
 
         <p v-if="error" class="text-sm text-ball-400">{{ error }}</p>
 
-        <button
-          type="button"
-          :disabled="!canCreate"
-          class="mt-auto rounded bg-ball-600 px-4 py-3 font-semibold hover:bg-ball-500 disabled:cursor-not-allowed disabled:bg-court-700 disabled:text-court-300"
-          @click="create"
-        >
+        <AppButton variant="primary" class="mt-auto" :disabled="!canCreate" @click="create">
           {{ creating ? 'Creando…' : 'Empezar' }}
-        </button>
+        </AppButton>
       </aside>
     </div>
   </div>

@@ -10,6 +10,7 @@ import {
 } from '@shared/domain/training';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import StaffPanel from '@renderer/features/staff/components/StaffPanel.vue';
+import { AppButton, AppTabs, AppPageHeader, AppSectionTitle } from '@renderer/shared/ui';
 
 const store = useGameStateStore();
 
@@ -101,30 +102,18 @@ function conditionColor(condition: number): string {
 
 <template>
   <div v-if="plan" class="flex flex-col gap-5">
-    <div class="flex items-baseline gap-4">
-      <h1 class="text-2xl font-semibold">Entrenamiento</h1>
+    <AppPageHeader title="Entrenamiento">
       <span class="text-sm text-court-300"> Se entrena cada lunes del calendario del juego </span>
-    </div>
+    </AppPageHeader>
 
-    <nav class="flex gap-1 border-b border-court-700">
-      <button
-        v-for="option in [
-          { id: 'plan' as Tab, label: 'Plan' },
-          { id: 'staff' as Tab, label: 'Cuerpo técnico' }
-        ]"
-        :key="option.id"
-        type="button"
-        class="border-b-2 px-4 py-2 text-sm"
-        :class="
-          tab === option.id
-            ? 'border-ball-500 text-ball-400'
-            : 'border-transparent text-court-300 hover:text-court-100'
-        "
-        @click="tab = option.id"
-      >
-        {{ option.label }}
-      </button>
-    </nav>
+    <AppTabs
+      :model-value="tab"
+      :options="[
+        { id: 'plan' as Tab, label: 'Plan' },
+        { id: 'staff' as Tab, label: 'Cuerpo técnico' }
+      ]"
+      @update:model-value="tab = $event as Tab"
+    />
 
     <StaffPanel v-if="tab === 'staff'" :team-id="plan.teamId" />
 
@@ -134,11 +123,11 @@ function conditionColor(condition: number): string {
         v-if="injured.length > 0"
         class="rounded border border-red-900 bg-court-900 px-4 py-3 text-sm"
       >
-        <h2 class="text-xs uppercase tracking-wide text-court-300">Parte médico</h2>
+        <AppSectionTitle size="xs">Parte médico</AppSectionTitle>
         <ul class="mt-2 flex flex-wrap gap-x-6 gap-y-1">
           <li v-for="player in injured" :key="player.playerId">
             <span class="text-court-100">{{ player.playerName }}</span>
-            <span class="ml-2 text-red-400">{{ player.injuryName }}</span>
+            <span class="ml-2 text-bad-400">{{ player.injuryName }}</span>
             <span class="ml-2 text-court-300">· {{ player.injuryLabel }}</span>
           </li>
         </ul>
@@ -221,7 +210,7 @@ function conditionColor(condition: number): string {
                   <span class="w-16 text-xs text-court-300">{{ player.conditionLabel }}</span>
                 </span>
               </td>
-              <td :class="player.available ? 'text-court-600' : 'text-red-400'">
+              <td :class="player.available ? 'text-court-600' : 'text-bad-400'">
                 {{
                   player.available ? 'Disponible' : `${player.injuryName} · ${player.injuryLabel}`
                 }}
@@ -247,16 +236,11 @@ function conditionColor(condition: number): string {
         <span class="text-sm text-court-300">
           {{ plan.players.length - injured.length }} disponibles de {{ plan.players.length }}
         </span>
-        <button
-          type="button"
-          class="ml-auto rounded bg-ball-600 px-4 py-1 text-sm font-semibold disabled:opacity-40"
-          :disabled="busy || !dirty"
-          @click="save"
-        >
+        <AppButton variant="primary" class="ml-auto" :disabled="busy || !dirty" @click="save">
           Guardar
-        </button>
-        <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
-        <p v-else-if="saved" class="text-sm text-emerald-400">Plan guardado.</p>
+        </AppButton>
+        <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>
+        <p v-else-if="saved" class="text-sm text-good-400">Plan guardado.</p>
       </footer>
     </template>
   </div>

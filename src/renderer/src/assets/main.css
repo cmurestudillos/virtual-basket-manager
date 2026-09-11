@@ -22,6 +22,16 @@
   --color-ball-400: #ff9440;
 
   --color-line-500: #eab308;
+
+  /* Los tres tonos con los que el juego dice si algo va bien o va mal. Se
+     declaran aquí y no se usa `emerald`/`red` sueltos para que «verde» tenga
+     un único significado y un único sitio donde cambiarlo. */
+  --color-good-500: #10b981;
+  --color-good-400: #34d399;
+  --color-warn-500: #f59e0b;
+  --color-warn-400: #fbbf24;
+  --color-bad-500: #ef4444;
+  --color-bad-400: #f87171;
 }
 
 html,
@@ -75,5 +85,11 @@ body {
 
 .numeric {
   text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+/* Un dato numérico grande —marcador, saldo, media— siempre con cifras de ancho
+   fijo: sin esto, un marcador que pasa de 99 a 100 da un salto en pantalla. */
+.figure {
   font-variant-numeric: tabular-nums;
 }

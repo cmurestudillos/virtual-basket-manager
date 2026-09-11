@@ -3,6 +3,7 @@ import { onMounted, ref, watch } from 'vue';
 import type { LeaderBoard, PlayerSeasonStats } from '@shared/contracts/stats.contract';
 import { LEADER_CATEGORY_LABELS, type LeaderCategory } from '@shared/domain/season-stats';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
+import { AppTabs, AppPageHeader } from '@renderer/shared/ui';
 
 const store = useGameStateStore();
 
@@ -38,27 +39,16 @@ function average(value: number): string {
 
 <template>
   <div class="flex flex-col gap-4">
-    <h1 class="text-2xl font-semibold">Estadísticas</h1>
+    <AppPageHeader title="Estadísticas" />
 
-    <nav class="flex gap-1 border-b border-court-700">
-      <button
-        v-for="option in [
-          { id: 'team' as Tab, label: 'Mi equipo' },
-          { id: 'leaders' as Tab, label: 'Líderes de la liga' }
-        ]"
-        :key="option.id"
-        type="button"
-        class="border-b-2 px-4 py-2 text-sm"
-        :class="
-          tab === option.id
-            ? 'border-ball-500 text-ball-400'
-            : 'border-transparent text-court-300 hover:text-court-100'
-        "
-        @click="tab = option.id"
-      >
-        {{ option.label }}
-      </button>
-    </nav>
+    <AppTabs
+      :model-value="tab"
+      :options="[
+        { id: 'team' as Tab, label: 'Mi equipo' },
+        { id: 'leaders' as Tab, label: 'Líderes de la liga' }
+      ]"
+      @update:model-value="tab = $event as Tab"
+    />
 
     <div v-if="tab === 'team'" class="flex flex-col gap-2">
       <p v-if="team.length === 0" class="text-sm text-court-300">
@@ -117,22 +107,12 @@ function average(value: number): string {
     </div>
 
     <div v-else class="flex flex-col gap-3">
-      <div class="flex flex-wrap gap-1">
-        <button
-          v-for="[id, label] in categories"
-          :key="id"
-          type="button"
-          class="rounded border px-3 py-1 text-sm"
-          :class="
-            category === id
-              ? 'border-ball-500 text-ball-400'
-              : 'border-court-700 text-court-300 hover:bg-court-800'
-          "
-          @click="category = id"
-        >
-          {{ label }}
-        </button>
-      </div>
+      <AppTabs
+        :model-value="category"
+        :options="categories.map(([id, label]) => ({ id, label }))"
+        variant="pills"
+        @update:model-value="category = $event as LeaderCategory"
+      />
 
       <p v-if="board" class="text-xs text-court-600">
         Por partido, con un mínimo de {{ board.minimumGames }}

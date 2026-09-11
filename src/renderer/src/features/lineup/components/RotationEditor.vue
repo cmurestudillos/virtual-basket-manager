@@ -4,6 +4,7 @@ import type { RotationSlotView, TeamRotation } from '@shared/contracts/rotation.
 import { POSITION_LABELS, outOfPositionPenalty } from '@shared/domain/positions';
 import { LINEUP_SIZE, MAX_TARGET_MINUTES } from '@shared/domain/rotation';
 import { injuryLabel } from '@shared/domain/injuries';
+import { AppButton } from '@renderer/shared/ui';
 
 const props = defineProps<{ teamId: string }>();
 
@@ -211,7 +212,7 @@ function messageOf(cause: unknown): string {
               <td class="numeric font-semibold">{{ slot.overall }}</td>
               <td
                 class="numeric"
-                :class="slot.injuryDaysLeft > 0 ? 'text-red-400' : 'text-court-300'"
+                :class="slot.injuryDaysLeft > 0 ? 'text-bad-400' : 'text-court-300'"
               >
                 {{ slot.injuryDaysLeft > 0 ? injuryLabel(slot.injuryDaysLeft) : slot.condition }}
               </td>
@@ -258,7 +259,7 @@ function messageOf(cause: unknown): string {
               <td class="numeric font-semibold">{{ slot.overall }}</td>
               <td
                 class="numeric"
-                :class="slot.injuryDaysLeft > 0 ? 'text-red-400' : 'text-court-300'"
+                :class="slot.injuryDaysLeft > 0 ? 'text-bad-400' : 'text-court-300'"
               >
                 {{ slot.injuryDaysLeft > 0 ? injuryLabel(slot.injuryDaysLeft) : slot.condition }}
               </td>
@@ -273,20 +274,8 @@ function messageOf(cause: unknown): string {
                 />
               </td>
               <td>
-                <button
-                  type="button"
-                  class="rounded border border-court-600 px-2 hover:bg-court-800"
-                  @click="move(slot.depth, -1)"
-                >
-                  ↑
-                </button>
-                <button
-                  type="button"
-                  class="ml-1 rounded border border-court-600 px-2 hover:bg-court-800"
-                  @click="move(slot.depth, 1)"
-                >
-                  ↓
-                </button>
+                <AppButton size="sm" @click="move(slot.depth, -1)"> ↑ </AppButton>
+                <AppButton size="sm" class="ml-1" @click="move(slot.depth, 1)"> ↓ </AppButton>
               </td>
             </tr>
           </tbody>
@@ -302,25 +291,13 @@ function messageOf(cause: unknown): string {
         </span>
       </span>
 
-      <button
-        type="button"
-        class="ml-auto rounded border border-court-600 px-3 py-1 text-sm hover:bg-court-800"
-        :disabled="busy"
-        @click="auto"
-      >
+      <AppButton size="sm" class="ml-auto" :disabled="busy" @click="auto">
         Rotación automática
-      </button>
-      <button
-        type="button"
-        class="rounded bg-ball-600 px-4 py-1 text-sm font-semibold disabled:opacity-40"
-        :disabled="busy || !dirty"
-        @click="save"
-      >
-        Guardar
-      </button>
+      </AppButton>
+      <AppButton variant="primary" :disabled="busy || !dirty" @click="save"> Guardar </AppButton>
     </footer>
 
-    <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
-    <p v-else-if="saved" class="text-sm text-emerald-400">Alineación guardada.</p>
+    <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>
+    <p v-else-if="saved" class="text-sm text-good-400">Alineación guardada.</p>
   </div>
 </template>

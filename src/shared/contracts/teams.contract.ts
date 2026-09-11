@@ -23,6 +23,12 @@ export interface CatalogLeague {
   /** 1 es la máxima categoría del país. */
   tier: number;
   teams: number;
+  /**
+   * La liga de casa del juego: la primera del dataset, que es donde está la
+   * Copa y sobre la que se calibró todo. Es con la que se abre el catálogo,
+   * porque ordenado por reputación lo encabezarían los clubes americanos.
+   */
+  isHome: boolean;
 }
 
 export interface TeamsApi {

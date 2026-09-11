@@ -4,6 +4,7 @@ import type { YouthAcademy, YouthPlayer } from '@shared/contracts/youth.contract
 import { POSITION_LABELS } from '@shared/domain/positions';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
+import { AppButton, AppPageHeader, AppStat } from '@renderer/shared/ui';
 
 const store = useGameStateStore();
 
@@ -67,35 +68,33 @@ function headroom(player: YouthPlayer): number {
 
 <template>
   <div v-if="academy" class="flex flex-col gap-5">
-    <div class="flex items-baseline gap-4">
-      <h1 class="text-2xl font-semibold">Cantera</h1>
+    <AppPageHeader title="Cantera">
       <span class="text-sm text-court-300">
         Cada verano sale una hornada nueva; a los diecinueve, o suben o se van
       </span>
-    </div>
+    </AppPageHeader>
 
     <section class="grid grid-cols-4 gap-4">
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Instalaciones</p>
-        <p class="mt-1 text-2xl font-semibold text-ball-500">{{ academy.levelLabel }}</p>
-        <p class="text-sm text-court-300">Nivel {{ academy.level }} de 5</p>
-      </article>
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Mantenimiento</p>
-        <p class="mt-1 text-lg">{{ formatMoney(academy.upkeepCents) }}</p>
-        <p class="text-xs text-court-600">al año, dentro del recibo del club</p>
-      </article>
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Plantilla</p>
-        <p class="mt-1 text-lg">{{ academy.rosterSize }} / {{ academy.maxRoster }}</p>
-        <p class="text-xs" :class="academy.canPromote ? 'text-court-600' : 'text-line-500'">
-          {{
-            academy.canPromote
-              ? 'Hay hueco para subir a alguien'
-              : 'Sin hueco: no se puede promocionar'
-          }}
-        </p>
-      </article>
+      <AppStat label="Instalaciones" tone="accent" boxed>
+        {{ academy.levelLabel }}
+        <template #note>Nivel {{ academy.level }} de 5</template>
+      </AppStat>
+      <AppStat label="Mantenimiento" size="md" boxed>
+        {{ formatMoney(academy.upkeepCents) }}
+        <template #note>al año, dentro del recibo del club</template>
+      </AppStat>
+      <AppStat label="Plantilla" size="md" boxed>
+        {{ academy.rosterSize }} / {{ academy.maxRoster }}
+        <template #note>
+          <span :class="academy.canPromote ? '' : 'text-warn-400'">
+            {{
+              academy.canPromote
+                ? 'Hay hueco para subir a alguien'
+                : 'Sin hueco: no se puede promocionar'
+            }}
+          </span>
+        </template>
+      </AppStat>
       <article class="flex flex-col justify-between rounded border border-court-700 p-4">
         <p class="text-xs uppercase tracking-wide text-court-300">Mejorar</p>
         <p v-if="academy.upgradeCostCents === null" class="mt-1 text-sm text-court-300">
@@ -103,14 +102,15 @@ function headroom(player: YouthPlayer): number {
         </p>
         <template v-else>
           <p class="mt-1 text-lg">{{ formatMoney(academy.upgradeCostCents) }}</p>
-          <button
-            type="button"
-            class="mt-2 rounded bg-ball-600 px-3 py-1 text-sm font-semibold disabled:opacity-40"
+          <AppButton
+            variant="primary"
+            size="sm"
+            class="mt-2"
             :disabled="busy || !academy.isManaged"
             @click="upgrade"
           >
             Subir a nivel {{ academy.level + 1 }}
-          </button>
+          </AppButton>
         </template>
       </article>
     </section>
@@ -147,25 +147,24 @@ function headroom(player: YouthPlayer): number {
             <td class="numeric text-court-300">{{ formatHeight(player.heightCm) }}</td>
             <td class="numeric">{{ player.overall }}</td>
             <td class="numeric font-semibold text-ball-400">{{ player.potential }}</td>
-            <td class="numeric" :class="headroom(player) >= 20 ? 'text-emerald-400' : ''">
+            <td class="numeric" :class="headroom(player) >= 20 ? 'text-good-400' : ''">
               +{{ headroom(player) }}
             </td>
             <td>
-              <button
-                type="button"
-                class="rounded border border-court-600 px-3 py-1 text-xs hover:bg-court-800 disabled:opacity-40"
+              <AppButton
+                size="sm"
                 :disabled="busy || !academy.canPromote || !academy.isManaged"
                 @click="promote(player)"
               >
                 Promocionar
-              </button>
+              </AppButton>
             </td>
           </tr>
         </tbody>
       </table>
     </div>
 
-    <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
-    <p v-else-if="message" class="text-sm text-emerald-400">{{ message }}</p>
+    <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>
+    <p v-else-if="message" class="text-sm text-good-400">{{ message }}</p>
   </div>
 </template>

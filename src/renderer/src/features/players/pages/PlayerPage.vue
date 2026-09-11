@@ -7,6 +7,7 @@ import { conditionLabel } from '@shared/domain/conditioning';
 import { injuryLabel } from '@shared/domain/injuries';
 import { POSITION_LABELS } from '@shared/domain/positions';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
+import { AppPageHeader, AppStat } from '@renderer/shared/ui';
 
 const route = useRoute();
 const player = ref<PlayerSummary | null>(null);
@@ -46,7 +47,7 @@ function barColor(value: number): string {
 <template>
   <div v-if="player" class="flex flex-col gap-6">
     <header class="flex items-baseline gap-4">
-      <h1 class="text-2xl font-semibold">{{ player.firstName }} {{ player.lastName }}</h1>
+      <AppPageHeader :title="`${player.firstName} ${player.lastName}`" />
       <span class="text-ball-400">
         {{ POSITION_LABELS[player.position] }}
         <template v-if="player.secondaryPosition">
@@ -62,41 +63,25 @@ function barColor(value: number): string {
     </header>
 
     <div class="grid grid-cols-7 gap-4">
-      <article class="rounded border border-court-700 p-3">
-        <p class="text-xs text-court-300">Media</p>
-        <p class="text-2xl font-semibold text-ball-500">
-          {{ player.overall
-          }}<span v-if="player.uncertainty > 0" class="text-sm text-court-300">
-            ±{{ player.uncertainty }}</span
-          >
-        </p>
-      </article>
-      <article class="rounded border border-court-700 p-3">
-        <p class="text-xs text-court-300">Potencial</p>
-        <p class="text-2xl font-semibold">{{ player.potential }}</p>
-      </article>
-      <article class="rounded border border-court-700 p-3">
-        <p class="text-xs text-court-300">Edad</p>
-        <p class="text-2xl font-semibold">{{ player.age }}</p>
-      </article>
-      <article class="rounded border border-court-700 p-3">
-        <p class="text-xs text-court-300">Altura / envergadura</p>
-        <p class="text-lg">{{ formatHeight(player.heightCm) }} · {{ player.wingspanCm }} cm</p>
-      </article>
-      <article class="rounded border border-court-700 p-3">
-        <p class="text-xs text-court-300">Nacionalidad</p>
-        <p class="text-lg">{{ player.nationality }}</p>
-      </article>
-      <article class="rounded border border-court-700 p-3">
-        <p class="text-xs text-court-300">Sueldo</p>
-        <p class="text-lg">{{ formatMoney(player.wageCents) }}</p>
-      </article>
+      <AppStat label="Media" tone="accent" boxed>
+        {{ player.overall }}
+        <span v-if="player.uncertainty > 0" class="text-sm text-court-300">
+          ±{{ player.uncertainty }}
+        </span>
+      </AppStat>
+      <AppStat label="Potencial" boxed>{{ player.potential }}</AppStat>
+      <AppStat label="Edad" boxed>{{ player.age }}</AppStat>
+      <AppStat label="Altura / envergadura" size="md" boxed>
+        {{ formatHeight(player.heightCm) }} · {{ player.wingspanCm }} cm
+      </AppStat>
+      <AppStat label="Nacionalidad" size="md" boxed>{{ player.nationality }}</AppStat>
+      <AppStat label="Sueldo" size="md" boxed>{{ formatMoney(player.wageCents) }}</AppStat>
       <article
         class="rounded border p-3"
         :class="player.injuryDaysLeft > 0 ? 'border-red-900' : 'border-court-700'"
       >
         <p class="text-xs text-court-300">Estado</p>
-        <p v-if="player.injuryDaysLeft > 0" class="text-lg text-red-400">
+        <p v-if="player.injuryDaysLeft > 0" class="text-lg text-bad-400">
           {{ player.injuryName }}
         </p>
         <p v-else class="text-lg">{{ conditionLabel(player.condition) }}</p>

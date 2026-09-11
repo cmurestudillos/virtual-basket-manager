@@ -52,6 +52,17 @@ await page.waitForTimeout(1500);
 console.log('título:', await page.title());
 await page.screenshot({ path: `${SHOTS}/01-menu.png` });
 
+// La guía de estilo, antes que nada: es la que enseña si alguna pieza del kit
+// se ha roto, y verlo aquí es más barato que cazarlo en la pantalla donde esté
+// escondida.
+const appUrl = page.url().split('#')[0];
+await page.goto(`${appUrl}#/estilo`);
+await page.waitForTimeout(1200);
+console.log('guía de estilo:', await page.locator('h1').first().innerText());
+await page.screenshot({ path: `${SHOTS}/01b-guia-de-estilo.png`, fullPage: false });
+await page.goto(`${appUrl}#/`);
+await page.waitForTimeout(800);
+
 await page.getByText('Nueva partida').click();
 await page.waitForTimeout(1200);
 console.log('equipos en el catálogo:', await page.locator('tbody tr').count());

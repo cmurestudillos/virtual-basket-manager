@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue';
 import type { CupBracket } from '@shared/contracts/season.contract';
 import { formatMatchDate } from '@renderer/shared/format';
+import { AppSectionTitle } from '@renderer/shared/ui';
 
 const bracket = ref<CupBracket | null>(null);
 const loaded = ref(false);
@@ -26,10 +27,10 @@ onMounted(async () => {
       </p>
 
       <section v-for="round in bracket.rounds" :key="round.round" class="flex flex-col gap-2">
-        <h2 class="text-sm uppercase tracking-wide text-court-300">
-          {{ round.name }}
-          <span class="text-court-600">· partido único en sede neutral</span>
-        </h2>
+        <AppSectionTitle
+          >{{ round.name }}
+          <span class="text-court-600">· partido único en sede neutral</span></AppSectionTitle
+        >
 
         <ul class="flex flex-col gap-1">
           <li

@@ -2,6 +2,7 @@
 import { computed, onMounted, ref, watch } from 'vue';
 import type { FixtureEntry, LeagueEntry, StandingEntry } from '@shared/contracts/season.contract';
 import { STANDING_ZONE_LABELS, type StandingZone } from '@shared/domain/promotion';
+import { AppButton, AppPageHeader, AppTabs } from '@renderer/shared/ui';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { formatMatchDate } from '@renderer/shared/format';
 import PlayoffBracketView from '@renderer/features/competition/components/PlayoffBracketView.vue';
@@ -38,6 +39,14 @@ const ZONE_CLASSES: Record<Exclude<StandingZone, null>, string> = {
  * pestaña de playoffs siempre vacía sólo confunde.
  */
 const hasPlayoffs = computed(() => (seasonStore.season?.playoffTeams ?? 0) >= 2);
+const leagueOptions = computed(() =>
+  leagues.value.map((row) => ({
+    id: row.competitionId,
+    label: row.name,
+    hint: row.isManaged ? ' · tu liga' : ''
+  }))
+);
+
 const tabs = computed(() => [
   { id: 'standings' as Tab, label: 'Clasificación' },
   { id: 'fixtures' as Tab, label: 'Calendario' },
@@ -86,8 +95,7 @@ function streakLabel(streak: number): string {
 
 <template>
   <div class="flex flex-col gap-4">
-    <div class="flex items-baseline gap-4">
-      <h1 class="text-2xl font-semibold">{{ seasonStore.season?.competitionName ?? 'Liga' }}</h1>
+    <AppPageHeader :title="seasonStore.season?.competitionName ?? 'Liga'">
       <span v-if="seasonStore.season?.stage === 'regular'" class="text-sm text-court-300">
         Jornada {{ seasonStore.season?.currentRound ?? 1 }} de {{ totalRounds }}
       </span>
@@ -98,43 +106,18 @@ function streakLabel(streak: number): string {
         Campeón: <span class="text-ball-400">{{ seasonStore.season.championTeamName }}</span>
       </span>
       <span v-else class="text-sm text-ball-400">Playoffs</span>
-    </div>
+    </AppPageHeader>
 
-    <nav class="flex gap-1 border-b border-court-700">
-      <button
-        v-for="option in tabs"
-        :key="option.id"
-        type="button"
-        class="border-b-2 px-4 py-2 text-sm"
-        :class="
-          tab === option.id
-            ? 'border-ball-500 text-ball-400'
-            : 'border-transparent text-court-300 hover:text-court-100'
-        "
-        @click="tab = option.id"
-      >
-        {{ option.label }}
-      </button>
-    </nav>
+    <AppTabs :model-value="tab" :options="tabs" @update:model-value="tab = $event as Tab" />
 
     <div v-if="tab === 'standings'" class="flex flex-col gap-3">
-      <nav v-if="leagues.length > 1" class="flex gap-2">
-        <button
-          v-for="option in leagues"
-          :key="option.competitionId"
-          type="button"
-          class="rounded border px-3 py-1 text-sm"
-          :class="
-            league === option.competitionId
-              ? 'border-ball-500 text-ball-400'
-              : 'border-court-700 text-court-300 hover:text-court-100'
-          "
-          @click="league = option.competitionId"
-        >
-          {{ option.name }}
-          <span v-if="option.isManaged" class="text-xs text-court-500">· tu liga</span>
-        </button>
-      </nav>
+      <AppTabs
+        v-if="leagueOptions.length > 1"
+        :model-value="league ?? ''"
+        :options="leagueOptions"
+        variant="pills"
+        @update:model-value="league = $event"
+      />
 
       <div class="overflow-auto rounded border border-court-700">
         <table class="data-table">
@@ -169,7 +152,7 @@ function streakLabel(streak: number): string {
               <td class="numeric">{{ row.lost }}</td>
               <td class="numeric text-court-300">{{ row.pointsFor }}</td>
               <td class="numeric text-court-300">{{ row.pointsAgainst }}</td>
-              <td class="numeric" :class="row.pointsDifference >= 0 ? 'text-emerald-400' : ''">
+              <td class="numeric" :class="row.pointsDifference >= 0 ? 'text-good-400' : ''">
                 {{ row.pointsDifference > 0 ? '+' : '' }}{{ row.pointsDifference }}
               </td>
               <td class="numeric text-court-300">{{ streakLabel(row.streak) }}</td>
@@ -194,24 +177,12 @@ function streakLabel(streak: number): string {
 
     <div v-else class="flex flex-col gap-3">
       <div class="flex items-center gap-3">
-        <button
-          type="button"
-          class="rounded border border-court-600 px-3 py-1 text-sm hover:bg-court-800"
-          @click="stepRound(-1)"
-        >
-          ‹
-        </button>
+        <AppButton size="sm" @click="stepRound(-1)">‹</AppButton>
         <span class="text-sm">
           Jornada {{ round }}
           <span v-if="roundDate" class="text-court-300"> · {{ formatMatchDate(roundDate) }}</span>
         </span>
-        <button
-          type="button"
-          class="rounded border border-court-600 px-3 py-1 text-sm hover:bg-court-800"
-          @click="stepRound(1)"
-        >
-          ›
-        </button>
+        <AppButton size="sm" @click="stepRound(1)">›</AppButton>
       </div>
 
       <ul class="flex flex-col gap-1">
