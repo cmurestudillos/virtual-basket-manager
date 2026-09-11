@@ -6,6 +6,7 @@ import { injuryLabel } from '@shared/domain/injuries';
 import { POSITION_LABELS } from '@shared/domain/positions';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
+import { AppPageHeader } from '@renderer/shared/ui';
 
 const store = useGameStateStore();
 const players = ref<PlayerSummary[]>([]);
@@ -22,7 +23,7 @@ onMounted(async () => {
 
 <template>
   <div class="flex flex-col gap-4">
-    <h1 class="text-2xl font-semibold">Plantilla</h1>
+    <AppPageHeader title="Plantilla" />
 
     <div class="overflow-auto rounded border border-court-700">
       <table class="data-table">
@@ -68,7 +69,7 @@ onMounted(async () => {
             <td :class="player.condition >= 75 ? 'text-court-300' : 'text-line-500'">
               {{ conditionLabel(player.condition) }}
             </td>
-            <td :class="player.injuryDaysLeft > 0 ? 'text-red-400' : 'text-court-600'">
+            <td :class="player.injuryDaysLeft > 0 ? 'text-bad-400' : 'text-court-600'">
               {{
                 player.injuryDaysLeft > 0
                   ? `${player.injuryName} · ${injuryLabel(player.injuryDaysLeft)}`

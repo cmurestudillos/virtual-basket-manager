@@ -5,6 +5,7 @@ import type { BoxScoreLine, MatchState } from '@shared/contracts/match.contract'
 import { percentage } from '@shared/domain/box-score';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { formatMatchDate, formatPlayedMinutes } from '@renderer/shared/format';
+import { AppButton, AppSectionTitle } from '@renderer/shared/ui';
 
 const route = useRoute();
 const seasonStore = useSeasonStore();
@@ -123,15 +124,9 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
       </table>
 
       <div class="mt-6 flex justify-center">
-        <button
-          v-if="playable"
-          type="button"
-          :disabled="busy"
-          class="rounded bg-ball-600 px-8 py-3 text-lg font-semibold hover:bg-ball-500 disabled:bg-court-700"
-          @click="advance"
-        >
+        <AppButton v-if="playable" variant="primary" size="lg" :disabled="busy" @click="advance">
           {{ busy ? 'Jugando…' : buttonLabel }}
-        </button>
+        </AppButton>
         <p v-else-if="state.finished" class="text-sm text-court-300">Partido finalizado</p>
         <p v-else class="text-sm text-court-300">Partido de otros equipos</p>
       </div>
@@ -194,7 +189,7 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
               <td class="numeric">{{ line.freeThrowMade }}/{{ line.freeThrowAttempted }}</td>
               <td class="numeric">{{ line.offensiveRebounds + line.defensiveRebounds }}</td>
               <td class="numeric">{{ line.assists }}</td>
-              <td class="numeric" :class="line.efficiency >= 15 ? 'text-emerald-400' : ''">
+              <td class="numeric" :class="line.efficiency >= 15 ? 'text-good-400' : ''">
                 {{ line.efficiency }}
               </td>
             </tr>
@@ -205,7 +200,7 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
 
     <!-- Previa: todavía no se ha jugado nada -->
     <section v-else class="rounded border border-court-700 p-5">
-      <h2 class="text-sm uppercase tracking-wide text-court-300">Previa</h2>
+      <AppSectionTitle>Previa</AppSectionTitle>
 
       <!-- Lo que el analista ha sacado del rival. -->
       <div v-if="state.scouting" class="mt-3 rounded border border-court-700 bg-court-900 p-3">

@@ -9,6 +9,7 @@ import type {
 import { MAX_CONTRACT_YEARS, MIN_CONTRACT_YEARS } from '@shared/domain/market';
 import { POSITIONS, type Position } from '@shared/domain/positions';
 import { formatMoney } from '@renderer/shared/format';
+import { AppButton, AppTabs, AppPageHeader } from '@renderer/shared/ui';
 
 type Tab = 'search' | 'contracts' | 'loans';
 
@@ -189,8 +190,7 @@ async function release(entry: ContractEntry): Promise<void> {
 
 <template>
   <div v-if="status" class="flex flex-col gap-4">
-    <div class="flex items-baseline gap-4">
-      <h1 class="text-2xl font-semibold">Mercado</h1>
+    <AppPageHeader title="Mercado">
       <span :class="status.isOpen ? 'text-sm text-ball-400' : 'text-sm text-court-300'">
         {{ status.windowLabel }}
       </span>
@@ -205,28 +205,17 @@ async function release(entry: ContractEntry): Promise<void> {
         · nóminas {{ formatMoney(status.seasonWagesCents) }} de
         {{ formatMoney(status.wageCeilingCents) }}
       </span>
-    </div>
+    </AppPageHeader>
 
-    <nav class="flex gap-1 border-b border-court-700">
-      <button
-        v-for="option in [
-          { id: 'search' as Tab, label: 'Fichar' },
-          { id: 'contracts' as Tab, label: 'Contratos' },
-          { id: 'loans' as Tab, label: 'Cesiones' }
-        ]"
-        :key="option.id"
-        type="button"
-        class="border-b-2 px-4 py-2 text-sm"
-        :class="
-          tab === option.id
-            ? 'border-ball-500 text-ball-400'
-            : 'border-transparent text-court-300 hover:text-court-100'
-        "
-        @click="tab = option.id"
-      >
-        {{ option.label }}
-      </button>
-    </nav>
+    <AppTabs
+      :model-value="tab"
+      :options="[
+        { id: 'search' as Tab, label: 'Fichar' },
+        { id: 'contracts' as Tab, label: 'Contratos' },
+        { id: 'loans' as Tab, label: 'Cesiones' }
+      ]"
+      @update:model-value="tab = $event as Tab"
+    />
 
     <template v-if="tab === 'search'">
       <!-- Filtros -->
@@ -309,35 +298,23 @@ async function release(entry: ContractEntry): Promise<void> {
               class="w-20 rounded border border-court-600 bg-court-900 px-3 py-1"
             />
           </label>
-          <button
-            type="button"
-            class="rounded bg-ball-600 px-4 py-2 text-sm font-semibold disabled:opacity-40"
+          <AppButton
+            variant="primary"
             :disabled="busy || !status.isOpen || !canAfford"
             @click="submitOffer"
           >
             Ofertar
-          </button>
-          <button
-            type="button"
-            class="rounded border border-court-600 px-3 py-2 text-sm hover:bg-court-800"
-            @click="target = null"
-          >
-            Cancelar
-          </button>
+          </AppButton>
+          <AppButton @click="target = null"> Cancelar </AppButton>
         </div>
         <p v-if="!canAfford" class="mt-2 text-sm text-line-500">No hay tanto dinero en caja.</p>
         <div v-if="counterOffer !== null" class="mt-3 flex items-center gap-3">
           <span class="text-sm text-court-300">
             El club se lo dejaría en {{ formatMoney(counterOffer) }}.
           </span>
-          <button
-            type="button"
-            class="rounded bg-ball-600 px-3 py-1 text-xs font-semibold disabled:opacity-40"
-            :disabled="busy"
-            @click="acceptCounter"
-          >
+          <AppButton variant="primary" size="sm" :disabled="busy" @click="acceptCounter">
             Aceptar contraoferta
-          </button>
+          </AppButton>
         </div>
         <p class="mt-2 text-xs text-court-600">
           Margen de nómina antes del tope: {{ formatMoney(wageHeadroom) }}
@@ -390,23 +367,18 @@ async function release(entry: ContractEntry): Promise<void> {
               </td>
               <td class="numeric text-court-300">{{ formatMoney(player.wageDemandCents) }}</td>
               <td>
-                <button
-                  type="button"
-                  class="rounded border border-court-600 px-3 py-1 text-xs hover:bg-court-800 disabled:opacity-40"
-                  :disabled="!status.isOpen"
-                  @click="openOffer(player)"
-                >
+                <AppButton size="sm" :disabled="!status.isOpen" @click="openOffer(player)">
                   Ofertar
-                </button>
-                <button
+                </AppButton>
+                <AppButton
                   v-if="!player.isFreeAgent"
-                  type="button"
-                  class="ml-1 rounded border border-court-600 px-3 py-1 text-xs hover:bg-court-800 disabled:opacity-40"
+                  size="sm"
+                  class="ml-1"
                   :disabled="!status.isOpen || busy"
                   @click="loanIn(player)"
                 >
                   Pedir cedido
-                </button>
+                </AppButton>
               </td>
             </tr>
           </tbody>
@@ -433,7 +405,7 @@ async function release(entry: ContractEntry): Promise<void> {
           <tr v-for="entry in contracts" :key="entry.playerId">
             <td>
               {{ entry.playerName }}
-              <span v-if="entry.isHomegrown" class="ml-1 text-xs text-emerald-400">form.</span>
+              <span v-if="entry.isHomegrown" class="ml-1 text-xs text-good-400">form.</span>
               <span v-if="entry.isOnLoan" class="ml-1 text-xs text-court-600">cedido aquí</span>
             </td>
             <td class="text-ball-400">{{ entry.position }}</td>
@@ -447,30 +419,23 @@ async function release(entry: ContractEntry): Promise<void> {
             <td class="numeric text-court-300">{{ formatMoney(entry.renewalWageCents) }}</td>
             <td class="numeric text-court-300">{{ formatMoney(entry.releaseCostCents) }}</td>
             <td>
-              <button
-                type="button"
-                class="rounded border border-court-600 px-3 py-1 text-xs hover:bg-court-800 disabled:opacity-40"
-                :disabled="busy"
-                @click="renew(entry)"
-              >
-                Renovar
-              </button>
-              <button
-                type="button"
-                class="ml-1 rounded border border-court-600 px-3 py-1 text-xs hover:bg-court-800 disabled:opacity-40"
+              <AppButton size="sm" :disabled="busy" @click="renew(entry)"> Renovar </AppButton>
+              <AppButton
+                size="sm"
+                class="ml-1"
                 :disabled="busy || entry.isOnLoan"
                 @click="loanOut(entry)"
               >
                 Ceder
-              </button>
-              <button
-                type="button"
-                class="ml-1 rounded border border-court-600 px-3 py-1 text-xs hover:bg-court-800 disabled:opacity-40"
+              </AppButton>
+              <AppButton
+                size="sm"
+                class="ml-1"
                 :disabled="busy || entry.isOnLoan"
                 @click="release(entry)"
               >
                 Rescindir
-              </button>
+              </AppButton>
             </td>
           </tr>
         </tbody>
@@ -496,7 +461,7 @@ async function release(entry: ContractEntry): Promise<void> {
             <td>{{ loan.playerName }}</td>
             <td class="text-ball-400">{{ loan.position }}</td>
             <td class="numeric font-semibold">{{ loan.overall }}</td>
-            <td :class="loan.direction === 'out' ? 'text-court-300' : 'text-emerald-400'">
+            <td :class="loan.direction === 'out' ? 'text-court-300' : 'text-good-400'">
               {{ loan.direction === 'out' ? 'Cedido fuera' : 'Cedido aquí' }}
             </td>
             <td class="text-court-300">{{ loan.otherTeamName }}</td>
@@ -505,7 +470,7 @@ async function release(entry: ContractEntry): Promise<void> {
       </table>
     </div>
 
-    <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
-    <p v-else-if="message" class="text-sm text-emerald-400">{{ message }}</p>
+    <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>
+    <p v-else-if="message" class="text-sm text-good-400">{{ message }}</p>
   </div>
 </template>

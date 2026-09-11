@@ -8,7 +8,8 @@ import type {
 } from '@shared/contracts/season.contract';
 import type { TeamSummary } from '@shared/contracts/teams.contract';
 import type { BoardView } from '@shared/contracts/club.contract';
-import { SEASON_VERDICT_LABELS } from '@shared/domain/board';
+import { DANGER_CONFIDENCE, SEASON_VERDICT_LABELS } from '@shared/domain/board';
+import { AppButton, AppPageHeader, AppSectionTitle, AppStat } from '@renderer/shared/ui';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { formatMatchDate, formatMoney } from '@renderer/shared/format';
@@ -121,58 +122,53 @@ function fixtureRound(fixture: FixtureEntry): string {
 
 <template>
   <div v-if="team" class="flex flex-col gap-6">
-    <h1 class="text-2xl font-semibold">{{ team.name }}</h1>
+    <AppPageHeader :title="team.name" />
 
     <div class="grid grid-cols-4 gap-4">
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Clasificación</p>
-        <p class="mt-1 text-2xl font-semibold text-ball-500">
-          {{ myPosition ? `${myPosition.position}º` : '—' }}
-        </p>
-        <p v-if="myPosition" class="text-sm text-court-300">
-          {{ myPosition.won }}-{{ myPosition.lost }}
-        </p>
-      </article>
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">
-          {{ stage === 'regular' ? 'Jornada' : 'Fase' }}
-        </p>
-        <p v-if="stage === 'regular'" class="mt-1 text-2xl font-semibold">
+      <AppStat label="Clasificación" tone="accent" boxed>
+        {{ myPosition ? `${myPosition.position}º` : '—' }}
+        <template v-if="myPosition" #note>{{ myPosition.won }}-{{ myPosition.lost }}</template>
+      </AppStat>
+
+      <AppStat
+        :label="stage === 'regular' ? 'Jornada' : 'Fase'"
+        :tone="stage === 'regular' ? null : 'accent'"
+        boxed
+      >
+        <template v-if="stage === 'regular'">
           {{ seasonStore.season?.currentRound ?? 1 }}
           <span class="text-base text-court-300"
             >/ {{ seasonStore.season?.totalRounds ?? 34 }}</span
           >
-        </p>
-        <p v-else class="mt-1 text-2xl font-semibold text-ball-500">
-          {{ stage === 'playoffs' ? 'Playoffs' : 'Terminada' }}
-        </p>
-      </article>
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Caja</p>
-        <p class="mt-1 text-lg" :class="team.budgetCents < 0 ? 'text-red-400' : ''">
-          {{ formatMoney(team.budgetCents) }}
-        </p>
-        <RouterLink :to="{ name: 'finances' }" class="text-xs text-court-300 hover:text-ball-400">
-          Ver finanzas
-        </RouterLink>
-      </article>
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Pabellón</p>
-        <p class="mt-1 text-lg">{{ team.pavilionName }}</p>
-        <p class="text-sm text-court-300">{{ team.pavilionCapacity }} espectadores</p>
-      </article>
+        </template>
+        <template v-else>{{ stage === 'playoffs' ? 'Playoffs' : 'Terminada' }}</template>
+      </AppStat>
+
+      <AppStat label="Caja" size="md" :tone="team.budgetCents < 0 ? 'bad' : null" boxed>
+        {{ formatMoney(team.budgetCents) }}
+        <template #note>
+          <RouterLink :to="{ name: 'finances' }" class="hover:text-ball-400"
+            >Ver finanzas</RouterLink
+          >
+        </template>
+      </AppStat>
+
+      <AppStat label="Pabellón" size="md" boxed>
+        {{ team.pavilionName }}
+        <template #note>{{ team.pavilionCapacity }} espectadores</template>
+      </AppStat>
     </div>
 
     <!-- El consejo -->
     <section
       v-if="board"
       class="rounded border px-5 py-4"
-      :class="board.dismissed ? 'border-red-900' : 'border-court-700'"
+      :class="board.dismissed ? 'border-bad-500' : 'border-court-700'"
     >
       <div class="flex items-center justify-between gap-6">
         <div>
-          <h2 class="text-sm uppercase tracking-wide text-court-300">El consejo</h2>
-          <p v-if="board.dismissed" class="mt-1 text-lg text-red-400">
+          <AppSectionTitle>El consejo</AppSectionTitle>
+          <p v-if="board.dismissed" class="mt-1 text-lg text-bad-400">
             Te han destituido. La partida se queda como está.
           </p>
           <template v-else>
@@ -183,23 +179,21 @@ function fixtureRound(fixture: FixtureEntry): string {
             </p>
           </template>
         </div>
-        <div class="text-right">
-          <p class="text-xs uppercase tracking-wide text-court-300">Confianza</p>
-          <p
-            class="text-2xl font-semibold"
-            :class="board.confidence >= 30 ? 'text-ball-500' : 'text-red-400'"
-          >
-            {{ board.confidence }}
-          </p>
-          <p class="text-sm text-court-300">{{ board.confidenceLabel }}</p>
-        </div>
+        <AppStat
+          label="Confianza"
+          class="text-right"
+          :tone="board.confidence >= DANGER_CONFIDENCE ? 'accent' : 'bad'"
+          :note="board.confidenceLabel"
+        >
+          {{ board.confidence }}
+        </AppStat>
       </div>
     </section>
 
     <section v-if="!board?.dismissed" class="rounded border border-court-700 p-5">
-      <h2 class="text-sm uppercase tracking-wide text-court-300">
+      <AppSectionTitle>
         {{ stage === 'finished' ? 'Temporada terminada' : 'Próximo partido' }}
-      </h2>
+      </AppSectionTitle>
 
       <!-- Hay partido propio pendiente: lo normal durante toda la temporada. -->
       <div v-if="seasonStore.nextGame" class="mt-3 flex items-center justify-between">
@@ -214,29 +208,11 @@ function fixtureRound(fixture: FixtureEntry): string {
           </p>
         </div>
         <div class="flex gap-2">
-          <button
-            type="button"
-            :disabled="seasonStore.busy"
-            class="rounded border border-court-600 px-4 py-2 text-sm hover:bg-court-800 disabled:opacity-50"
-            @click="advance('day')"
-          >
-            Avanzar día
-          </button>
-          <button
-            type="button"
-            :disabled="seasonStore.busy"
-            class="rounded border border-court-600 px-4 py-2 text-sm hover:bg-court-800 disabled:opacity-50"
-            @click="advance('nextGame')"
-          >
+          <AppButton :disabled="seasonStore.busy" @click="advance('day')"> Avanzar día </AppButton>
+          <AppButton :disabled="seasonStore.busy" @click="advance('nextGame')">
             Ir a la jornada
-          </button>
-          <button
-            type="button"
-            class="rounded bg-ball-600 px-5 py-2 font-semibold hover:bg-ball-500"
-            @click="playNextGame"
-          >
-            Jugar partido
-          </button>
+          </AppButton>
+          <AppButton variant="primary" @click="playNextGame">Jugar partido</AppButton>
         </div>
       </div>
 
@@ -254,14 +230,9 @@ function fixtureRound(fixture: FixtureEntry): string {
             {{ seasonStore.season?.startYear }}-{{ (seasonStore.season?.startYear ?? 0) + 1 }}
           </p>
         </div>
-        <button
-          type="button"
-          :disabled="seasonStore.busy"
-          class="rounded bg-ball-600 px-5 py-2 font-semibold hover:bg-ball-500 disabled:opacity-50"
-          @click="startNextSeason"
-        >
+        <AppButton variant="primary" :disabled="seasonStore.busy" @click="startNextSeason">
           Empezar temporada {{ (seasonStore.season?.seasonNumber ?? 1) + 1 }}
-        </button>
+        </AppButton>
       </div>
 
       <!-- Sin partido propio, pero la competición sigue: eliminado o sin playoffs. -->
@@ -273,19 +244,12 @@ function fixtureRound(fixture: FixtureEntry): string {
               : 'No queda ningún partido tuyo por jugar.'
           }}
         </p>
-        <button
-          type="button"
-          :disabled="seasonStore.busy"
-          class="rounded border border-court-600 px-4 py-2 text-sm hover:bg-court-800 disabled:opacity-50"
-          @click="advance('nextGame')"
-        >
-          Avanzar
-        </button>
+        <AppButton :disabled="seasonStore.busy" @click="advance('nextGame')">Avanzar</AppButton>
       </div>
     </section>
 
     <section v-if="recent.length > 0" class="rounded border border-court-700 p-5">
-      <h2 class="text-sm uppercase tracking-wide text-court-300">Últimos resultados</h2>
+      <AppSectionTitle>Últimos resultados</AppSectionTitle>
       <ul class="mt-3 flex flex-col gap-2">
         <li
           v-for="fixture in recent"

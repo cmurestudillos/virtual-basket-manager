@@ -4,6 +4,8 @@ import type { BoardView, ClubFinances } from '@shared/contracts/club.contract';
 import { MAX_TICKET_PRICE_CENTS, MIN_TICKET_PRICE_CENTS } from '@shared/domain/attendance';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatGameDate, formatMoney } from '@renderer/shared/format';
+import { DANGER_CONFIDENCE } from '@shared/domain/board';
+import { AppButton, AppPageHeader, AppSectionTitle, AppStat } from '@renderer/shared/ui';
 
 const store = useGameStateStore();
 
@@ -27,7 +29,7 @@ const expansionCost = computed(() =>
 );
 
 const balanceTone = computed(() =>
-  (finances.value?.balanceCents ?? 0) >= 0 ? 'text-ball-500' : 'text-red-400'
+  (finances.value?.balanceCents ?? 0) >= 0 ? 'text-ball-500' : 'text-bad-400'
 );
 
 onMounted(async () => {
@@ -90,42 +92,29 @@ function absolute(cents: number): string {
 
 <template>
   <div v-if="finances" class="flex flex-col gap-5">
-    <div class="flex items-baseline gap-4">
-      <h1 class="text-2xl font-semibold">Finanzas</h1>
+    <AppPageHeader title="Finanzas">
       <span class="text-sm text-court-300"> Las nóminas se pagan el primero de cada mes </span>
-    </div>
+    </AppPageHeader>
 
     <!-- Resumen -->
     <div class="grid grid-cols-4 gap-4">
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Caja</p>
-        <p class="mt-1 text-2xl font-semibold" :class="balanceTone">
-          {{ formatMoney(finances.balanceCents) }}
-        </p>
-      </article>
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Ingresos</p>
-        <p class="mt-1 text-lg text-emerald-400">
-          {{ formatMoney(finances.seasonIncomeCents) }}
-        </p>
-        <p class="text-xs text-court-600">Gastos {{ absolute(finances.seasonExpenseCents) }}</p>
-      </article>
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Nóminas</p>
-        <p class="mt-1 text-lg">
-          {{ formatMoney(finances.monthlyWagesCents)
-          }}<span class="text-sm text-court-300">/mes</span>
-        </p>
-        <p class="text-xs text-court-600">{{ formatMoney(finances.seasonWagesCents) }} al año</p>
-      </article>
-      <article class="rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Mantenimiento</p>
-        <p class="mt-1 text-lg">
-          {{ formatMoney(finances.monthlyMaintenanceCents)
-          }}<span class="text-sm text-court-300">/mes</span>
-        </p>
-        <p class="text-xs text-court-600">{{ finances.pavilionName }}</p>
-      </article>
+      <AppStat label="Caja" boxed :class="balanceTone">
+        {{ formatMoney(finances.balanceCents) }}
+      </AppStat>
+      <AppStat label="Ingresos" boxed size="md">
+        <span class="text-good-400">{{ formatMoney(finances.seasonIncomeCents) }}</span>
+        <template #note>Gastos {{ absolute(finances.seasonExpenseCents) }}</template>
+      </AppStat>
+      <AppStat label="Nóminas" boxed size="md">
+        {{ formatMoney(finances.monthlyWagesCents)
+        }}<span class="text-sm text-court-300">/mes</span>
+        <template #note>{{ formatMoney(finances.seasonWagesCents) }} al año</template>
+      </AppStat>
+      <AppStat label="Mantenimiento" boxed size="md">
+        {{ formatMoney(finances.monthlyMaintenanceCents)
+        }}<span class="text-sm text-court-300">/mes</span>
+        <template #note>{{ finances.pavilionName }}</template>
+      </AppStat>
     </div>
 
     <!-- Consejo -->
@@ -136,7 +125,7 @@ function absolute(cents: number): string {
     >
       <div class="flex items-center justify-between gap-6">
         <div>
-          <p class="text-xs uppercase tracking-wide text-court-300">El consejo pide</p>
+          <AppSectionTitle size="xs">El consejo pide</AppSectionTitle>
           <p class="text-lg">
             {{ board.objectiveLabel }}
             <span class="text-sm text-court-300">
@@ -145,23 +134,21 @@ function absolute(cents: number): string {
           </p>
           <p class="text-sm text-court-300">Ahora mismo vas {{ board.position ?? '—' }}º</p>
         </div>
-        <div class="text-right">
-          <p class="text-xs uppercase tracking-wide text-court-300">Confianza</p>
-          <p
-            class="text-2xl font-semibold"
-            :class="board.confidence >= 30 ? 'text-ball-500' : 'text-red-400'"
-          >
-            {{ board.confidence }}
-          </p>
-          <p class="text-sm text-court-300">{{ board.confidenceLabel }}</p>
-        </div>
+        <AppStat
+          label="Confianza"
+          class="text-right"
+          :tone="board.confidence >= DANGER_CONFIDENCE ? 'accent' : 'bad'"
+          :note="board.confidenceLabel"
+        >
+          {{ board.confidence }}
+        </AppStat>
       </div>
     </section>
 
     <!-- Pabellón -->
     <section class="grid gap-5 rounded border border-court-700 p-5 md:grid-cols-2">
       <div class="flex flex-col gap-3">
-        <h2 class="text-sm uppercase tracking-wide text-court-300">Pabellón y afición</h2>
+        <AppSectionTitle>Pabellón y afición</AppSectionTitle>
         <dl class="grid grid-cols-2 gap-y-1 text-sm">
           <dt class="text-court-300">Aforo</dt>
           <dd class="text-right tabular-nums">{{ finances.capacity }}</dd>
@@ -188,14 +175,9 @@ function absolute(cents: number): string {
               class="rounded border border-court-600 bg-court-900 px-3 py-2"
             />
           </span>
-          <button
-            type="button"
-            class="rounded bg-ball-600 px-4 py-2 text-sm font-semibold disabled:opacity-40"
-            :disabled="busy"
-            @click="saveTicketPrice"
-          >
+          <AppButton variant="primary" :disabled="busy" @click="saveTicketPrice">
             Guardar
-          </button>
+          </AppButton>
         </label>
         <span class="text-xs text-court-600">
           El abono sale por doce entradas: {{ formatMoney(finances.seasonTicketPriceCents) }}.
@@ -204,7 +186,7 @@ function absolute(cents: number): string {
       </div>
 
       <div class="flex flex-col gap-3">
-        <h2 class="text-sm uppercase tracking-wide text-court-300">Obras</h2>
+        <AppSectionTitle>Obras</AppSectionTitle>
         <label class="flex items-end gap-2">
           <span class="flex flex-1 flex-col gap-1">
             <span class="text-sm">Asientos nuevos</span>
@@ -217,14 +199,7 @@ function absolute(cents: number): string {
               class="rounded border border-court-600 bg-court-900 px-3 py-2"
             />
           </span>
-          <button
-            type="button"
-            class="rounded border border-court-600 px-4 py-2 text-sm hover:bg-court-800 disabled:opacity-40"
-            :disabled="busy"
-            @click="expand"
-          >
-            Ampliar
-          </button>
+          <AppButton :disabled="busy" @click="expand"> Ampliar </AppButton>
         </label>
         <span class="text-xs text-court-600">
           Cuesta {{ formatMoney(expansionCost) }} y se paga al contado. El pabellón no puede pasar
@@ -241,7 +216,7 @@ function absolute(cents: number): string {
             <span class="text-court-300">{{ total.label }}</span>
             <span
               class="tabular-nums"
-              :class="total.amountCents >= 0 ? 'text-emerald-400' : 'text-red-400'"
+              :class="total.amountCents >= 0 ? 'text-good-400' : 'text-bad-400'"
             >
               {{ formatMoney(total.amountCents) }}
             </span>
@@ -250,8 +225,8 @@ function absolute(cents: number): string {
       </div>
     </section>
 
-    <p v-if="error" class="text-sm text-red-400">{{ error }}</p>
-    <p v-else-if="message" class="text-sm text-emerald-400">{{ message }}</p>
+    <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>
+    <p v-else-if="message" class="text-sm text-good-400">{{ message }}</p>
 
     <!-- Libro -->
     <div class="overflow-auto rounded border border-court-700">
@@ -272,10 +247,7 @@ function absolute(cents: number): string {
             <td class="text-court-300">{{ formatGameDate(entry.happenedOn) }}</td>
             <td>{{ entry.typeLabel }}</td>
             <td class="text-court-300">{{ entry.description }}</td>
-            <td
-              class="numeric"
-              :class="entry.amountCents >= 0 ? 'text-emerald-400' : 'text-red-400'"
-            >
+            <td class="numeric" :class="entry.amountCents >= 0 ? 'text-good-400' : 'text-bad-400'">
               {{ formatMoney(entry.amountCents) }}
             </td>
           </tr>

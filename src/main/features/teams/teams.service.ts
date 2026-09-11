@@ -49,15 +49,21 @@ export class TeamsService {
       sizes.set(team.competitionId, (sizes.get(team.competitionId) ?? 0) + 1);
     }
 
-    return dataset.competitions
-      .filter((competition) => competition.format === 'league')
-      .map((competition) => ({
-        competitionId: competition.id,
-        name: competition.name,
-        country: competition.country,
-        tier: competition.tier,
-        teams: sizes.get(competition.id) ?? 0
-      }))
-      .sort((a, b) => a.country.localeCompare(b.country) || a.tier - b.tier);
+    const leagues = dataset.competitions.filter((competition) => competition.format === 'league');
+    const home = leagues[0]?.id;
+
+    return (
+      leagues
+        .map((competition) => ({
+          competitionId: competition.id,
+          name: competition.name,
+          country: competition.country,
+          tier: competition.tier,
+          teams: sizes.get(competition.id) ?? 0,
+          isHome: competition.id === home
+        }))
+        // Por país y por categoría: es como las busca quien está eligiendo club.
+        .sort((a, b) => a.country.localeCompare(b.country) || a.tier - b.tier)
+    );
   }
 }
