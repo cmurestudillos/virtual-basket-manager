@@ -1,0 +1,1 @@
+ALTER TABLE `seasons` ADD `champion_team_id` text;

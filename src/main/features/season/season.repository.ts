@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull, lte, or } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
 import type { SaveDatabase } from '../../database/client';
 import {
   competitionsTable,
@@ -64,6 +64,22 @@ export class SeasonRepository {
     this.db.insert(seasonsTable).values(row).run();
   }
 
+  findSeasonById(seasonId: string): SeasonRow | null {
+    return this.db.select().from(seasonsTable).where(eq(seasonsTable.id, seasonId)).get() ?? null;
+  }
+
+  setStage(seasonId: string, stage: string): void {
+    this.db.update(seasonsTable).set({ stage }).where(eq(seasonsTable.id, seasonId)).run();
+  }
+
+  setChampion(seasonId: string, championTeamId: string): void {
+    this.db.update(seasonsTable).set({ championTeamId }).where(eq(seasonsTable.id, seasonId)).run();
+  }
+
+  setSeasonNumber(seasonNumber: number): void {
+    this.db.update(gameStateTable).set({ seasonNumber }).run();
+  }
+
   setCurrentRound(seasonId: string, round: number): void {
     this.db
       .update(seasonsTable)
@@ -112,6 +128,40 @@ export class SeasonRepository {
       .all();
   }
 
+  /**
+   * Partidos de liga regular. Los de playoff viven en la misma tabla y se
+   * distinguen por tener `seriesId`: separarlos aquí, y no en cada consulta,
+   * es lo que evita que una eliminatoria acabe contando en la clasificación.
+   */
+  listRegularGames(seasonId: string): GameRow[] {
+    return this.db
+      .select()
+      .from(gamesTable)
+      .where(and(eq(gamesTable.seasonId, seasonId), isNull(gamesTable.seriesId)))
+      .orderBy(asc(gamesTable.round), asc(gamesTable.id))
+      .all();
+  }
+
+  listPlayoffGames(seasonId: string): GameRow[] {
+    return this.db
+      .select()
+      .from(gamesTable)
+      .where(and(eq(gamesTable.seasonId, seasonId), isNotNull(gamesTable.seriesId)))
+      .orderBy(asc(gamesTable.seriesId), asc(gamesTable.seriesGame))
+      .all();
+  }
+
+  /** Borra los partidos de una serie que ya no hacen falta porque está decidida. */
+  deleteGames(gameIds: readonly string[]): void {
+    if (gameIds.length === 0) {
+      return;
+    }
+    this.db
+      .delete(gamesTable)
+      .where(inArray(gamesTable.id, [...gameIds]))
+      .run();
+  }
+
   listGamesInRound(seasonId: string, round: number): GameRow[] {
     return this.db
       .select()
@@ -121,6 +171,12 @@ export class SeasonRepository {
       .all();
   }
 
+  /**
+   * Partidos de un equipo en orden cronológico, liga y playoffs juntos.
+   *
+   * Por fecha y no por jornada: las rondas del cuadro se numeran desde 1, así
+   * que ordenar por `round` colocaría la final antes de la jornada 2.
+   */
   listTeamGames(seasonId: string, teamId: string): GameRow[] {
     return this.db
       .select()
@@ -131,7 +187,7 @@ export class SeasonRepository {
           or(eq(gamesTable.homeTeamId, teamId), eq(gamesTable.awayTeamId, teamId))
         )
       )
-      .orderBy(asc(gamesTable.round))
+      .orderBy(asc(gamesTable.scheduledOn), asc(gamesTable.id))
       .all();
   }
 

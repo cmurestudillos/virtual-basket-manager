@@ -6,10 +6,11 @@ Manager de baloncesto de escritorio, inspirado en **PC Basket 6.5** y en
 Electron + Vue 3 + TypeScript + SQLite. Nombre de trabajo: el definitivo se
 decidirá más adelante.
 
-> Estado: **liga regular jugable**. Motor de partido, calendario de 34 jornadas,
-> partido del usuario cuarto a cuarto, clasificación, alineación y pizarra
-> editables y estadísticas de temporada. Faltan los playoffs y todo lo demás —
-> ver [docs/ROADMAP.md](docs/ROADMAP.md).
+> Estado: **temporada completa jugable**. Motor de partido, calendario de 34
+> jornadas, partido del usuario cuarto a cuarto, clasificación, alineación y
+> pizarra editables, estadísticas, playoffs al formato ACB y arranque de la
+> temporada siguiente. Faltan club, mercado y todo lo demás — ver
+> [docs/ROADMAP.md](docs/ROADMAP.md).
 
 ## Arranque
 
@@ -39,6 +40,7 @@ node node_modules/electron/install.js
 | `pnpm lint` / `pnpm format` | ESLint / Prettier                                  |
 | `pnpm db:generate`          | Regenera las migraciones de Drizzle                |
 | `pnpm seed:generate`        | Regenera el dataset ficticio                       |
+| `pnpm seed:finished`        | Deja en `.dev-data` una partida ya con campeón     |
 | `pnpm verify:app`           | Arranca Electron, recorre el flujo y deja capturas |
 | `pnpm build:win`            | Instalador NSIS                                    |
 

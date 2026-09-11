@@ -1,4 +1,5 @@
 import { efficiencyRating, points, type PlayerBoxScore } from '@shared/domain/box-score';
+import { buildPlayoffFormat } from '@shared/domain/playoffs';
 import type { Position } from '@shared/domain/positions';
 import type { BoxScoreLine, MatchState, MatchTeamState } from '@shared/contracts/match.contract';
 import { GameSimulation, type GameResult } from '@shared/engine/basketball';
@@ -116,6 +117,7 @@ export class MatchService {
     return {
       gameId: game.id,
       round: game.round,
+      roundLabel: roundLabel(repository, game),
       scheduledOn: game.scheduledOn.getTime(),
       home: toSide(game.homeTeamId, game.homeScore, 'home'),
       away: toSide(game.awayTeamId, game.awayScore, 'away'),
@@ -175,6 +177,7 @@ function toMatchState(
   return {
     gameId: game.id,
     round: game.round,
+    roundLabel: roundLabel(repository, game),
     scheduledOn: game.scheduledOn.getTime(),
     home: {
       teamId: game.homeTeamId,
@@ -198,6 +201,30 @@ function toMatchState(
     finished,
     managedSide: managedSideOf(game, managedTeamId)
   };
+}
+
+/**
+ * Cómo se llama este partido: una jornada de liga o un partido de una serie.
+ *
+ * En playoffs el número de jornada no dice nada —el tercero de unas semifinales
+ * no es «la jornada 3»— así que la cabecera necesita el nombre de la ronda y el
+ * número de partido dentro de la eliminatoria.
+ */
+function roundLabel(repository: MatchRepository, game: GameRow): string {
+  if (!game.seriesId) {
+    return `Jornada ${game.round}`;
+  }
+
+  const competition = repository.competitionForGame(game.id);
+  if (!competition || competition.playoffTeams < 2) {
+    return 'Playoffs';
+  }
+
+  const format = buildPlayoffFormat(competition.playoffTeams, competition.playoffSeriesLength);
+  const name = format[game.round - 1]?.name ?? 'Playoffs';
+  const ordinal = game.seriesGame === 3 ? '3er' : `${game.seriesGame}º`;
+
+  return `${name} · ${ordinal} partido`;
 }
 
 function managedSideOf(game: GameRow, managedTeamId: string | null): 'home' | 'away' | null {

@@ -90,6 +90,24 @@ Un jugador puede ocupar un hueco que no es el suyo, con penalización por
 distancia en la escala 1-5: de escolta a alero casi no se nota, de base a pívot
 sí. La pantalla lo enseña como porcentaje de encaje antes de jugar, no después.
 
+## Los playoffs
+
+La liga regular no corona campeón: reparte el **factor cancha**. Ocho equipos,
+cuartos al mejor de 3 y semifinales y final al mejor de 5, como la ACB.
+
+El cuadro es fijo —1-8, 2-7, 3-6 y 4-5, y el ganador del 1-8 se cruza con el del
+4-5— para que en octubre se pueda mirar la clasificación y saber con quién te
+vas a encontrar. Dentro de cada serie, el mejor clasificado abre y cierra en
+casa: 2-1 al mejor de 3 y 2-2-1 al mejor de 5. Ese reparto **es** el factor
+cancha; no hace falta ninguna otra mecánica, porque el motor ya premia jugar en
+casa.
+
+Una serie no es una tabla aparte: son varias filas de `games` con el mismo
+`series_id`, y quien juega en casa el primer partido es, por construcción, el
+mejor clasificado. De ahí se reconstruye todo. Al decidirse una serie se borran
+los partidos que ya no se van a jugar, y cuando se cierra una ronda entera se
+genera la siguiente.
+
 ## El acta
 
 Se guarda **en crudo**: minutos, T2 c/i, T3 c/i, TL c/i, rebotes ofensivos y

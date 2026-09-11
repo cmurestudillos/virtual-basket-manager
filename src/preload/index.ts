@@ -8,6 +8,7 @@ import type { GameStateApi, ManagedTeamState } from '@shared/contracts/game-stat
 import type {
   AdvanceResult,
   FixtureEntry,
+  PlayoffBracket,
   SeasonApi,
   SeasonSummary,
   StandingEntry
@@ -76,7 +77,10 @@ const season: SeasonApi = {
     ipcRenderer.invoke(IPC_CHANNELS.seasonGetNextGame) as Promise<FixtureEntry | null>,
   advanceDay: () => ipcRenderer.invoke(IPC_CHANNELS.seasonAdvanceDay) as Promise<AdvanceResult>,
   advanceToNextGame: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.seasonAdvanceToNextGame) as Promise<AdvanceResult>
+    ipcRenderer.invoke(IPC_CHANNELS.seasonAdvanceToNextGame) as Promise<AdvanceResult>,
+  getPlayoffs: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.seasonGetPlayoffs) as Promise<PlayoffBracket | null>,
+  startNextSeason: () => ipcRenderer.invoke(IPC_CHANNELS.seasonStartNext) as Promise<SeasonSummary>
 };
 
 const rotation: RotationApi = {

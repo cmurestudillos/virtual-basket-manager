@@ -17,4 +17,6 @@ export function registerSeasonIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.seasonGetNextGame, () => service.getNextGame());
   ipcMain.handle(IPC_CHANNELS.seasonAdvanceDay, () => service.advanceDay());
   ipcMain.handle(IPC_CHANNELS.seasonAdvanceToNextGame, () => service.advanceToNextGame());
+  ipcMain.handle(IPC_CHANNELS.seasonGetPlayoffs, () => service.getPlayoffs());
+  ipcMain.handle(IPC_CHANNELS.seasonStartNext, () => service.startNextSeason());
 }

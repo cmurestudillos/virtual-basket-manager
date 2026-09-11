@@ -41,5 +41,20 @@ export const useSeasonStore = defineStore('season', () => {
     }
   }
 
-  return { season, nextGame, busy, refresh, advance };
+  /**
+   * Cierra la temporada terminada y arranca la siguiente, y deja el store al
+   * día: temporada, fecha de la cabecera y próximo partido del calendario nuevo.
+   */
+  async function startNextSeason(): Promise<void> {
+    busy.value = true;
+    try {
+      season.value = await window.api.season.startNextSeason();
+      await useGameStateStore().refresh();
+      nextGame.value = await window.api.season.getNextGame();
+    } finally {
+      busy.value = false;
+    }
+  }
+
+  return { season, nextGame, busy, refresh, advance, startNextSeason };
 });
