@@ -41,7 +41,14 @@ export const gamesTable = sqliteTable(
     /** Eliminatoria a la que pertenece, si la hay. */
     seriesId: text('series_id'),
     /** Número de partido dentro de la eliminatoria (1..7). */
-    seriesGame: integer('series_game')
+    seriesGame: integer('series_game'),
+    /**
+     * Registro de jugadas compactado (ver `play-by-play-codec.ts`). Sólo en los
+     * partidos del usuario: son los únicos cuya retransmisión se vuelve a abrir,
+     * y guardar la de los miles de partidos de la IA engordaría la partida sin
+     * que nadie la leyera nunca.
+     */
+    playByPlay: text('play_by_play')
   },
   (table) => [
     // Las dos consultas calientes del juego: "qué se juega hoy" al avanzar día

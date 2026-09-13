@@ -86,8 +86,8 @@ que permite jugar una temporada entera dentro de un test.
 
 `src/shared/engine/basketball/` está en `shared` y no en `main` porque no
 depende de Electron ni de la base de datos: entra un `SimulateGameInput` y sale
-un `GameResult`. Se puede testear, y en el futuro reproducir en la interfaz
-jugada a jugada, sin arrancar la aplicación.
+un `GameResult`. Se puede testear sin arrancar la aplicación, y su registro de
+jugadas es lo que narra la retransmisión (`shared/domain/play-by-play.ts`).
 
 ## Verificación
 

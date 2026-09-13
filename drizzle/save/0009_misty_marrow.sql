@@ -1,0 +1,1 @@
+ALTER TABLE `games` ADD `play_by_play` text;

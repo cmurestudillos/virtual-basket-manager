@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, inArray } from 'drizzle-orm';
 import type { Position } from '@shared/domain/positions';
 import { RULESETS, type Ruleset } from '@shared/domain/rulesets';
 import type { GameResult, PeriodScore } from '@shared/engine/basketball';
@@ -118,6 +118,28 @@ export class MatchRepository {
     return row ? `${row.firstName} ${row.lastName}` : null;
   }
 
+  /**
+   * Nombres cortos («J. Pérez») de una lista de jugadores, estén donde estén
+   * hoy: la retransmisión de un partido de hace dos temporadas nombra también
+   * al que ya se fue del club.
+   */
+  shortNames(playerIds: readonly string[]): Map<string, string> {
+    if (playerIds.length === 0) {
+      return new Map();
+    }
+    const rows = this.db
+      .select({
+        id: playersTable.id,
+        firstName: playersTable.firstName,
+        lastName: playersTable.lastName
+      })
+      .from(playersTable)
+      .where(inArray(playersTable.id, [...playerIds]))
+      .all();
+
+    return new Map(rows.map((row) => [row.id, `${row.firstName.charAt(0)}. ${row.lastName}`]));
+  }
+
   listBoxScores(gameId: string): GamePlayerStatsRow[] {
     return this.db
       .select()
@@ -134,7 +156,12 @@ export class MatchRepository {
    * un partido con marcador pero sin acta dejaría las estadísticas de la
    * temporada mintiendo para siempre.
    */
-  saveResult(game: GameRow, result: GameResult, playedOn: Date): void {
+  saveResult(
+    game: GameRow,
+    result: GameResult,
+    playedOn: Date,
+    playByPlay: string | null = null
+  ): void {
     this.db.transaction((tx) => {
       tx.update(gamesTable)
         .set({
@@ -143,7 +170,8 @@ export class MatchRepository {
           periodScores: JSON.stringify(result.periods),
           overtimes: result.overtimes,
           playedOn,
-          seed: result.seed
+          seed: result.seed,
+          playByPlay
         })
         .where(eq(gamesTable.id, game.id))
         .run();

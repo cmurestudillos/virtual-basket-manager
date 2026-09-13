@@ -79,6 +79,16 @@ const TIRED_THRESHOLD = 62;
 /** Frescura mínima para que un suplente entre a pista en una rotación normal. */
 const REST_THRESHOLD = 74;
 /**
+ * Tiempo mínimo en pista antes de que el entrenador saque a alguien sólo por
+ * llevar minutos de más. Sin él, el que entraba ya iba sobrado de cuota y salía
+ * en la posesión siguiente: 270 cambios por partido, un tercio de ellos
+ * deshaciendo el anterior. No lo veía nadie hasta que hubo retransmisión.
+ * El cansancio y las faltas no esperan a que se cumpla.
+ */
+const MIN_STINT_SECONDS = 150;
+/** Margen de cuota que tiene que ganar el cambio para merecer la pena. */
+const SWAP_MARGIN = 0.04;
+/**
  * Cuota de partido de cada puesto de la rotación, del titular más usado al
  * duodécimo. Suma 5, que son los huecos de pista: repartida así da una rotación
  * de nueve hombres con titulares en torno a 30 minutos, que es lo que se ve en
@@ -99,6 +109,8 @@ interface PlayerState extends OnCourtPlayer {
   box: PlayerBoxScore;
   /** Fracción del partido que le toca jugar según su sitio en la rotación. */
   minutesTarget: number;
+  /** Segundo de partido en el que pisó la pista por última vez. */
+  enteredAt: number;
 }
 
 interface TeamState {
@@ -224,8 +236,18 @@ export class GameSimulation {
       });
 
       applyFatigue(offense, defense);
-      substitute(home, ruleset.personalFoulLimit, this.elapsedSeconds);
-      substitute(away, ruleset.personalFoulLimit, this.elapsedSeconds);
+      for (const team of [home, away]) {
+        for (const change of substitute(team, ruleset.personalFoulLimit, this.elapsedSeconds)) {
+          pushEvent(events, home, away, {
+            period: this.period,
+            clockSeconds: clock,
+            type: 'substitution',
+            teamId: team.team.id,
+            playerId: change.incoming.player.id,
+            secondaryPlayerId: change.outgoing.player.id
+          });
+        }
+      }
 
       this.offenseIsHome = !this.offenseIsHome;
     }
@@ -301,7 +323,8 @@ function buildTeamState(team: EngineTeam, isHome: boolean, regulationMinutes: nu
       onCourt: starterIndex >= 0,
       fouledOut: false,
       box: emptyPlayerBoxScore(player.id),
-      minutesTarget: 0
+      minutesTarget: 0,
+      enteredAt: 0
     };
   });
 
@@ -760,7 +783,10 @@ function commitFoul(context: PossessionContext, fouler: PlayerState, drawer: Pla
   if (fouler.fouls >= ruleset.personalFoulLimit) {
     fouler.fouledOut = true;
     record(context, 'foulOut', defense, fouler.player.id);
-    forceSubstitution(defense, fouler, context.elapsedSeconds);
+    const incoming = forceSubstitution(defense, fouler, context.elapsedSeconds);
+    if (incoming) {
+      record(context, 'substitution', defense, incoming.player.id, fouler.player.id);
+    }
   }
 }
 
@@ -828,19 +854,36 @@ function recoverBetweenPeriods(team: TeamState, isHalfTime: boolean): void {
  * sin ella los doce acaban jugando prácticamente lo mismo, que no se parece a
  * ningún partido real.
  */
-function substitute(team: TeamState, foulLimit: number, elapsedSeconds: number): void {
+interface Substitution {
+  outgoing: PlayerState;
+  incoming: PlayerState;
+}
+
+/**
+ * Devuelve los cambios hechos para que quien la llama los apunte en el acta.
+ * Apuntarlos no gasta azar: el partido sale igual se registren o no.
+ */
+function substitute(team: TeamState, foulLimit: number, elapsedSeconds: number): Substitution[] {
+  const changes: Substitution[] = [];
   if (elapsedSeconds <= 0) {
-    return;
+    return changes;
   }
 
   const outgoing = onCourt(team)
     .filter((state) => !state.fouledOut)
-    .map((state) => ({ state, excess: playedShare(state, elapsedSeconds) - state.minutesTarget }))
-    .filter(({ state, excess }) => excess > 0.06 || state.freshness < TIRED_THRESHOLD)
+    .map((state) => ({
+      state,
+      excess: playedShare(state, elapsedSeconds) - state.minutesTarget,
+      tired: state.freshness < TIRED_THRESHOLD
+    }))
+    .filter(
+      ({ state, excess, tired }) =>
+        tired || (excess > 0.06 && elapsedSeconds - state.enteredAt >= MIN_STINT_SECONDS)
+    )
     .sort((a, b) => b.excess - a.excess)
     .slice(0, 2);
 
-  for (const { state } of outgoing) {
+  for (const { state, excess, tired } of outgoing) {
     const incoming = bestBenchCandidate(
       team,
       state.playedPosition,
@@ -851,11 +894,24 @@ function substitute(team: TeamState, foulLimit: number, elapsedSeconds: number):
     if (!incoming) {
       continue;
     }
-    swap(state, incoming);
+    // Por minutos, sólo si el que entra va de verdad más corto que el que sale;
+    // si no, el cambio se deshace solo en cuanto pase el tiempo mínimo.
+    const incomingExcess = playedShare(incoming, elapsedSeconds) - incoming.minutesTarget;
+    if (!tired && incomingExcess > excess - SWAP_MARGIN) {
+      continue;
+    }
+    swap(state, incoming, elapsedSeconds);
+    changes.push({ outgoing: state, incoming });
   }
+  return changes;
 }
 
-function forceSubstitution(team: TeamState, outgoing: PlayerState, elapsedSeconds: number): void {
+/** Saca al eliminado y devuelve quién entra por él, si queda alguien. */
+function forceSubstitution(
+  team: TeamState,
+  outgoing: PlayerState,
+  elapsedSeconds: number
+): PlayerState | null {
   const incoming = bestBenchCandidate(
     team,
     outgoing.playedPosition,
@@ -867,9 +923,10 @@ function forceSubstitution(team: TeamState, outgoing: PlayerState, elapsedSecond
     // Sin recambio, el eliminado abandona la pista igualmente: el equipo juega
     // con menos, que es lo que dice el reglamento.
     outgoing.onCourt = false;
-    return;
+    return null;
   }
-  swap(outgoing, incoming);
+  swap(outgoing, incoming, elapsedSeconds);
+  return incoming;
 }
 
 function bestBenchCandidate(
@@ -914,9 +971,10 @@ function playedShare(state: PlayerState, elapsedSeconds: number): number {
   return elapsedSeconds <= 0 ? 0 : state.box.secondsPlayed / elapsedSeconds;
 }
 
-function swap(outgoing: PlayerState, incoming: PlayerState): void {
+function swap(outgoing: PlayerState, incoming: PlayerState, elapsedSeconds: number): void {
   outgoing.onCourt = false;
   incoming.onCourt = true;
+  incoming.enteredAt = elapsedSeconds;
   incoming.playedPosition = outgoing.playedPosition;
 }
 
