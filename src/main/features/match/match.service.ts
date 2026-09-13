@@ -2,6 +2,7 @@ import { efficiencyRating, points, type PlayerBoxScore } from '@shared/domain/bo
 import { continentalRoundName } from '@shared/domain/continental';
 import { CUP_TEAMS, cupRoundName } from '@shared/domain/cup';
 import { buildPlayoffFormat } from '@shared/domain/playoffs';
+import { narrateGame, type PlayLine } from '@shared/domain/play-by-play';
 import { analystRevealsRival } from '@shared/domain/staff';
 import {
   DEFENSIVE_SYSTEM_LABELS,
@@ -16,7 +17,7 @@ import type {
   MatchState,
   MatchTeamState
 } from '@shared/contracts/match.contract';
-import { GameSimulation, type GameResult } from '@shared/engine/basketball';
+import { GameSimulation, type GameEvent, type GameResult } from '@shared/engine/basketball';
 import type { SaveDatabase } from '../../database/save-database';
 import type { GameRow } from '../../database/schema/save';
 import { StaffService } from '../staff/staff.service';
@@ -25,6 +26,7 @@ import { ClubService } from '../club/club.service';
 import { FitnessService } from '../fitness/fitness.service';
 import { buildEngineTeam } from './engine-input';
 import { MatchRepository, type PlayerCard } from './match.repository';
+import { decodePlayByPlay, encodePlayByPlay } from './play-by-play-codec';
 
 export class GameNotFoundError extends Error {
   constructor(gameId: string) {
@@ -100,7 +102,7 @@ export class MatchService {
 
     if (simulation.isFinished) {
       const playedOn = repository.currentDate();
-      repository.saveResult(game, result, playedOn);
+      repository.saveResult(game, result, playedOn, keptPlayByPlay(repository, game, result));
       applyPhysicalEffects(db, game.id, result, playedOn);
       applyClubEffects(db, game, result, playedOn, repository);
       sessions.delete(gameId);
@@ -135,6 +137,9 @@ export class MatchService {
         .sort(byActaOrder)
     });
 
+    const regulationPeriods = repository.rulesetForGame(game.id).periods;
+    const events = decodePlayByPlay(game.playByPlay, game);
+
     return {
       gameId: game.id,
       round: game.round,
@@ -144,10 +149,11 @@ export class MatchService {
       away: toSide(game.awayTeamId, game.awayScore, 'away'),
       periods: repository.parsePeriodScores(game),
       playedPeriods: repository.parsePeriodScores(game).length,
-      regulationPeriods: repository.rulesetForGame(game.id).periods,
+      regulationPeriods,
       finished: true,
       managedSide: managedSideOf(game, managedTeamId),
-      scouting: scoutRival(db, repository, game, managedTeamId)
+      scouting: scoutRival(db, repository, game, managedTeamId),
+      playByPlay: events ? narrate(repository, game, events, regulationPeriods) : null
     };
   }
 
@@ -170,7 +176,7 @@ export class MatchService {
     }
 
     const result = simulation.result;
-    repository.saveResult(game, result, playedOn);
+    repository.saveResult(game, result, playedOn, keptPlayByPlay(repository, game, result));
     applyPhysicalEffects(db, game.id, result, playedOn);
     applyClubEffects(db, game, result, playedOn, repository);
     return result;
@@ -254,6 +260,7 @@ function toMatchState(
   const managedTeamId = repository.managedTeamId();
   const homeCards = repository.playerCards(game.homeTeamId);
   const awayCards = repository.playerCards(game.awayTeamId);
+  const regulationPeriods = repository.rulesetForGame(game.id).periods;
 
   return {
     gameId: game.id,
@@ -278,11 +285,45 @@ function toMatchState(
     },
     periods: result.periods,
     playedPeriods: result.periods.length,
-    regulationPeriods: repository.rulesetForGame(game.id).periods,
+    regulationPeriods,
     finished,
     managedSide: managedSideOf(game, managedTeamId),
-    scouting: scoutRival(db, repository, game, managedTeamId)
+    scouting: scoutRival(db, repository, game, managedTeamId),
+    playByPlay: narrate(repository, game, result.events, regulationPeriods)
   };
+}
+
+/** La retransmisión se guarda sólo si juega el usuario; ver `games.playByPlay`. */
+function keptPlayByPlay(
+  repository: MatchRepository,
+  game: GameRow,
+  result: GameResult
+): string | null {
+  return managedSideOf(game, repository.managedTeamId())
+    ? encodePlayByPlay(result.events, game)
+    : null;
+}
+
+function narrate(
+  repository: MatchRepository,
+  game: GameRow,
+  events: readonly GameEvent[],
+  regulationPeriods: number
+): PlayLine[] {
+  const ids = new Set<string>();
+  for (const event of events) {
+    if (event.playerId) ids.add(event.playerId);
+    if (event.secondaryPlayerId) ids.add(event.secondaryPlayerId);
+  }
+  const names = repository.shortNames([...ids]);
+
+  return narrateGame(events, {
+    homeTeamId: game.homeTeamId,
+    homeTeamName: repository.teamName(game.homeTeamId),
+    awayTeamName: repository.teamName(game.awayTeamId),
+    regulationPeriods,
+    playerName: (playerId) => names.get(playerId) ?? '—'
+  });
 }
 
 /**

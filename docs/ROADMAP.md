@@ -233,12 +233,45 @@ un objetivo claro a ampliar el pabellón.
 
 Aquí es donde más se parecían y más se diferenciaban las dos referencias.
 
-|     | Pieza                 | Detalle                                                             |     |
-| --- | --------------------- | ------------------------------------------------------------------- | --- |
-| ⬜  | Retransmisión textual | Jugada a jugada con marcador y reloj; el motor ya emite los eventos | M   |
-| ⬜  | Partido en vivo       | Pausar, cambiar, tiempo muerto, cambiar de defensa sobre la marcha  | L   |
-| ⬜  | Pista 2D              | Vista cenital con los diez jugadores, estilo PC Basket              | L   |
-| ⬜  | Pista 3D              | Como IBM. Caro y lo último que aporta valor de manager              | L   |
+### Fase 1 — la retransmisión (hecha)
+
+|     | Pieza                 | Detalle                                                          |     |
+| --- | --------------------- | ---------------------------------------------------------------- | --- |
+| ✅  | Retransmisión textual | Jugada a jugada con marcador y reloj, velocidad y salto al final | M   |
+
+El cuarto se sigue jugando entero al pulsar el botón: lo que llega a la pantalla
+ya está decidido, y la retransmisión sólo hace correr el reloj y destapa las
+jugadas cuyo segundo ha pasado. Por eso saltar al final no cambia nada, y por
+eso mientras corre el reloj el acta y los parciales se quedan como estaban al
+empezar el cuarto: enseñarlos sería cantar el resultado antes de verlo.
+
+El narrador cuenta como un comentarista y no como el acta: la canasta y su
+asistencia van en una línea, el robo se cuenta desde el que roba, los tiros
+libres seguidos se resumen («2 de 2 desde la línea»), cada falta dice la
+personal que lleva y un parcial de 8-0 se anuncia. Para eso el motor apunta
+ahora también los **cambios**, que hacía pero no registraba.
+
+Y apuntarlos destapó un fallo que el acta escondía: **270 cambios por partido**,
+un tercio de ellos deshaciendo el anterior en menos de un minuto. El que entraba
+ya iba sobrado de minutos y salía en la posesión siguiente; el reparto final
+cuadraba, pero a base de meter y sacar a los mismos sin parar. Ahora nadie sale
+por minutos antes de dos minutos y medio en pista —el cansancio y las faltas no
+esperan— y sólo entra quien va de verdad más corto de cuota que el que sale. Se
+queda en unos 80 cambios, ninguno de ida y vuelta, con los mismos puntos por
+partido y los minutos apenas 0,2 más lejos del objetivo.
+
+Sólo se guarda la retransmisión de **los partidos del usuario**, compactada
+(unos 10 KB por partido en vez de 60): son los únicos que se vuelven a abrir, y
+guardar la de los miles de partidos de la IA engordaría la partida sin que nadie
+la leyera.
+
+### Lo que queda del bloque
+
+|     | Pieza           | Detalle                                                            |     |
+| --- | --------------- | ------------------------------------------------------------------ | --- |
+| ⬜  | Partido en vivo | Pausar, cambiar, tiempo muerto, cambiar de defensa sobre la marcha | L   |
+| ⬜  | Pista 2D        | Vista cenital con los diez jugadores, estilo PC Basket             | L   |
+| ⬜  | Pista 3D        | Como IBM. Caro y lo último que aporta valor de manager             | L   |
 
 ## Bloque 6 — Alrededor
 

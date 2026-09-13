@@ -238,6 +238,34 @@ describe('SeasonService', () => {
     expect(fromPeriods).toBe(acta!.home.score);
   });
 
+  it('guarda la retransmisión del partido del usuario, y sólo la suya', () => {
+    const stop = season.advanceToNextGame();
+    if (stop.status !== 'userGame') throw new Error('debería haber parado');
+
+    match.start(stop.gameId);
+    let live = match.advancePeriod(stop.gameId);
+    while (!live.finished) {
+      live = match.advancePeriod(stop.gameId);
+    }
+
+    // La que se lee del acta guardada es la misma que se vio en directo: el
+    // códec no pierde nada por el camino, marcador incluido.
+    const archived = match.get(stop.gameId);
+    expect(live.playByPlay?.length).toBeGreaterThan(200);
+    expect(archived?.playByPlay).toEqual(live.playByPlay);
+    expect(archived?.playByPlay?.at(-1)?.text).toContain(
+      `Final del partido · ${live.home.score}-${live.away.score}`
+    );
+    // Todos los implicados tienen nombre, también los que salen del banquillo.
+    expect(archived?.playByPlay?.some((line) => line.text.includes('—'))).toBe(false);
+
+    const after = season.advanceDay();
+    if (after.status !== 'advanced') throw new Error('debería haber avanzado');
+    const aiGame = match.get(after.playedGameIds[0] as string);
+    expect(aiGame?.finished).toBe(true);
+    expect(aiGame?.playByPlay).toBeNull();
+  });
+
   it('reproduce el mismo partido si se abandona a medias y se vuelve a empezar', () => {
     const stop = season.advanceToNextGame();
     if (stop.status !== 'userGame') throw new Error('debería haber parado');

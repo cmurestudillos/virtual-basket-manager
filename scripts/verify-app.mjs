@@ -214,26 +214,47 @@ await page.waitForTimeout(2500);
 console.log('url tras avanzar:', page.url());
 await page.screenshot({ path: `${SHOTS}/13-previa.png` });
 
-// Cuarto a cuarto, que es como se juega en modo resultado.
-for (let quarter = 1; quarter <= 4; quarter += 1) {
+/**
+ * Cada cuarto se retransmite con el reloj corriendo. El primero se deja correr
+ * un rato para ver la retransmisión en marcha —reloj, marcador parcial y
+ * jugadas entrando—; el resto se salta al final, que es lo que hace quien sólo
+ * quiere el resultado.
+ */
+async function playQuarter(watchLive) {
   const button = page.locator('button', { hasText: /^Jugar/ }).first();
-  if ((await button.count()) === 0) break;
+  if ((await button.count()) === 0) return false;
   await button.click();
-  await page.waitForTimeout(1500);
+  if (watchLive) {
+    await page.waitForTimeout(6000);
+    const live = await page.locator('section').first().innerText();
+    console.log('retransmisión en marcha:', live.split('\n').slice(0, 5).join(' '));
+    console.log('jugadas vistas:', await page.locator('ol li').count());
+    await page.screenshot({ path: `${SHOTS}/14-retransmision.png` });
+  }
+  await page.getByRole('button', { name: 'Saltar al final del cuarto' }).click();
+  await page.waitForTimeout(800);
+  return true;
+}
+
+for (let quarter = 1; quarter <= 4; quarter += 1) {
+  if (!(await playQuarter(quarter === 1))) break;
   const scoreboard = await page.locator('section').first().innerText();
-  console.log(`tras el cuarto ${quarter}:`, scoreboard.split('\n').slice(0, 4).join(' '));
+  console.log(`tras el cuarto ${quarter}:`, scoreboard.split('\n').slice(0, 5).join(' '));
   await page.screenshot({ path: `${SHOTS}/14-cuarto-${quarter}.png` });
 }
 
 // Prórrogas, si las hubo.
 for (let extra = 0; extra < 4; extra += 1) {
-  const button = page.locator('button', { hasText: /^Jugar/ }).first();
-  if ((await button.count()) === 0) break;
-  await button.click();
-  await page.waitForTimeout(1500);
+  if (!(await playQuarter(false))) break;
 }
 await page.screenshot({ path: `${SHOTS}/15-acta.png` });
 console.log('actas en pantalla:', await page.locator('table').count());
+console.log('retransmisión completa:', await page.locator('ol li').count(), 'líneas');
+await page.getByRole('button', { name: 'Canastas' }).click();
+await page.waitForTimeout(400);
+console.log('sólo canastas:', await page.locator('ol li').count(), 'líneas');
+await page.screenshot({ path: `${SHOTS}/15b-canastas.png` });
+await page.getByRole('button', { name: 'Todo' }).click();
 
 await page.getByRole('link', { name: 'Volver al club' }).click();
 await page.waitForTimeout(1200);

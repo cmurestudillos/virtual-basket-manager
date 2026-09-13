@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { points, type PlayerBoxScore } from '@shared/domain/box-score';
 import { FIBA_RULESET, NBA_RULESET, regulationMinutes } from '@shared/domain/rulesets';
 import { GameSimulation, simulateGame } from '../simulate-game';
-import type { GameResult } from '../types';
+import type { GameEvent, GameResult } from '../types';
 import { buildTestTeam } from './test-teams';
 
 function teamPoints(boxScores: readonly PlayerBoxScore[]): number {
@@ -242,6 +242,67 @@ describe('simulateGame', () => {
       result.home.boxScores.reduce((sum, line) => sum + line.threePointAttempted, 0);
 
     expect(triples(exterior)).toBeGreaterThan(triples(interior) * 1.4);
+  });
+
+  it('apunta cada cambio, y los cambios cuadran con quién está en pista', () => {
+    const home = buildTestTeam('local', 60);
+    const away = buildTestTeam('visitante', 60);
+    const result = simulateGame({ gameId: 'cambios', home, away, ruleset: FIBA_RULESET });
+
+    const onCourt = new Map([
+      [home.id, new Set(home.starters)],
+      [away.id, new Set(away.starters)]
+    ]);
+    const substitutions = result.events.filter((event) => event.type === 'substitution');
+    expect(substitutions.length).toBeGreaterThan(10);
+
+    for (const change of substitutions) {
+      const court = onCourt.get(change.teamId) as Set<string>;
+      // Entra uno que estaba en el banquillo por uno que estaba en pista.
+      expect(court.has(change.playerId as string)).toBe(false);
+      expect(court.has(change.secondaryPlayerId as string)).toBe(true);
+      court.delete(change.secondaryPlayerId as string);
+      court.add(change.playerId as string);
+    }
+
+    // Y nadie juega un segundo sin haber sido titular o haber entrado en un cambio.
+    const entered = new Set([
+      ...home.starters,
+      ...away.starters,
+      ...substitutions.map((change) => change.playerId)
+    ]);
+    for (const line of [...result.home.boxScores, ...result.away.boxScores]) {
+      if (line.secondsPlayed > 0) {
+        expect(entered.has(line.playerId)).toBe(true);
+      }
+    }
+  });
+
+  it('no mete y saca a los mismos en cada posesión', () => {
+    const result = play('sin-idas-y-vueltas');
+    const substitutions = result.events.filter((event) => event.type === 'substitution');
+    const elapsed = (event: GameEvent): number =>
+      (event.period - 1) * FIBA_RULESET.periodMinutes * 60 +
+      (FIBA_RULESET.periodMinutes * 60 - event.clockSeconds);
+
+    // Un partido FIBA de verdad anda por los cuarenta o cincuenta cambios entre
+    // los dos equipos; antes de poner tiempo mínimo en pista salían 270.
+    expect(substitutions.length).toBeLessThan(120);
+
+    // Y nadie deshace un cambio al minuto: el que acaba de entrar no vuelve a
+    // sentarse para que salga otra vez el que acaba de sentarse.
+    for (const [index, change] of substitutions.entries()) {
+      const undo = substitutions
+        .slice(index + 1)
+        .find(
+          (later) =>
+            later.playerId === change.secondaryPlayerId &&
+            later.secondaryPlayerId === change.playerId
+        );
+      if (undo) {
+        expect(elapsed(undo) - elapsed(change)).toBeGreaterThanOrEqual(60);
+      }
+    }
   });
 
   it('deja un registro de jugadas coherente con el marcador final', () => {

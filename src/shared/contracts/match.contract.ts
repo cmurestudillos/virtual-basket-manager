@@ -1,3 +1,4 @@
+import type { PlayLine } from '@shared/domain/play-by-play';
 import type { Position } from '@shared/domain/positions';
 
 export interface BoxScoreLine {
@@ -65,6 +66,11 @@ export interface MatchState {
    * llega al nivel que hace falta o si el partido no es del usuario.
    */
   scouting: MatchScouting | null;
+  /**
+   * La retransmisión jugada a jugada de lo disputado hasta ahora. `null` en el
+   * acta de un partido ajeno: de esos sólo se guarda el resultado.
+   */
+  playByPlay: PlayLine[] | null;
 }
 
 /** Informe del analista sobre el rival, para la previa. */

@@ -1,19 +1,67 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { BoxScoreLine, MatchState } from '@shared/contracts/match.contract';
 import { percentage } from '@shared/domain/box-score';
+import { formatGameClock, periodName } from '@shared/domain/play-by-play';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { formatMatchDate, formatPlayedMinutes } from '@renderer/shared/format';
-import { AppButton, AppSectionTitle } from '@renderer/shared/ui';
+import { AppButton, AppEmpty, AppPanel, AppSectionTitle, AppSegmented } from '@renderer/shared/ui';
+import PlayByPlayFeed from '../components/PlayByPlayFeed.vue';
+import { usePlayback } from '../composables/usePlayback';
 
 const route = useRoute();
 const seasonStore = useSeasonStore();
 
 const state = ref<MatchState | null>(null);
+/**
+ * El partido tal y como estaba antes del cuarto que se está retransmitiendo.
+ * Mientras corre el reloj, el acta y los parciales salen de aquí: enseñar los
+ * del final del cuarto sería contar el resultado antes de verlo.
+ */
+const previous = ref<MatchState | null>(null);
 const busy = ref(false);
+const playback = usePlayback(onPlaybackFinished);
+
+const SPEEDS = [
+  { id: 'slow', label: 'Lenta' },
+  { id: 'normal', label: 'Normal' },
+  { id: 'fast', label: 'Rápida' }
+];
+
 /** Sólo se puede jugar el partido si el usuario está en él. */
 const playable = computed(() => state.value?.managedSide !== null && !state.value?.finished);
+const running = computed(() => playback.running.value);
+
+/** Lo que se ve: el estado anterior mientras corre un cuarto, el último si no. */
+const shown = computed(() => (running.value ? previous.value : null) ?? state.value);
+
+const visibleLines = computed(() => {
+  const lines = state.value?.playByPlay ?? [];
+  return running.value ? lines.slice(0, playback.visibleCount.value) : lines;
+});
+
+const score = computed(() => {
+  const last = running.value ? visibleLines.value.at(-1) : undefined;
+  return {
+    home: last?.homeScore ?? shown.value?.home.score ?? 0,
+    away: last?.awayScore ?? shown.value?.away.score ?? 0
+  };
+});
+
+/** La línea de debajo del marcador: en qué punto del partido estamos. */
+const moment = computed(() => {
+  const current = state.value;
+  if (!current) return '';
+  if (running.value && playback.period.value !== null) {
+    const name = periodName(playback.period.value, current.regulationPeriods);
+    return `${name.charAt(0).toUpperCase()}${name.slice(1)} · ${formatGameClock(playback.clockSeconds.value)}`;
+  }
+  if (current.finished) return 'Final';
+  if (current.playedPeriods === 0) return 'Previa';
+  if (current.playedPeriods === Math.floor(current.regulationPeriods / 2)) return 'Descanso';
+  return `Final del ${periodName(current.playedPeriods, current.regulationPeriods)}`;
+});
 
 const buttonLabel = computed(() => {
   const played = state.value?.playedPeriods ?? 0;
@@ -25,6 +73,14 @@ const buttonLabel = computed(() => {
 
 onMounted(load);
 
+// Si se sale a mitad de la retransmisión del último cuarto, el partido ya está
+// guardado: la cabecera y el calendario tienen que enterarse igualmente.
+onUnmounted(() => {
+  if (running.value && state.value?.finished) {
+    void seasonStore.refresh();
+  }
+});
+
 async function load(): Promise<void> {
   const gameId = String(route.params.gameId);
   // Un partido ya jugado se lee del acta guardada; uno pendiente se prepara.
@@ -33,19 +89,26 @@ async function load(): Promise<void> {
 }
 
 async function advance(): Promise<void> {
-  if (!state.value || busy.value) {
+  if (!state.value || busy.value || running.value) {
     return;
   }
   busy.value = true;
   try {
+    previous.value = state.value;
     state.value = await window.api.match.advancePeriod(state.value.gameId);
-    if (state.value.finished) {
-      // El partido ya cuenta para la clasificación: la cabecera y el próximo
-      // partido de la temporada tienen que enterarse.
-      await seasonStore.refresh();
-    }
+    playback.play(state.value.playByPlay ?? [], state.value.playedPeriods);
   } finally {
     busy.value = false;
+  }
+}
+
+function onPlaybackFinished(): void {
+  previous.value = null;
+  if (state.value?.finished) {
+    // El partido ya cuenta para la clasificación: la cabecera y el próximo
+    // partido de la temporada tienen que enterarse. Se espera al final de la
+    // retransmisión para que la cabecera no cante el resultado antes de verlo.
+    void seasonStore.refresh();
   }
 }
 
@@ -67,7 +130,7 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
 </script>
 
 <template>
-  <div v-if="state" class="flex flex-col gap-5">
+  <div v-if="state && shown" class="flex flex-col gap-5">
     <header class="flex items-center justify-between">
       <div>
         <p class="text-sm text-court-300">
@@ -87,9 +150,12 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
             {{ state.home.teamName }}
           </p>
         </div>
-        <p class="text-5xl font-bold tabular-nums">
-          {{ state.home.score }} <span class="text-court-600">-</span> {{ state.away.score }}
-        </p>
+        <div class="text-center">
+          <p class="text-5xl font-bold tabular-nums">
+            {{ score.home }} <span class="text-court-600">-</span> {{ score.away }}
+          </p>
+          <p class="mt-1 text-sm text-court-300 tabular-nums">{{ moment }}</p>
+        </div>
         <div>
           <p class="text-xl" :class="state.managedSide === 'away' ? 'text-ball-400' : ''">
             {{ state.away.teamName }}
@@ -98,44 +164,73 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
       </div>
 
       <!-- Parciales por cuarto -->
-      <table v-if="state.periods.length > 0" class="mx-auto mt-5 text-sm">
+      <table v-if="shown.periods.length > 0" class="mx-auto mt-5 text-sm">
         <thead>
           <tr class="text-court-300">
             <th class="px-3 py-1 text-left"></th>
-            <th v-for="period in state.periods" :key="period.period" class="px-3 py-1 text-center">
-              {{ period.period > state.regulationPeriods ? 'PR' : `${period.period}º` }}
+            <th v-for="period in shown.periods" :key="period.period" class="px-3 py-1 text-center">
+              {{ period.period > shown.regulationPeriods ? 'PR' : `${period.period}º` }}
             </th>
           </tr>
         </thead>
         <tbody class="tabular-nums">
           <tr>
             <td class="px-3 py-1 text-court-300">{{ state.home.teamName }}</td>
-            <td v-for="period in state.periods" :key="period.period" class="px-3 py-1 text-center">
+            <td v-for="period in shown.periods" :key="period.period" class="px-3 py-1 text-center">
               {{ period.home }}
             </td>
           </tr>
           <tr>
             <td class="px-3 py-1 text-court-300">{{ state.away.teamName }}</td>
-            <td v-for="period in state.periods" :key="period.period" class="px-3 py-1 text-center">
+            <td v-for="period in shown.periods" :key="period.period" class="px-3 py-1 text-center">
               {{ period.away }}
             </td>
           </tr>
         </tbody>
       </table>
 
-      <div class="mt-6 flex justify-center">
-        <AppButton v-if="playable" variant="primary" size="lg" :disabled="busy" @click="advance">
+      <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
+        <AppButton v-if="running" variant="secondary" size="lg" @click="playback.skip">
+          Saltar al final del cuarto
+        </AppButton>
+        <AppButton
+          v-else-if="playable"
+          variant="primary"
+          size="lg"
+          :disabled="busy"
+          @click="advance"
+        >
           {{ busy ? 'Jugando…' : buttonLabel }}
         </AppButton>
         <p v-else-if="state.finished" class="text-sm text-court-300">Partido finalizado</p>
         <p v-else class="text-sm text-court-300">Partido de otros equipos</p>
+
+        <!-- La velocidad se elige antes o durante: vale para todos los cuartos. -->
+        <AppSegmented
+          v-if="running || playable"
+          v-model="playback.speed.value"
+          :options="SPEEDS"
+          aria-label="Velocidad de la retransmisión"
+        />
       </div>
     </section>
 
+    <PlayByPlayFeed
+      v-if="state.playByPlay && state.playedPeriods > 0"
+      :lines="visibleLines"
+      :managed-side="state.managedSide"
+    />
+    <AppPanel v-else-if="state.finished" title="Retransmisión">
+      <AppEmpty>
+        De los partidos entre otros equipos sólo se guarda el acta: la retransmisión se queda para
+        los tuyos.
+      </AppEmpty>
+    </AppPanel>
+
     <!-- Actas -->
-    <section v-if="state.playedPeriods > 0" class="grid grid-cols-2 gap-4">
+    <section v-if="shown.playedPeriods > 0" class="grid grid-cols-2 gap-4">
       <div
-        v-for="side in [state.home, state.away]"
+        v-for="side in [shown.home, shown.away]"
         :key="side.teamId"
         class="overflow-auto rounded border border-court-700"
       >
@@ -217,7 +312,7 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
         </p>
       </div>
       <div class="mt-3 grid grid-cols-2 gap-6">
-        <div v-for="side in [state.home, state.away]" :key="side.teamId">
+        <div v-for="side in [shown.home, shown.away]" :key="side.teamId">
           <p class="mb-2 text-sm">{{ side.teamName }} · cinco inicial</p>
           <ul class="flex flex-col gap-1 text-sm">
             <li
