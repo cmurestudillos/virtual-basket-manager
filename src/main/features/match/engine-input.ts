@@ -12,6 +12,7 @@ import {
   teamTacticsTable,
   type PlayerRow
 } from '../../database/schema/save';
+import { nationalSquad, playersOnNationalDuty } from '../national/national-squad';
 
 /**
  * Traduce lo que hay en la base de datos a lo que entiende el motor.
@@ -20,18 +21,17 @@ import {
  * y la base de datos no sabe que existe el motor. Todo lo que el motor necesita
  * —convocados, cinco inicial, pizarra— sale de aquí.
  */
-export function buildEngineTeam(db: SaveDatabase, teamId: string): EngineTeam {
+export function buildEngineTeam(db: SaveDatabase, teamId: string, date?: Date): EngineTeam {
   const team = db.select().from(teamsTable).where(eq(teamsTable.id, teamId)).get();
   if (!team) {
     throw new Error(`No existe el equipo ${teamId}`);
   }
 
-  // Los juveniles no se visten: para el motor, la plantilla es el primer equipo.
-  const roster = db
-    .select()
-    .from(playersTable)
-    .where(and(eq(playersTable.teamId, teamId), eq(playersTable.isYouth, false)))
-    .all();
+  // Una selección juega con sus convocados. Un club, con su primer equipo —los
+  // juveniles no se visten— menos los que estén esos días con su selección.
+  const roster = team.nationalOf
+    ? nationalSquad(db, teamId, date ?? new Date())
+    : clubRoster(db, teamId, date);
   const rotation = db
     .select()
     .from(rotationSlotsTable)
@@ -79,6 +79,22 @@ export function buildEngineTeam(db: SaveDatabase, teamId: string): EngineTeam {
     ),
     tactics: toTactics(tactics)
   };
+}
+
+/** El primer equipo de un club, sin los que están con su selección ese día. */
+function clubRoster(db: SaveDatabase, teamId: string, date: Date | undefined): PlayerRow[] {
+  const roster = db
+    .select()
+    .from(playersTable)
+    .where(and(eq(playersTable.teamId, teamId), eq(playersTable.isYouth, false)))
+    .all();
+  if (!date) {
+    return roster;
+  }
+  const onDuty = playersOnNationalDuty(db, date);
+  const present = roster.filter((row) => !onDuty.has(row.id));
+  // Un club no se queda sin cinco por una ventana: si pasara, juegan todos.
+  return present.length >= LINEUP_SIZE ? present : roster;
 }
 
 function slotOrder(slotPosition: string): number {

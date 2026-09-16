@@ -13,7 +13,9 @@ export const createSaveRequestSchema = z.object({
    * Países cuyas ligas se juegan. El del club va siempre, esté o no en la
    * lista; vacía, se juega sólo ese.
    */
-  activeCountries: z.array(z.string().trim().min(2).max(3)).max(20).default([])
+  activeCountries: z.array(z.string().trim().min(2).max(3)).max(20).default([]),
+  /** Selección que dirige además del club, por su código de nacionalidad; nula si ninguna. */
+  nationalTeam: z.string().trim().length(3).nullable().default(null)
 });
 export type CreateSaveRequest = z.infer<typeof createSaveRequestSchema>;
 

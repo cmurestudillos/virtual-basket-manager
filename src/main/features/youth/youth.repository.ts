@@ -1,4 +1,4 @@
-import { and, asc, eq } from 'drizzle-orm';
+import { and, asc, eq, isNull } from 'drizzle-orm';
 import type { SaveDatabase } from '../../database/client';
 import {
   gameStateTable,
@@ -25,7 +25,13 @@ export class YouthRepository {
   }
 
   listTeams(): TeamRow[] {
-    return this.db.select().from(teamsTable).orderBy(asc(teamsTable.id)).all();
+    // Las selecciones no tienen cantera.
+    return this.db
+      .select()
+      .from(teamsTable)
+      .where(isNull(teamsTable.nationalOf))
+      .orderBy(asc(teamsTable.id))
+      .all();
   }
 
   /** Los juveniles de un club, del más prometedor al menos. */

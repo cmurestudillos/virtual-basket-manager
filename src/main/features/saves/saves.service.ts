@@ -12,6 +12,8 @@ import { deleteSaveFile, prepareSaveFilePath, toSaveFileName } from '../../datab
 import { gameStateTable, teamsTable } from '../../database/schema/save';
 import type { SaveRow } from '../../database/schema/app';
 import { DEFAULT_RULESET_MODE, rulesetFor, type RulesetMode } from '@shared/domain/ruleset-mode';
+import { nationalTeamId } from '@shared/domain/national-teams';
+import { NationalService } from '../national/national.service';
 import { applyWorldEdits, type WorldEdit } from '../world-editor/apply-world-edits';
 import { loadDataset } from './dataset';
 import { seedSave } from './save-seeder';
@@ -28,6 +30,13 @@ export class UnknownTeamError extends Error {
   constructor(teamId: string) {
     super(`El equipo ${teamId} no está en el dataset`);
     this.name = 'UnknownTeamError';
+  }
+}
+
+export class UnknownNationError extends Error {
+  constructor(code: string) {
+    super(`No hay selección de ${code}: no tiene jugadores suficientes`);
+    this.name = 'UnknownNationError';
   }
 }
 
@@ -105,6 +114,18 @@ export class SavesService {
       careerMode: validated.careerMode,
       activeCountries: validated.activeCountries
     });
+
+    // La selección se crea ya, con su clasificación, para poder dar la etapa
+    // por empezada desde el primer día.
+    if (validated.nationalTeam) {
+      const national = new NationalService(() => db);
+      national.ensureSeason(1, dataset.seasonStartYear);
+      const teamId = nationalTeamId(validated.nationalTeam);
+      if (!national.getOverview().nations.some((nation) => nation.teamId === teamId)) {
+        throw new UnknownNationError(validated.nationalTeam);
+      }
+      national.takeTeam(teamId);
+    }
 
     const now = new Date();
     this.repository.insert({

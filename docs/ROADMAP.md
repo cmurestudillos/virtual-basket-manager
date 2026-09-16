@@ -223,11 +223,11 @@ un objetivo claro a ampliar el pabellón.
 
 ### Fase 4 — el resto del bloque
 
-|     | Pieza                       | Detalle                                                          |     |
-| --- | --------------------------- | ---------------------------------------------------------------- | --- |
-| ✅  | Escoger ligas jugables      | Elegir qué países se juegan, con su coste en tiempo de partida   | M   |
-| ⬜  | Selecciones y ventanas FIBA |                                                                  | M   |
-| ⬜  | Formato NBA                 | Conferencias, divisiones, _cap_, draft — es casi un juego aparte | L   |
+|     | Pieza                       | Detalle                                                           |     |
+| --- | --------------------------- | ----------------------------------------------------------------- | --- |
+| ✅  | Escoger ligas jugables      | Elegir qué países se juegan, con su coste en tiempo de partida    | M   |
+| ✅  | Selecciones y ventanas FIBA | Clasificación, Mundial y selección dirigible a la vez que el club | L   |
+| ⬜  | Formato NBA                 | Conferencias, divisiones, _cap_, draft — es casi un juego aparte  | L   |
 
 **Escoger ligas jugables.** Se eligen **países**, no ligas, y sólo al crear la
 partida: las divisiones de un país van atadas por los ascensos, y una liga que
@@ -245,6 +245,32 @@ elegidas: si la tuya ya tiene campeón, el panel dice cuáles faltan. Las oferta
 de la carrera llegan de cualquiera de los países que se juegan, así que irse al
 extranjero ya es posible. Las partidas anteriores siguen jugando sólo el país de
 su club.
+
+**Selecciones y ventanas FIBA.** Veintiuna selecciones —las nacionalidades con
+doce jugadores o más— y un **Mundial cada verano**: el anfitrión, que rota, y los
+tres primeros de cinco grupos de clasificación a ida y vuelta, jugados en tres
+ventanas (noviembre, febrero y primeros de agosto). El Mundial son cuatro grupos
+de cuatro, cuartos, semifinales y final en agosto. No hay campeonatos
+continentales alternos: quince de las veintiuna son europeas y un torneo
+continental dejaría a Australia y a Senegal sin nada.
+
+Las ventanas van en viernes y lunes, así que no pisan ni la liga ni Europa, pero
+**el convocado se pierde el domingo con su club** y vuelve con el cansancio y las
+lesiones que traiga. Como en la realidad, en noviembre y febrero no sueltan
+jugadores ni la liga americana ni los clubes con competición continental.
+
+La selección **se dirige como en la vida real**: a la vez que el club, sólo ella
+o sólo el club. Se elige al crear la partida o llega por ofertas de la carrera,
+que se abren al acabar el Mundial según cómo le fue a cada federación. Se
+convoca a doce entre todos los jugadores del país, se hace alineación y pizarra
+en la misma pantalla que el club y los partidos se juegan igual, en vivo si se
+quiere. La federación pide según el puesto en el ranking y destituye si el
+resultado se queda dos escalones por debajo (con el despido desactivado, opina
+pero no echa). Sin club y con selección, el reloj sigue corriendo para dirigirla.
+Si no se dirige selección, el verano no hace esperar: el Mundial se juega de
+golpe al empezar la temporada siguiente. La bandeja avisa de los convocados del
+club, y las nacionalidades se ven ya con su **bandera** (`flag-icons`, MIT, en
+local).
 
 ## Bloque 5 — Ver el partido
 

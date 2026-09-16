@@ -133,6 +133,20 @@ export function estimateContinentalGames(): number {
   return group + Math.round(quarterfinals) + 3;
 }
 
+/**
+ * Partidos de selecciones por temporada, que se juegan siempre: seis jornadas
+ * de clasificación por grupo de cuatro y el Mundial de dieciséis.
+ */
+export function estimateNationalGames(nations: number): number {
+  const groups = Math.floor(Math.max(0, nations - 1) / 4);
+  if (groups < 2) {
+    return 0;
+  }
+  const qualifiers = groups * 12;
+  const worldCup = 4 * 6 + 7;
+  return qualifiers + worldCup;
+}
+
 /** Partidos que añade un país a cada temporada: sus ligas y, si la tiene, su copa. */
 export function estimateCountryGames(leagues: readonly LeagueSize[], hasCup: boolean): number {
   const games = leagues.reduce((sum, league) => sum + estimateLeagueGames(league), 0);

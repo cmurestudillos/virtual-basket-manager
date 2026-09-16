@@ -217,7 +217,8 @@ export class MarketRepository {
       .all();
   }
 
+  /** Los clubes: las selecciones no fichan. */
   listTeams(): TeamRow[] {
-    return this.db.select().from(teamsTable).all();
+    return this.db.select().from(teamsTable).where(isNull(teamsTable.nationalOf)).all();
   }
 }

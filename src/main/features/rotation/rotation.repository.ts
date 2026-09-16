@@ -9,12 +9,14 @@ import {
   type PlayerRow,
   type RotationSlotRow
 } from '../../database/schema/save';
+import { isNationalTeam, nationalSquad, userTeamIds } from '../national/national-squad';
 
 export class RotationRepository {
   constructor(private readonly db: SaveDatabase) {}
 
-  managedTeamId(): string | null {
-    return this.db.select().from(gameStateTable).get()?.managedTeamId ?? null;
+  /** Si el usuario dirige ese equipo: su club o su selección. */
+  isUserTeam(teamId: string): boolean {
+    return userTeamIds(this.db).includes(teamId);
   }
 
   /** Fecha del juego: la edad de la plantilla se calcula contra ella. */
@@ -26,8 +28,14 @@ export class RotationRepository {
     return this.db.select().from(teamsTable).where(eq(teamsTable.id, teamId)).get()?.name ?? null;
   }
 
-  /** Sólo el primer equipo: un juvenil no entra en la rotación. */
+  /**
+   * Sólo el primer equipo: un juvenil no entra en la rotación. En una
+   * selección, los convocados de la ventana que toca.
+   */
   listRoster(teamId: string): PlayerRow[] {
+    if (isNationalTeam(this.db, teamId)) {
+      return nationalSquad(this.db, teamId, this.currentDate());
+    }
     return this.db
       .select()
       .from(playersTable)

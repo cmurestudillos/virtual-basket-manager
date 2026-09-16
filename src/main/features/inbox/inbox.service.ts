@@ -1,4 +1,5 @@
 import { randomUUID } from 'node:crypto';
+import { isNotNull } from 'drizzle-orm';
 import type { InboxMessage, InboxView, PressConference } from '@shared/contracts/inbox.contract';
 import { MAX_SUPPORT, MIN_SUPPORT } from '@shared/domain/attendance';
 import {
@@ -22,11 +23,17 @@ import {
   type PressTopic
 } from '@shared/domain/press';
 import type { SaveDatabase } from '../../database/save-database';
-import type { GameRow, InboxMessageRow, PressConferenceRow } from '../../database/schema/save';
+import {
+  teamsTable,
+  type GameRow,
+  type InboxMessageRow,
+  type PressConferenceRow
+} from '../../database/schema/save';
 import { BoardService } from '../club/board.service';
 import { CareerRepository } from '../career/career.repository';
 import { ClubRepository } from '../club/club.repository';
 import { InboxRepository } from './inbox.repository';
+import { nationalSquad } from '../national/national-squad';
 
 export class PressConferenceNotFoundError extends Error {
   constructor(id: string) {
@@ -218,6 +225,21 @@ export class InboxService {
 
   // ------------------------------------------------------------------------
 
+  /** Los del club que están en la lista de su selección para la ventana que toca. */
+  private calledUp(squad: readonly string[], today: Date): Record<string, string> {
+    const db = this.resolveDb();
+    const called: Record<string, string> = {};
+    const members = new Set(squad);
+    for (const team of db.select().from(teamsTable).where(isNotNull(teamsTable.nationalOf)).all()) {
+      for (const player of nationalSquad(db, team.id, today)) {
+        if (members.has(player.id)) {
+          called[player.id] = team.id;
+        }
+      }
+    }
+    return called;
+  }
+
   /** La foto del club: sólo lo que da lugar a un aviso. */
   private snapshot(
     repository: InboxRepository,
@@ -254,7 +276,11 @@ export class InboxService {
       confidence: board?.confidence ?? 60,
       dismissed: board?.dismissed ?? false,
       champions,
-      lastGameId: games[games.length - 1]?.id ?? null
+      lastGameId: games[games.length - 1]?.id ?? null,
+      calledUp: this.calledUp(
+        squad.map((player) => player.id),
+        today
+      )
     };
   }
 
@@ -376,7 +402,8 @@ function parseSnapshot(json: string | null): ClubSnapshot | null {
       ...parsed,
       date: parsed.date ?? 0,
       lastGameId: parsed.lastGameId ?? null,
-      champions: parsed.champions ?? {}
+      champions: parsed.champions ?? {},
+      calledUp: parsed.calledUp ?? {}
     };
   } catch {
     return null;

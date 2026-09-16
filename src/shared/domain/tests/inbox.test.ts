@@ -200,6 +200,38 @@ describe('títulos y categorías', () => {
   });
 });
 
+describe('convocatorias', () => {
+  it('un aviso por ventana, con todos los convocados del club juntos', () => {
+    const avisos = diffSnapshots(
+      snapshot({ date: DIA_1 }),
+      snapshot({ date: DIA_2, calledUp: { base: 'seleccion-esp', pivot: 'seleccion-gre' } }),
+      names
+    );
+
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]!.category).toBe('national');
+    expect(avisos[0]!.title).toBe('2 jugadores convocados con sus selecciones');
+    expect(avisos[0]!.body).toContain('Jugador base (Equipo seleccion-esp)');
+  });
+
+  it('seguir convocado no es noticia, ni tampoco volver', () => {
+    const convocado = { base: 'seleccion-esp' };
+    expect(
+      diffSnapshots(snapshot({ calledUp: convocado }), snapshot({ calledUp: convocado }), names)
+    ).toEqual([]);
+    expect(diffSnapshots(snapshot({ calledUp: convocado }), snapshot({}), names)).toEqual([]);
+  });
+
+  it('las fotos de antes de las selecciones no traen convocados y no rompen nada', () => {
+    const avisos = diffSnapshots(
+      snapshot(),
+      snapshot({ calledUp: { alero: 'seleccion-arg' } }),
+      names
+    );
+    expect(avisos[0]!.title).toBe('Jugador alero, convocado con su selección');
+  });
+});
+
 describe('cambio de banquillo', () => {
   it('fichar por otro club es un aviso, no doce idas y doce llegadas', () => {
     const avisos = diffSnapshots(

@@ -61,7 +61,7 @@ export class TacticsService {
     const repository = new TacticsRepository(this.resolveDb());
     const teamName = requireTeamName(repository, validated.teamId);
 
-    if (repository.managedTeamId() !== validated.teamId) {
+    if (!repository.isUserTeam(validated.teamId)) {
       throw new NotManagedTeamError(validated.teamId);
     }
 
@@ -117,6 +117,6 @@ function toView(
     offensiveReboundEffort: row?.offensiveReboundEffort ?? DEFAULT_TACTICS.offensiveReboundEffort,
     focusPlayerId,
     focusPlayerName: focusPlayerId ? repository.findPlayerNameInTeam(teamId, focusPlayerId) : null,
-    isManaged: repository.managedTeamId() === teamId
+    isManaged: repository.isUserTeam(teamId)
   };
 }

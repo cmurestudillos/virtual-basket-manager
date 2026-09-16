@@ -4,7 +4,7 @@ import { useRouter } from 'vue-router';
 import type { CatalogLeague, CatalogScope, CatalogTeam } from '@shared/contracts/teams.contract';
 import { estimateSeconds, formatEstimate } from '@shared/domain/simulation-scope';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
-import { AppButton, AppPageHeader } from '@renderer/shared/ui';
+import { AppButton, AppFlag, AppPageHeader } from '@renderer/shared/ui';
 
 const router = useRouter();
 const store = useGameStateStore();
@@ -31,7 +31,12 @@ const dismissalEnabled = ref(true);
  */
 const careerMode = ref(false);
 /** Países y continentales que se pueden jugar, con su coste. */
-const scope = ref<CatalogScope>({ countries: [], continents: [] });
+const scope = ref<CatalogScope>({ countries: [], continents: [], nations: [], nationalGames: 0 });
+/**
+ * Selección que se dirige además del club, o ninguna. Como en la vida real,
+ * se puede llevar a la vez: sus partidos caen en las ventanas y en verano.
+ */
+const nationalTeam = ref<string | null>(null);
 /**
  * Países elegidos además del del club, que va siempre. Se elige aquí y no se
  * cambia después: una liga que empezara a mitad de partida no tendría ni
@@ -125,7 +130,7 @@ const scopeGames = computed(() => {
   const continental = scope.value.continents
     .filter((row) => continents.has(row.code))
     .reduce((sum, row) => sum + row.games, 0);
-  return domestic + continental;
+  return domestic + continental + scope.value.nationalGames;
 });
 
 /** Las ligas agrupadas por país, que es como las busca el que elige. */
@@ -158,7 +163,8 @@ async function create(): Promise<void> {
       managerName: managerName.value.trim(),
       dismissalEnabled: dismissalEnabled.value,
       careerMode: careerMode.value,
-      activeCountries: [...activeCountries.value]
+      activeCountries: [...activeCountries.value],
+      nationalTeam: nationalTeam.value
     });
     await store.refresh();
     await router.push({ name: 'dashboard' });
@@ -304,6 +310,27 @@ async function create(): Promise<void> {
           </span>
         </label>
 
+        <label class="flex flex-col gap-1 text-sm" for="national-team">
+          <span class="text-court-300">Selección (opcional)</span>
+          <span class="flex items-center gap-2">
+            <AppFlag :code="nationalTeam" size="md" />
+            <select
+              id="national-team"
+              v-model="nationalTeam"
+              class="flex-1 rounded border border-court-600 bg-court-900 px-3 py-2"
+            >
+              <option :value="null">Ninguna</option>
+              <option v-for="nation in scope.nations" :key="nation.code" :value="nation.code">
+                {{ nation.name }} · {{ nation.rank }}ª del mundo
+              </option>
+            </select>
+          </span>
+          <span class="text-xs text-court-300">
+            La diriges a la vez que el club: convocas en noviembre, febrero y verano, y juegas la
+            clasificación y el Mundial.
+          </span>
+        </label>
+
         <fieldset class="flex flex-col gap-2 text-sm">
           <legend class="text-court-300">Ligas que se juegan</legend>
           <p class="text-xs text-court-300">
@@ -347,7 +374,7 @@ async function create(): Promise<void> {
             {{ activeCountries.size }} {{ activeCountries.size === 1 ? 'país' : 'países' }} · unos
             {{ scopeGames.toLocaleString('es-ES') }} partidos y
             <span class="text-court-100">≈ {{ formatEstimate(estimateSeconds(scopeGames)) }}</span>
-            de simulación por temporada, competiciones continentales incluidas.
+            de simulación por temporada, competiciones continentales y selecciones incluidas.
           </p>
         </fieldset>
 

@@ -21,6 +21,7 @@ import type { SaveDatabase } from '../../database/save-database';
 import type { CareerSpellRow } from '../../database/schema/save';
 import { BoardService } from '../club/board.service';
 import { HistoryRepository } from '../history/history.repository';
+import { NationalService } from '../national/national.service';
 import { SeasonRepository } from '../season/season.repository';
 import { SeasonService } from '../season/season.service';
 import { CareerRepository } from './career.repository';
@@ -93,6 +94,10 @@ export class CareerService {
     const reputation = managerReputation(records);
     const titles = records.reduce((sum, record) => sum + record.titles, 0);
 
+    const national = new NationalService(this.resolveDb);
+    const nationalSpells = national.spells();
+    const nationalTeamId = national.userTeamId();
+
     return {
       careerMode: true,
       managerName: state.managerName,
@@ -102,12 +107,22 @@ export class CareerService {
       currentTeamName: open ? (repository.findTeam(open.teamId)?.name ?? null) : null,
       spells,
       seasonsManaged: records.length,
-      titles,
+      titles: titles + nationalSpells.reduce((sum, spell) => sum + spell.titles, 0),
       offers: this.currentOffers(db, repository, reputation),
       offersWhileEmployed: open !== null,
       canResign: open !== null,
       canWait: open === null,
-      currentDate: state.currentDate.getTime()
+      currentDate: state.currentDate.getTime(),
+      nationalTeamName: nationalTeamId ? (repository.findTeam(nationalTeamId)?.name ?? null) : null,
+      nationalSpells,
+      nationalOffers: national.vacancies(reputation).map((vacancy) => ({
+        teamId: vacancy.teamId,
+        teamName: vacancy.name,
+        reputation: vacancy.reputation,
+        rank: vacancy.rank,
+        objectiveLabel: vacancy.objectiveLabel
+      })),
+      canLeaveNational: nationalTeamId !== null
     };
   }
 
@@ -157,6 +172,10 @@ export class CareerService {
 
     for (let day = 0; day < MAX_WAIT_DAYS; day += 1) {
       const result = season.advanceDay({ spectator: true });
+      // Con selección, la espera se corta en su partido: ese se dirige.
+      if (result.status === 'userGame') {
+        break;
+      }
       if (result.status === 'seasonOver') {
         // Con la temporada acabada, el verano: arranca la siguiente y con ella
         // cambia el mes, así que la espera termina ahí.
@@ -222,6 +241,36 @@ export class CareerService {
       new BoardService(() => db).ensureForSeason(state.seasonNumber, teams, competition.tier);
     }
 
+    return this.getStatus();
+  }
+
+  /**
+   * Coge una selección de las que te buscan. Se lleva a la vez que el club, así
+   * que aceptar no te cuesta el banquillo que tengas; sí la selección que
+   * dirigieras antes.
+   */
+  acceptNational(teamId: string): CareerStatus {
+    const db = this.resolveDb();
+    const repository = new CareerRepository(db);
+    if (!repository.gameState().careerMode) {
+      throw new NotInCareerModeError();
+    }
+    const reputation = managerReputation(this.seasonRecords(db, repository));
+    const national = new NationalService(this.resolveDb);
+    if (!national.vacancies(reputation).some((vacancy) => vacancy.teamId === teamId)) {
+      throw new OfferNotAvailableError(teamId);
+    }
+    national.takeTeam(teamId);
+    return this.getStatus();
+  }
+
+  /** Deja la selección por voluntad propia. */
+  leaveNational(): CareerStatus {
+    const repository = new CareerRepository(this.resolveDb());
+    if (!repository.gameState().careerMode) {
+      throw new NotInCareerModeError();
+    }
+    new NationalService(this.resolveDb).leaveTeam();
     return this.getStatus();
   }
 
@@ -493,6 +542,10 @@ function apagada(managerName: string): CareerStatus {
     offersWhileEmployed: false,
     canResign: false,
     canWait: false,
-    currentDate: 0
+    currentDate: 0,
+    nationalTeamName: null,
+    nationalSpells: [],
+    nationalOffers: [],
+    canLeaveNational: false
   };
 }

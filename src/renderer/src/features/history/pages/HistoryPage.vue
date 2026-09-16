@@ -17,6 +17,7 @@ import {
   AppBadge,
   AppButton,
   AppEmpty,
+  AppFlag,
   AppPageHeader,
   AppPanel,
   AppTabs
@@ -58,6 +59,22 @@ function spellYears(spell: CareerStatus['spells'][number]): string {
  * deshace, y un clic suelto no debería dejar a nadie en el paro.
  */
 const confirmingResign = ref(false);
+const confirmingLeave = ref(false);
+
+/** Dejar la selección, también en dos pasos. */
+async function leaveNational(): Promise<void> {
+  if (!confirmingLeave.value) {
+    confirmingLeave.value = true;
+    return;
+  }
+  resigning.value = true;
+  try {
+    career.value = await window.api.career.leaveNational();
+  } finally {
+    resigning.value = false;
+    confirmingLeave.value = false;
+  }
+}
 const resigning = ref(false);
 
 async function resign(): Promise<void> {
@@ -258,6 +275,61 @@ function positionTone(position: number | null, teams: number): 'good' | 'warn' |
           </span>
         </li>
       </ul>
+
+      <template v-if="career && (career.nationalSpells.length > 0 || career.canLeaveNational)">
+        <h3 class="mb-2 mt-5 text-xs uppercase tracking-wide text-court-300">Selecciones</h3>
+        <div
+          v-if="career.canLeaveNational"
+          class="mb-3 flex flex-wrap items-center justify-between gap-3 rounded border border-court-700 px-3 py-2"
+        >
+          <span class="text-sm text-court-300">
+            {{
+              confirmingLeave
+                ? `¿Dejar ${career.nationalTeamName}? El club no se toca.`
+                : `Diriges a ${career.nationalTeamName}.`
+            }}
+          </span>
+          <span class="flex gap-2">
+            <AppButton
+              v-if="confirmingLeave"
+              size="sm"
+              variant="ghost"
+              :disabled="resigning"
+              @click="confirmingLeave = false"
+            >
+              Seguir con la selección
+            </AppButton>
+            <AppButton
+              size="sm"
+              :variant="confirmingLeave ? 'primary' : 'secondary'"
+              :disabled="resigning"
+              @click="leaveNational"
+            >
+              {{ confirmingLeave ? 'Confirmar' : 'Dejar la selección' }}
+            </AppButton>
+          </span>
+        </div>
+        <ul class="flex flex-col gap-2">
+          <li
+            v-for="spell in [...career.nationalSpells].reverse()"
+            :key="`${spell.teamId}-${spell.startSeason}`"
+            class="flex items-baseline justify-between rounded border px-3 py-2"
+            :class="spell.endSeason === null ? 'border-ball-500' : 'border-court-700'"
+          >
+            <span class="inline-flex items-center gap-2">
+              <AppFlag :code="spell.teamId.replace('seleccion-', '').toUpperCase()" />
+              <span>{{ spell.teamName }}</span>
+              <span class="text-xs text-court-300">
+                {{ spellYears(spell) }}
+                <span v-if="spellEnd(spell)">· {{ spellEnd(spell) }}</span>
+              </span>
+            </span>
+            <span v-if="spell.titles > 0" class="text-sm text-ball-400">
+              {{ spell.titles }} {{ spell.titles === 1 ? 'Mundial' : 'Mundiales' }}
+            </span>
+          </li>
+        </ul>
+      </template>
     </AppPanel>
 
     <!-- Récords -->

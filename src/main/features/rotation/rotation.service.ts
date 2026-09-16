@@ -125,7 +125,7 @@ export class RotationService {
   }
 
   private requireManaged(repository: RotationRepository, teamId: string): void {
-    if (repository.managedTeamId() !== teamId) {
+    if (!repository.isUserTeam(teamId)) {
       throw new NotManagedTeamError(teamId);
     }
   }
@@ -148,7 +148,7 @@ export class RotationService {
       slots,
       totalTargetMinutes: slots.reduce((total, slot) => total + slot.targetMinutes, 0),
       regulationTeamMinutes: REGULATION_TEAM_MINUTES,
-      isManaged: repository.managedTeamId() === teamId
+      isManaged: repository.isUserTeam(teamId)
     };
   }
 }

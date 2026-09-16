@@ -68,6 +68,7 @@ import { FitnessService } from '../fitness/fitness.service';
 import { MarketService } from '../market/market.service';
 import { YouthService } from '../youth/youth.service';
 import { MatchService } from '../match/match.service';
+import { NationalService } from '../national/national.service';
 import { SeasonRepository } from './season.repository';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -119,6 +120,7 @@ export class SeasonService {
   private readonly boardService: BoardService;
   private readonly youthService: YouthService;
   private readonly marketService: MarketService;
+  private readonly nationalService: NationalService;
 
   /**
    * La conexión llega como resolutor y no como instancia porque la partida
@@ -133,6 +135,7 @@ export class SeasonService {
     this.boardService = new BoardService(resolveDb);
     this.youthService = new YouthService(resolveDb);
     this.marketService = new MarketService(resolveDb);
+    this.nationalService = new NationalService(resolveDb);
   }
 
   /**
@@ -157,9 +160,12 @@ export class SeasonService {
       currentRound: season.currentRound,
       totalRounds: games.reduce((max, game) => Math.max(max, game.round), 0),
       stage: season.stage as SeasonSummary['stage'],
-      pendingLeagues: this.unfinishedLeagues(repository, season.seasonNumber).map(
-        (row) => repository.findCompetition(row.competitionId)?.name ?? row.competitionId
-      ),
+      pendingLeagues: [
+        ...this.unfinishedLeagues(repository, season.seasonNumber).map(
+          (row) => repository.findCompetition(row.competitionId)?.name ?? row.competitionId
+        ),
+        ...(this.nationalService.userHasPendingGames(season.seasonNumber) ? ['Tu selección'] : [])
+      ],
       tier: competition.tier,
       playoffTeams: competition.playoffTeams,
       championTeamId: season.championTeamId,
@@ -273,11 +279,15 @@ export class SeasonService {
   getNextGame(): FixtureEntry | null {
     const repository = new SeasonRepository(this.resolveDb());
     const season = this.ensureStage(repository);
-    const managedTeamId = this.requireManagedTeam(repository);
+    const seasonIds = this.activeSeasonIds(repository, season);
 
-    const next = repository
-      .listTeamGamesIn(this.activeSeasonIds(repository, season), managedTeamId)
-      .find((game) => !isPlayed(game));
+    // El próximo del club y el de la selección, si dirige una: el que llegue antes.
+    const next = this.userTeamIds(repository)
+      .map((teamId) =>
+        repository.listTeamGamesIn(seasonIds, teamId).find((game) => !isPlayed(game))
+      )
+      .filter((game): game is GameRow => game !== undefined)
+      .sort((a, b) => a.scheduledOn.getTime() - b.scheduledOn.getTime())[0];
 
     return next ? (this.toFixtures(repository, [next])[0] as FixtureEntry) : null;
   }
@@ -298,9 +308,8 @@ export class SeasonService {
     const repository = new SeasonRepository(db);
     const season = this.ensureStage(repository);
     const state = repository.gameState();
-    const managedTeamId = options.spectator ? null : this.requireManagedTeam(repository);
 
-    if (!options.spectator && this.isOffTheBench()) {
+    if (!options.spectator && this.isOffTheBench() && !this.coachesNationalOnly()) {
       return { status: 'dismissed', date: state.currentDate.getTime() };
     }
 
@@ -312,11 +321,14 @@ export class SeasonService {
       this.activeSeasonIds(repository, season),
       state.currentDate
     );
-    const userGame = managedTeamId
-      ? pending.find(
-          (game) => game.homeTeamId === managedTeamId || game.awayTeamId === managedTeamId
-        )
-      : undefined;
+    // Los partidos que juega el usuario: los de su selección siempre, y los de
+    // su club si tiene banquillo. Como espectador, sólo los de la selección.
+    const userTeams = options.spectator
+      ? [this.nationalService.userTeamId()].filter((id): id is string => id !== null)
+      : this.userTeamIds(repository);
+    const userGame = pending.find(
+      (game) => userTeams.includes(game.homeTeamId) || userTeams.includes(game.awayTeamId)
+    );
     if (userGame) {
       return { status: 'userGame', gameId: userGame.id, date: state.currentDate.getTime() };
     }
@@ -568,7 +580,7 @@ export class SeasonService {
     // Lo primero, porque es lo más definitivo: a un destituido no le toca
     // decidir si empieza otra temporada. Al espectador sí: el verano llega
     // igual para quien está en el paro.
-    if (!options.spectator && this.isOffTheBench()) {
+    if (!options.spectator && this.isOffTheBench() && !this.coachesNationalOnly()) {
       throw new DismissedError();
     }
 
@@ -576,6 +588,10 @@ export class SeasonService {
     if (!this.worldFinished(repository, season.seasonNumber)) {
       throw new SeasonNotFinishedError();
     }
+
+    // El verano de selecciones que no juega el usuario se resuelve aquí, de
+    // golpe: no tiene sentido hacerle esperar dos meses a un Mundial ajeno.
+    this.nationalService.completeSeason(season.seasonNumber);
 
     const today = repository.gameState().currentDate;
     const nextSeasonStart = new Date(Date.UTC(season.startYear + 1, 8, 1));
@@ -605,6 +621,31 @@ export class SeasonService {
       return true;
     }
     return new CareerRepository(this.resolveDb()).isUnemployed();
+  }
+
+  /**
+   * En carrera, sin club pero con selección: el reloj normal sí corre, porque
+   * hay partidos que dirigir. En modo mánager un despido sigue siendo el final.
+   */
+  private coachesNationalOnly(): boolean {
+    return (
+      this.nationalService.userTeamId() !== null &&
+      new CareerRepository(this.resolveDb()).gameState().careerMode
+    );
+  }
+
+  /** Los equipos cuyos partidos juega el usuario: su club si lo tiene y su selección. */
+  private userTeamIds(repository: SeasonRepository): string[] {
+    const ids: string[] = [];
+    const managedTeamId = repository.gameState().managedTeamId;
+    if (managedTeamId && !this.isOffTheBench()) {
+      ids.push(managedTeamId);
+    }
+    const national = this.nationalService.userTeamId();
+    if (national) {
+      ids.push(national);
+    }
+    return ids;
   }
 
   private requireManagedTeam(repository: SeasonRepository): string {
@@ -832,7 +873,10 @@ export class SeasonService {
    * semifinales, Grecia se quedaría sin campeón y sin ascensos.
    */
   private worldFinished(repository: SeasonRepository, seasonNumber: number): boolean {
-    return this.unfinishedLeagues(repository, seasonNumber).length === 0;
+    return (
+      this.unfinishedLeagues(repository, seasonNumber).length === 0 &&
+      !this.nationalService.userHasPendingGames(seasonNumber)
+    );
   }
 
   /** Los continentes de los países que se juegan; el del club, primero. */
@@ -866,6 +910,9 @@ export class SeasonService {
     for (const continent of this.activeContinents(repository, season)) {
       this.ensureContinental(repository, season, continent);
     }
+    // Y las selecciones, con sus ventanas y su Mundial.
+    this.nationalService.ensureSeason(season.seasonNumber, season.startYear);
+    this.nationalService.advance(repository.gameState().currentDate);
 
     // Y las otras divisiones también terminan, con su campeón: si la segunda se
     // quedara a medias no habría a quién ascender en septiembre.
@@ -1485,6 +1532,7 @@ export class SeasonService {
       }
     }
 
+    ids.push(...this.nationalService.seasonIds(season.seasonNumber));
     return ids;
   }
 
@@ -1522,10 +1570,14 @@ export class SeasonService {
     from: Date,
     to: Date
   ): void {
-    this.fitnessService.advanceDays(from, to);
+    // Con la liga del usuario acabada es verano: se descansa, pero ni se
+    // entrena, ni se cobra, ni el consejo revisa nada. Sólo corre este reloj
+    // para quien tiene selección y espera a jugar su Mundial.
+    const offseason = repository.findSeasonById(season.id)?.stage === 'finished';
+    this.fitnessService.advanceDays(from, to, { training: !offseason });
 
     const months = monthStartsBetween(from, to);
-    if (months.length === 0) {
+    if (months.length === 0 || offseason) {
       return;
     }
 

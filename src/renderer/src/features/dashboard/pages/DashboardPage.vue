@@ -10,7 +10,7 @@ import type { TeamSummary } from '@shared/contracts/teams.contract';
 import type { BoardView } from '@shared/contracts/club.contract';
 import type { CareerStatus } from '@shared/contracts/career.contract';
 import { DANGER_CONFIDENCE, SEASON_VERDICT_LABELS } from '@shared/domain/board';
-import { AppButton, AppPageHeader, AppSectionTitle, AppStat } from '@renderer/shared/ui';
+import { AppButton, AppFlag, AppPageHeader, AppSectionTitle, AppStat } from '@renderer/shared/ui';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { formatMatchDate, formatMoney } from '@renderer/shared/format';
@@ -34,6 +34,22 @@ const signing = ref(false);
 
 /** Sin equipo y con clubes preguntando: no hay nada más que hacer hasta firmar. */
 const unemployed = computed(() => career.value?.careerMode === true && career.value.unemployed);
+/** Sin club pero con selección: sus partidos se siguen dirigiendo. */
+const nationalOnly = computed(() => unemployed.value && Boolean(career.value?.nationalTeamName));
+
+/** Una federación te quiere: se acepta sin dejar el club. */
+async function acceptNational(teamId: string): Promise<void> {
+  if (signing.value) {
+    return;
+  }
+  signing.value = true;
+  try {
+    career.value = await window.api.career.acceptNational(teamId);
+    await seasonStore.refresh();
+  } finally {
+    signing.value = false;
+  }
+}
 
 const myPosition = computed(() => standings.value.find((row) => row.isManaged));
 const stage = computed(() => seasonStore.season?.stage ?? 'regular');
@@ -56,6 +72,9 @@ const nextGameLabel = computed(() => {
   const next = seasonStore.nextGame;
   if (!next) {
     return '';
+  }
+  if ([next.homeTeamId, next.awayTeamId].some((id) => id.startsWith('seleccion-'))) {
+    return 'Partido de selección';
   }
   const series = currentSeries.value;
   if (!series) {
@@ -259,7 +278,42 @@ function fixtureRound(fixture: FixtureEntry): string {
       </div>
     </section>
 
-    <section v-if="!board?.dismissed && !unemployed" class="rounded border border-court-700 p-5">
+    <!-- Federaciones que buscan seleccionador: se lleva a la vez que el club. -->
+    <section
+      v-if="career && career.nationalOffers.length > 0"
+      class="rounded border border-court-700 p-5"
+    >
+      <AppSectionTitle>Selecciones que te buscan</AppSectionTitle>
+      <p class="mt-1 text-sm text-court-300">
+        Tras el Mundial hay federaciones sin seleccionador. Una selección se dirige a la vez que el
+        club{{ career.nationalTeamName ? `; aceptar es dejar ${career.nationalTeamName}` : '' }}.
+      </p>
+      <ul class="mt-3 flex flex-col gap-2">
+        <li
+          v-for="offer in career.nationalOffers"
+          :key="offer.teamId"
+          class="flex flex-wrap items-center justify-between gap-4 rounded border border-court-700 px-4 py-3"
+        >
+          <div class="flex items-center gap-3">
+            <AppFlag :code="offer.teamId.replace('seleccion-', '').toUpperCase()" size="md" />
+            <div>
+              <p>{{ offer.teamName }} · {{ offer.rank }}ª del mundo</p>
+              <p class="text-xs text-court-300">
+                Te pedirán: {{ offer.objectiveLabel.toLowerCase() }}
+              </p>
+            </div>
+          </div>
+          <AppButton variant="primary" :disabled="signing" @click="acceptNational(offer.teamId)">
+            Aceptar
+          </AppButton>
+        </li>
+      </ul>
+    </section>
+
+    <section
+      v-if="(!board?.dismissed && !unemployed) || nationalOnly"
+      class="rounded border border-court-700 p-5"
+    >
       <AppSectionTitle>
         {{ stage === 'finished' ? 'Temporada terminada' : 'Próximo partido' }}
       </AppSectionTitle>

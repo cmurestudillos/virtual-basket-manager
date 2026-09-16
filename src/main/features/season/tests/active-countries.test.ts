@@ -188,41 +188,45 @@ describe('España y Grecia', () => {
     expect(() => season.startNextSeason()).toThrow(SeasonNotFinishedError);
   });
 
-  it('acabadas todas, se pasa de temporada con ascensos también en Grecia', () => {
-    const greek = seasonsOf(['grecia-1', 'grecia-2']);
-    playRegular(greek.map((row) => row.id));
-    finishSeasons(['liga-nacional', 'liga-plata', 'grecia-1', 'grecia-2']);
+  it(
+    'acabadas todas, se pasa de temporada con ascensos también en Grecia',
+    { timeout: 180_000 },
+    () => {
+      const greek = seasonsOf(['grecia-1', 'grecia-2']);
+      playRegular(greek.map((row) => row.id));
+      finishSeasons(['liga-nacional', 'liga-plata', 'grecia-1', 'grecia-2']);
 
-    const lastOfFirst = season
-      .getStandings('grecia-1')
-      .slice(-2)
-      .map((row) => row.teamId);
-    const topOfSecond = season
-      .getStandings('grecia-2')
-      .slice(0, 2)
-      .map((row) => row.teamId);
-    expect(season.getCurrent().pendingLeagues).toEqual([]);
+      const lastOfFirst = season
+        .getStandings('grecia-1')
+        .slice(-2)
+        .map((row) => row.teamId);
+      const topOfSecond = season
+        .getStandings('grecia-2')
+        .slice(0, 2)
+        .map((row) => row.teamId);
+      expect(season.getCurrent().pendingLeagues).toEqual([]);
 
-    const next = season.startNextSeason();
-    expect(next.seasonNumber).toBe(2);
+      const next = season.startNextSeason();
+      expect(next.seasonNumber).toBe(2);
 
-    const competitionOf = (teamId: string) =>
-      db.select().from(teamsTable).where(eq(teamsTable.id, teamId)).get()?.competitionId;
-    for (const teamId of lastOfFirst) {
-      expect(competitionOf(teamId)).toBe('grecia-2');
+      const competitionOf = (teamId: string) =>
+        db.select().from(teamsTable).where(eq(teamsTable.id, teamId)).get()?.competitionId;
+      for (const teamId of lastOfFirst) {
+        expect(competitionOf(teamId)).toBe('grecia-2');
+      }
+      for (const teamId of topOfSecond) {
+        expect(competitionOf(teamId)).toBe('grecia-1');
+      }
+      // Y el curso nuevo vuelve a tener calendario griego.
+      expect(
+        db
+          .select()
+          .from(seasonsTable)
+          .where(and(eq(seasonsTable.competitionId, 'grecia-1'), lte(seasonsTable.seasonNumber, 2)))
+          .all()
+      ).toHaveLength(2);
     }
-    for (const teamId of topOfSecond) {
-      expect(competitionOf(teamId)).toBe('grecia-1');
-    }
-    // Y el curso nuevo vuelve a tener calendario griego.
-    expect(
-      db
-        .select()
-        .from(seasonsTable)
-        .where(and(eq(seasonsTable.competitionId, 'grecia-1'), lte(seasonsTable.seasonNumber, 2)))
-        .all()
-    ).toHaveLength(2);
-  });
+  );
 });
 
 describe('partidas de antes de poder elegir', () => {

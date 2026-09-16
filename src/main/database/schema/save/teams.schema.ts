@@ -25,7 +25,13 @@ export const teamsTable = sqliteTable('teams', {
   /** Ambiente del pabellón, 0-100: sube ganando y se enfría con los precios altos. */
   fanSupport: integer('fan_support').notNull().default(55),
   /** Instalaciones de la cantera, 1-5: cuántos juveniles salen y con qué techo. */
-  youthLevel: integer('youth_level').notNull().default(2)
+  youthLevel: integer('youth_level').notNull().default(2),
+  /**
+   * Código de nacionalidad si el equipo es una selección; nulo en los clubes.
+   * Las selecciones no tienen plantilla, finanzas ni cantera: todo lo que
+   * recorre «los clubes del mundo» tiene que dejarlas fuera.
+   */
+  nationalOf: text('national_of')
 });
 
 export type TeamRow = typeof teamsTable.$inferSelect;

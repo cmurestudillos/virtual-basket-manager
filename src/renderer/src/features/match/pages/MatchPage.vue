@@ -7,7 +7,14 @@ import { percentage } from '@shared/domain/box-score';
 import { formatGameClock, periodName } from '@shared/domain/play-by-play';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { formatMatchDate, formatPlayedMinutes } from '@renderer/shared/format';
-import { AppButton, AppEmpty, AppPanel, AppSectionTitle, AppSegmented } from '@renderer/shared/ui';
+import {
+  AppButton,
+  AppEmpty,
+  AppFlag,
+  AppPanel,
+  AppSectionTitle,
+  AppSegmented
+} from '@renderer/shared/ui';
 import LiveBench from '../components/LiveBench.vue';
 import LiveTacticsPanel from '../components/LiveTacticsPanel.vue';
 import PlayByPlayFeed from '../components/PlayByPlayFeed.vue';
@@ -15,6 +22,11 @@ import { usePlayback } from '../composables/usePlayback';
 import { useLiveMatch } from '../composables/useLiveMatch';
 
 const route = useRoute();
+
+/** El código de nacionalidad de una selección (`seleccion-esp`); nulo en un club. */
+function nationOf(teamId: string): string | null {
+  return teamId.startsWith('seleccion-') ? teamId.slice('seleccion-'.length).toUpperCase() : null;
+}
 const seasonStore = useSeasonStore();
 
 const state = ref<MatchState | null>(null);
@@ -274,8 +286,16 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
     <section class="rounded border border-court-700 bg-court-900 p-6">
       <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-6">
         <div class="text-right">
-          <p class="text-xl" :class="state.managedSide === 'home' ? 'text-ball-400' : ''">
+          <p
+            class="flex items-center justify-end gap-2 text-xl"
+            :class="state.managedSide === 'home' ? 'text-ball-400' : ''"
+          >
             {{ state.home.teamName }}
+            <AppFlag
+              v-if="nationOf(state.home.teamId)"
+              :code="nationOf(state.home.teamId)"
+              size="md"
+            />
           </p>
         </div>
         <div class="text-center">
@@ -285,7 +305,15 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
           <p class="mt-1 text-sm text-court-300 tabular-nums">{{ moment }}</p>
         </div>
         <div>
-          <p class="text-xl" :class="state.managedSide === 'away' ? 'text-ball-400' : ''">
+          <p
+            class="flex items-center gap-2 text-xl"
+            :class="state.managedSide === 'away' ? 'text-ball-400' : ''"
+          >
+            <AppFlag
+              v-if="nationOf(state.away.teamId)"
+              :code="nationOf(state.away.teamId)"
+              size="md"
+            />
             {{ state.away.teamName }}
           </p>
         </div>
