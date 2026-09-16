@@ -6,7 +6,8 @@ import { injuryLabel } from '@shared/domain/injuries';
 import { POSITION_LABELS } from '@shared/domain/positions';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
-import { AppAvatar, AppPageHeader } from '@renderer/shared/ui';
+import { AppAvatar, AppFlag, AppPageHeader } from '@renderer/shared/ui';
+import { nationName } from '@shared/domain/national-teams';
 
 const store = useGameStateStore();
 const players = ref<PlayerSummary[]>([]);
@@ -64,7 +65,12 @@ onMounted(async () => {
             </td>
             <td class="numeric">{{ player.age }}</td>
             <td class="numeric">{{ formatHeight(player.heightCm) }}</td>
-            <td class="text-court-300">{{ player.nationality }}</td>
+            <td class="text-court-300">
+              <span class="inline-flex items-center gap-1.5">
+                <AppFlag :code="player.nationality" :label="nationName(player.nationality)" />
+                {{ player.nationality }}
+              </span>
+            </td>
             <td class="numeric font-semibold">{{ player.overall }}</td>
             <td class="numeric text-court-300">{{ player.potential }}</td>
             <td :class="player.condition >= 75 ? 'text-court-300' : 'text-line-500'">

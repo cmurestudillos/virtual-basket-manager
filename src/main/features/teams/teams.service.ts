@@ -1,3 +1,5 @@
+import { overallForPosition } from '@shared/domain/attributes';
+import { MIN_NATIONAL_POOL, nationName, nationStrength } from '@shared/domain/national-teams';
 import type {
   CatalogLeague,
   CatalogScope,
@@ -7,7 +9,8 @@ import type {
 import {
   countryName,
   estimateContinentalGames,
-  estimateCountryGames
+  estimateCountryGames,
+  estimateNationalGames
 } from '@shared/domain/simulation-scope';
 import { requireActiveSaveDatabase } from '../../database/resolve-save-database';
 import { loadDataset } from '../saves/dataset';
@@ -146,6 +149,24 @@ export class TeamsService {
       return { code, competitions, games: competitions * estimateContinentalGames() };
     });
 
-    return { countries, continents };
+    // Selecciones: las mismas cuentas que hará la partida al crearlas.
+    const byNationality = new Map<string, number[]>();
+    for (const player of dataset.players) {
+      const overalls = byNationality.get(player.nationality) ?? [];
+      overalls.push(overallForPosition(player.attributes, player.position));
+      byNationality.set(player.nationality, overalls);
+    }
+    const nations = [...byNationality.entries()]
+      .filter(([, overalls]) => overalls.length >= MIN_NATIONAL_POOL)
+      .map(([code, overalls]) => ({
+        code,
+        name: nationName(code),
+        strength: nationStrength(overalls),
+        players: overalls.length
+      }))
+      .sort((a, b) => b.strength - a.strength || a.code.localeCompare(b.code))
+      .map(({ code, name, players }, index) => ({ code, name, players, rank: index + 1 }));
+
+    return { countries, continents, nations, nationalGames: estimateNationalGames(nations.length) };
   }
 }

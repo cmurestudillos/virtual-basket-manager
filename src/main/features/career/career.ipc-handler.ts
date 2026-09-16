@@ -10,4 +10,8 @@ export function registerCareerIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.careerAccept, (_event, teamId: string) => service.accept(teamId));
   ipcMain.handle(IPC_CHANNELS.careerResign, () => service.resign());
   ipcMain.handle(IPC_CHANNELS.careerWait, () => service.wait());
+  ipcMain.handle(IPC_CHANNELS.careerAcceptNational, (_event, teamId: string) =>
+    service.acceptNational(teamId)
+  );
+  ipcMain.handle(IPC_CHANNELS.careerLeaveNational, () => service.leaveNational());
 }

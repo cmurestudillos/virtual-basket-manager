@@ -21,7 +21,8 @@ export type InboxCategory =
   | 'division'
   | 'contract'
   | 'career'
-  | 'press';
+  | 'press'
+  | 'national';
 
 /** Una lesión vista en la foto. */
 export interface SnapshotInjury {
@@ -57,6 +58,11 @@ export interface ClubSnapshot {
    * que hay un partido nuevo y, con él, quizá una rueda de prensa.
    */
   lastGameId: string | null;
+  /**
+   * Jugadores del club convocados para la ventana que toca, con la selección
+   * que los llama. Opcional: las fotos de antes de las selecciones no lo traen.
+   */
+  calledUp?: Record<string, string>;
 }
 
 /** A dónde lleva un aviso al pulsarlo. */
@@ -111,7 +117,36 @@ export function diffSnapshots(
     ...squadDrafts(before, after, names),
     ...boardDrafts(before, after),
     ...titleDrafts(before, after, names),
-    ...divisionDrafts(before, after, names)
+    ...divisionDrafts(before, after, names),
+    ...callupDrafts(before, after, names)
+  ];
+}
+
+/**
+ * Los internacionales que se van con su selección, en un solo aviso: una
+ * ventana puede llevarse a cuatro del mismo club y cuatro avisos serían ruido.
+ * Se avisa al dar la lista, no al volver.
+ */
+function callupDrafts(before: ClubSnapshot, after: ClubSnapshot, names: InboxNames): InboxDraft[] {
+  const previous = before.calledUp ?? {};
+  const fresh = Object.entries(after.calledUp ?? {}).filter(([playerId]) => !previous[playerId]);
+  if (fresh.length === 0) {
+    return [];
+  }
+
+  const list = fresh
+    .map(([playerId, teamId]) => `${names.player(playerId)} (${names.team(teamId)})`)
+    .join(', ');
+  return [
+    {
+      category: 'national',
+      title:
+        fresh.length === 1
+          ? `${names.player(fresh[0]![0])}, convocado con su selección`
+          : `${fresh.length} jugadores convocados con sus selecciones`,
+      body: `${list}. Se perderán los partidos del club durante la ventana.`,
+      route: { name: 'squad' }
+    }
   ];
 }
 

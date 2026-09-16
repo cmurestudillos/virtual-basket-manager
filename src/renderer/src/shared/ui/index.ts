@@ -10,6 +10,7 @@ export { default as AppBadge } from './AppBadge.vue';
 export { default as AppButton } from './AppButton.vue';
 export { default as AppEmpty } from './AppEmpty.vue';
 export { default as AppField } from './AppField.vue';
+export { default as AppFlag } from './AppFlag.vue';
 export { default as AppMeter } from './AppMeter.vue';
 export { default as AppPageHeader } from './AppPageHeader.vue';
 export { default as AppPanel } from './AppPanel.vue';

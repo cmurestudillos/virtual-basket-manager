@@ -22,6 +22,7 @@ const sections = [
   { name: 'market', label: 'Mercado' },
   { name: 'finances', label: 'Finanzas' },
   { name: 'competition', label: 'Competición' },
+  { name: 'national', label: 'Selecciones' },
   { name: 'history', label: 'Historial' }
 ];
 

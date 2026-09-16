@@ -37,6 +37,26 @@ export interface CareerOffer {
   stepLabel: string;
 }
 
+/** Una etapa como seleccionador. */
+export interface NationalSpellView {
+  teamId: string;
+  teamName: string;
+  startSeason: number;
+  endSeason: number | null;
+  endReason: string | null;
+  titles: number;
+}
+
+/** Una federación que busca seleccionador. */
+export interface NationalOffer {
+  teamId: string;
+  teamName: string;
+  reputation: number;
+  /** Puesto de la selección en el mundo. */
+  rank: number;
+  objectiveLabel: string;
+}
+
 export interface CareerStatus {
   /** La partida se creó en modo carrera. */
   careerMode: boolean;
@@ -65,6 +85,15 @@ export interface CareerStatus {
   canWait: boolean;
   /** Fecha del juego, para saber cuánto tiempo se lleva esperando. */
   currentDate: number;
+  /** La selección que diriges, si diriges alguna: se lleva a la vez que el club. */
+  nationalTeamName: string | null;
+  nationalSpells: NationalSpellView[];
+  /**
+   * Federaciones que te quieren. Sólo se abren al acabar el Mundial, y se
+   * pueden aceptar con club o sin él.
+   */
+  nationalOffers: NationalOffer[];
+  canLeaveNational: boolean;
 }
 
 export interface CareerApi {
@@ -75,4 +104,8 @@ export interface CareerApi {
   resign: () => Promise<CareerStatus>;
   /** Deja pasar un mes sin banquillo, con el mundo jugándose, y trae ofertas nuevas. */
   wait: () => Promise<CareerStatus>;
+  /** Acepta una selección; si ya dirigías otra, la dejas. El club no se toca. */
+  acceptNational: (teamId: string) => Promise<CareerStatus>;
+  /** Deja la selección. */
+  leaveNational: () => Promise<CareerStatus>;
 }

@@ -35,6 +35,7 @@ import { StaffService } from '../staff/staff.service';
 import { BoardService } from '../club/board.service';
 import { ClubService } from '../club/club.service';
 import { FitnessService } from '../fitness/fitness.service';
+import { worldCupRoundName } from '@shared/domain/national-teams';
 import { buildEngineTeam } from './engine-input';
 import { MatchRepository, type PlayerCard } from './match.repository';
 import { decodePlayByPlay, encodePlayByPlay } from './play-by-play-codec';
@@ -88,8 +89,8 @@ export class MatchService {
 
     const simulation = new GameSimulation({
       gameId: game.id,
-      home: buildEngineTeam(db, game.homeTeamId),
-      away: buildEngineTeam(db, game.awayTeamId),
+      home: buildEngineTeam(db, game.homeTeamId, repository.currentDate()),
+      away: buildEngineTeam(db, game.awayTeamId, repository.currentDate()),
       ruleset: repository.rulesetForGame(game.id),
       neutralVenue: game.neutralVenue
     });
@@ -239,7 +240,7 @@ export class MatchService {
       throw new GameNotFoundError(gameId);
     }
 
-    const managedTeamId = repository.managedTeamId();
+    const managedTeamId = repository.userTeamFor(game);
     const side = managedSideOf(game, managedTeamId);
     if (!side || !managedTeamId) {
       return { ok: false, reason: 'Este partido no es tuyo', tick: null };
@@ -281,7 +282,7 @@ export class MatchService {
     const lines = all.slice(session.deliveredLines);
     session.deliveredLines = all.length;
 
-    const managedTeamId = repository.managedTeamId();
+    const managedTeamId = repository.userTeamFor(game);
     const side = managedSideOf(game, managedTeamId);
     const rivalId = side === 'home' ? game.awayTeamId : game.homeTeamId;
     const bench = managedTeamId ? simulation.liveBench(managedTeamId) : null;
@@ -316,7 +317,7 @@ export class MatchService {
     }
 
     const stored = repository.listBoxScores(gameId);
-    const managedTeamId = repository.managedTeamId();
+    const managedTeamId = repository.userTeamFor(game);
     const cards = {
       home: repository.playerCards(game.homeTeamId),
       away: repository.playerCards(game.awayTeamId)
@@ -363,8 +364,8 @@ export class MatchService {
     const repository = new MatchRepository(db);
     const simulation = new GameSimulation({
       gameId: game.id,
-      home: buildEngineTeam(db, game.homeTeamId),
-      away: buildEngineTeam(db, game.awayTeamId),
+      home: buildEngineTeam(db, game.homeTeamId, playedOn),
+      away: buildEngineTeam(db, game.awayTeamId, playedOn),
       ruleset: repository.rulesetForGame(game.id),
       neutralVenue: game.neutralVenue
     });
@@ -534,7 +535,7 @@ function toMatchState(
   result: GameResult,
   finished: boolean
 ): MatchState {
-  const managedTeamId = repository.managedTeamId();
+  const managedTeamId = repository.userTeamFor(game);
   const homeCards = repository.playerCards(game.homeTeamId);
   const awayCards = repository.playerCards(game.awayTeamId);
   const ruleset = repository.rulesetForGame(game.id);
@@ -579,7 +580,7 @@ function keptPlayByPlay(
   game: GameRow,
   result: GameResult
 ): string | null {
-  return managedSideOf(game, repository.managedTeamId())
+  return managedSideOf(game, repository.userTeamFor(game))
     ? encodePlayByPlay(result.events, game)
     : null;
 }
@@ -659,6 +660,14 @@ function roundLabel(repository: MatchRepository, game: GameRow): string {
   // La Copa no tiene jornadas: tiene rondas, y se juega a partido único.
   if (competition?.format === 'cup') {
     return `${competition.name} · ${cupRoundName(CUP_TEAMS / Math.pow(2, game.round - 1))}`;
+  }
+
+  // Selecciones: la clasificación va por jornadas y el Mundial por rondas.
+  if (competition?.format === 'national-qualifiers') {
+    return `${competition.name} · jornada ${game.round}`;
+  }
+  if (competition?.format === 'national-tournament') {
+    return `${competition.name} · ${worldCupRoundName(game.round)}`;
   }
 
   // Europa sí tiene jornadas, pero también cuartos y Final Four.

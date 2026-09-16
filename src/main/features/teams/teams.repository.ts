@@ -1,4 +1,4 @@
-import { asc, eq, sql } from 'drizzle-orm';
+import { asc, eq, isNull, sql } from 'drizzle-orm';
 import type { SaveDatabase } from '../../database/client';
 import { competitionsTable, playersTable, teamsTable } from '../../database/schema/save';
 
@@ -22,7 +22,11 @@ export class TeamsRepository {
   constructor(private readonly db: SaveDatabase) {}
 
   list(): TeamWithContext[] {
-    return this.baseQuery().orderBy(asc(teamsTable.name)).all();
+    // Las selecciones no son clubes: no salen en el listado de equipos.
+    return this.baseQuery()
+      .where(isNull(teamsTable.nationalOf))
+      .orderBy(asc(teamsTable.name))
+      .all();
   }
 
   findById(id: string): TeamWithContext | null {

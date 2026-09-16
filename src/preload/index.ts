@@ -25,6 +25,13 @@ import type {
 } from '@shared/contracts/season.contract';
 import type { HistoryApi, HistoryView } from '@shared/contracts/history.contract';
 import type { CareerApi, CareerStatus } from '@shared/contracts/career.contract';
+import type {
+  CallupResult,
+  NationalApi,
+  NationalCallupView,
+  NationalOverview,
+  SaveCallupRequest
+} from '@shared/contracts/national.contract';
 import type { InboxApi, InboxView, PressConference } from '@shared/contracts/inbox.contract';
 import type { UpdatesApi, UpdatesView } from '@shared/contracts/updates.contract';
 import type {
@@ -267,7 +274,19 @@ const career: CareerApi = {
   accept: (teamId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.careerAccept, teamId) as Promise<CareerStatus>,
   resign: () => ipcRenderer.invoke(IPC_CHANNELS.careerResign) as Promise<CareerStatus>,
-  wait: () => ipcRenderer.invoke(IPC_CHANNELS.careerWait) as Promise<CareerStatus>
+  wait: () => ipcRenderer.invoke(IPC_CHANNELS.careerWait) as Promise<CareerStatus>,
+  acceptNational: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.careerAcceptNational, teamId) as Promise<CareerStatus>,
+  leaveNational: () => ipcRenderer.invoke(IPC_CHANNELS.careerLeaveNational) as Promise<CareerStatus>
+};
+
+const national: NationalApi = {
+  getOverview: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.nationalGetOverview) as Promise<NationalOverview>,
+  getCallup: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.nationalGetCallup) as Promise<NationalCallupView | null>,
+  saveCallup: (request: SaveCallupRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.nationalSaveCallup, request) as Promise<CallupResult>
 };
 
 const inbox: InboxApi = {
@@ -336,6 +355,7 @@ export const api = {
   match,
   history,
   career,
+  national,
   inbox,
   editor,
   updates

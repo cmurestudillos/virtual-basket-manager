@@ -115,8 +115,10 @@ await page.locator('tbody tr').nth(3).click();
 await page.locator('aside input').first().fill('Carlos');
 // Modo carrera: mientras no te echen se juega igual, y deja ver su pestaña.
 await page.getByText('Modo carrera').click();
+// Y la selección española, que se dirige a la vez que el club.
+await page.locator('#national-team').selectOption('ESP');
 // Y Grecia además de España: dos países con calendario, copa y ascensos.
-await page.locator('aside label', { hasText: 'Grecia' }).click();
+await page.locator('aside li label', { hasText: 'Grecia' }).click();
 console.log(
   'coste de la elección:',
   await page.locator('aside p', { hasText: 'por temporada' }).innerText()
@@ -426,6 +428,20 @@ console.log('equipos en la primera griega:', await page.locator('tbody tr').coun
 await page.screenshot({ path: `${SHOTS}/16c-grecia.png` });
 await page.getByRole('button', { name: /^España/ }).click();
 await page.waitForTimeout(1000);
+
+// Selecciones: la tuya, con lo que pide la federación, y la clasificación.
+await page.getByRole('link', { name: 'Selecciones' }).click();
+await page.waitForTimeout(1500);
+const miSeleccion = await page.locator('main section').first().innerText();
+console.log('mi selección:', miSeleccion.split('\n').join(' · '));
+console.log('banderas en pantalla:', await page.locator('main img').count());
+await page.screenshot({ path: `${SHOTS}/16d-mi-seleccion.png` });
+await page.getByRole('button', { name: 'Clasificación', exact: true }).click();
+await page.waitForTimeout(1000);
+console.log('grupos de clasificación:', await page.locator('main table').count());
+await page.screenshot({ path: `${SHOTS}/16e-clasificacion-mundial.png` });
+await page.getByRole('link', { name: 'Competición' }).click();
+await page.waitForTimeout(1200);
 
 await page.getByRole('button', { name: 'Calendario' }).click();
 await page.waitForTimeout(1200);

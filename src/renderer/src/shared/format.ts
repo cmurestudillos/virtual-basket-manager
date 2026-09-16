@@ -35,6 +35,17 @@ export function formatMatchDate(milliseconds: number): string {
   return MATCH_DATE.format(new Date(milliseconds));
 }
 
+const SHORT_DATE = new Intl.DateTimeFormat('es-ES', {
+  timeZone: 'UTC',
+  day: 'numeric',
+  month: 'short'
+});
+
+/** Fecha corta para listas apretadas: «21 nov». */
+export function formatShortDate(milliseconds: number): string {
+  return SHORT_DATE.format(new Date(milliseconds)).replace('.', '');
+}
+
 /** Minutos jugados en formato acta: `MM:SS`. */
 export function formatPlayedMinutes(secondsPlayed: number): string {
   const minutes = Math.floor(secondsPlayed / 60);

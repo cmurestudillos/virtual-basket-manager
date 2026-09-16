@@ -17,6 +17,7 @@ import {
 import { loadDataset } from '../../saves/dataset';
 import { seedSave } from '../../saves/save-seeder';
 import { MatchService } from '../../match/match.service';
+import { NationalService } from '../../national/national.service';
 import { SeasonService } from '../season.service';
 
 /**
@@ -83,9 +84,10 @@ describe('SeasonService', () => {
     expect(current.totalRounds).toBe(34);
     expect(leagueGames(current.id)).toHaveLength(306); // 34 * 9
     // Y con ella arrancan la segunda división —sin la que no habría de dónde
-    // sacar quién asciende— y las tres competiciones europeas, de 120 partidos
-    // de fase de liga cada una.
-    expect(db.select().from(gamesTable).all()).toHaveLength(306 * 2 + 120 * 3);
+    // sacar quién asciende—, las tres competiciones europeas, de 120 partidos
+    // de fase de liga cada una, y la clasificación para el Mundial: cinco
+    // grupos de cuatro a ida y vuelta.
+    expect(db.select().from(gamesTable).all()).toHaveLength(306 * 2 + 120 * 3 + 5 * 12);
   });
 
   it('no vuelve a generar el calendario en llamadas siguientes', () => {
@@ -170,7 +172,14 @@ describe('SeasonService', () => {
       }
     }
 
-    const games = db.select().from(gamesTable).all();
+    // Los partidos de selecciones de agosto quedan para el cambio de temporada:
+    // sin selección que dirigir, el verano no hace esperar a nadie.
+    const nationalSeasons = new Set(new NationalService(() => db).seasonIds(1));
+    const games = db
+      .select()
+      .from(gamesTable)
+      .all()
+      .filter((game) => !nationalSeasons.has(game.seasonId));
     const leagueId = season.getCurrent().id;
     // La liga regular son 306; el resto, ya jugados, son los de los playoffs y
     // los de la Copa, que tiene su propia temporada.
@@ -181,7 +190,12 @@ describe('SeasonService', () => {
 
     // Hasta 24 fichas por partido, y menos cuando hay gente en la enfermería:
     // un lesionado no se viste, así que no aparece en el acta.
-    const lines = db.select().from(gamePlayerStatsTable).all();
+    const clubGameIds = new Set(games.map((game) => game.id));
+    const lines = db
+      .select()
+      .from(gamePlayerStatsTable)
+      .all()
+      .filter((line) => clubGameIds.has(line.gameId));
     expect(lines.length).toBeLessThanOrEqual(games.length * 24);
     expect(lines.length).toBeGreaterThan(games.length * 21);
 

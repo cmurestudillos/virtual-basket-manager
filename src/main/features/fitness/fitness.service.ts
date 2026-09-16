@@ -198,7 +198,7 @@ export class FitnessService {
    * a saltos —«ir a la jornada» se come seis días de una vez— y saltarse el
    * tramo dejaría a la liga sin descansar ni entrenar media temporada.
    */
-  advanceDays(from: Date, to: Date): void {
+  advanceDays(from: Date, to: Date, options: { training?: boolean } = {}): void {
     const days = daysBetween(from, to);
     if (days <= 0) {
       return;
@@ -215,6 +215,9 @@ export class FitnessService {
         .filter(changesSomething)
     );
 
+    if (options.training === false) {
+      return;
+    }
     for (const monday of trainingDaysBetween(from, to)) {
       this.runTrainingWeek(monday);
     }

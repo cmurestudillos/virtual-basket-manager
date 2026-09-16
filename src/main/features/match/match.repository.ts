@@ -8,6 +8,7 @@ import {
   gamePlayerStatsTable,
   gamesTable,
   gameStateTable,
+  nationalCallupsTable,
   playersTable,
   rotationSlotsTable,
   seasonsTable,
@@ -18,6 +19,7 @@ import {
   type GameRow,
   type TeamTacticsRow
 } from '../../database/schema/save';
+import { isNationalTeam, userTeamIds } from '../national/national-squad';
 
 export interface PlayerCard {
   id: string;
@@ -59,8 +61,14 @@ export class MatchRepository {
     return row?.competition ?? null;
   }
 
-  managedTeamId(): string | null {
-    return this.db.select().from(gameStateTable).get()?.managedTeamId ?? null;
+  /**
+   * El equipo del usuario en ese partido: su club o su selección, si juega
+   * alguno de los dos.
+   */
+  userTeamFor(game: { homeTeamId: string; awayTeamId: string }): string | null {
+    return (
+      userTeamIds(this.db).find((id) => id === game.homeTeamId || id === game.awayTeamId) ?? null
+    );
   }
 
   currentDate(): Date {
@@ -77,11 +85,27 @@ export class MatchRepository {
    * titulares primero y suplentes después, no alfabéticamente.
    */
   playerCards(teamId: string): Map<string, PlayerCard> {
-    const roster = this.db
-      .select()
-      .from(playersTable)
-      .where(and(eq(playersTable.teamId, teamId), eq(playersTable.isYouth, false)))
-      .all();
+    // Una selección no tiene plantilla propia: sus fichas son las de cualquiera
+    // que haya convocado, que es quien puede aparecer en sus actas.
+    const roster = isNationalTeam(this.db, teamId)
+      ? this.db
+          .select()
+          .from(playersTable)
+          .where(
+            inArray(
+              playersTable.id,
+              this.db
+                .select({ id: nationalCallupsTable.playerId })
+                .from(nationalCallupsTable)
+                .where(eq(nationalCallupsTable.nationalTeamId, teamId))
+            )
+          )
+          .all()
+      : this.db
+          .select()
+          .from(playersTable)
+          .where(and(eq(playersTable.teamId, teamId), eq(playersTable.isYouth, false)))
+          .all();
     const depths = new Map(
       this.db
         .select()

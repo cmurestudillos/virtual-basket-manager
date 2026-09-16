@@ -13,3 +13,4 @@ export * from './board.schema';
 export * from './game-state.schema';
 export * from './career.schema';
 export * from './inbox.schema';
+export * from './national.schema';

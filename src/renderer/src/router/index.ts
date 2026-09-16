@@ -106,6 +106,11 @@ export const router = createRouter({
           component: () => import('@renderer/features/inbox/pages/InboxPage.vue')
         },
         {
+          path: 'national',
+          name: 'national',
+          component: () => import('@renderer/features/national/pages/NationalPage.vue')
+        },
+        {
           path: 'history',
           name: 'history',
           component: () => import('@renderer/features/history/pages/HistoryPage.vue')

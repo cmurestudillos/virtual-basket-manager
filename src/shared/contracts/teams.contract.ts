@@ -56,9 +56,21 @@ export interface CatalogContinent {
   games: number;
 }
 
+/** Una selección que se puede dirigir desde el primer día. */
+export interface CatalogNation {
+  code: string;
+  name: string;
+  /** 1 = la más fuerte del mundo. */
+  rank: number;
+  players: number;
+}
+
 export interface CatalogScope {
   countries: CatalogCountry[];
   continents: CatalogContinent[];
+  nations: CatalogNation[];
+  /** Partidos de selecciones por temporada, que se juegan siempre. */
+  nationalGames: number;
 }
 
 export interface TeamsApi {

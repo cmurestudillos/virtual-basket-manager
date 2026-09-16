@@ -7,7 +7,8 @@ import { conditionLabel } from '@shared/domain/conditioning';
 import { injuryLabel } from '@shared/domain/injuries';
 import { POSITION_LABELS } from '@shared/domain/positions';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
-import { AppAvatar, AppPageHeader, AppStat } from '@renderer/shared/ui';
+import { AppAvatar, AppFlag, AppPageHeader, AppStat } from '@renderer/shared/ui';
+import { nationName } from '@shared/domain/national-teams';
 
 const route = useRoute();
 const player = ref<PlayerSummary | null>(null);
@@ -82,7 +83,12 @@ function barColor(value: number): string {
       <AppStat label="Altura / envergadura" size="md" boxed>
         {{ formatHeight(player.heightCm) }} · {{ player.wingspanCm }} cm
       </AppStat>
-      <AppStat label="Nacionalidad" size="md" boxed>{{ player.nationality }}</AppStat>
+      <AppStat label="Nacionalidad" size="md" boxed>
+        <span class="inline-flex items-center gap-2">
+          <AppFlag :code="player.nationality" size="md" />
+          {{ nationName(player.nationality) }}
+        </span>
+      </AppStat>
       <AppStat label="Sueldo" size="md" boxed>{{ formatMoney(player.wageCents) }}</AppStat>
       <article
         class="rounded border p-3"
