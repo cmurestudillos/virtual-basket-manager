@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
+import { parseActiveCountries, resolveActiveCountries } from '@shared/domain/simulation-scope';
 import type { SaveDatabase } from '../../database/client';
 import {
   competitionsTable,
@@ -14,6 +15,14 @@ import {
 } from '../../database/schema/save';
 
 export class SeasonRepository {
+  /**
+   * Las competiciones y los países que se juegan no cambian mientras dura una
+   * operación, y el reloj los pregunta decenas de veces por día simulado: se
+   * leen una vez por instancia, que vive lo que una llamada al servicio.
+   */
+  private competitions: CompetitionRow[] | null = null;
+  private countries: string[] | null = null;
+
   constructor(private readonly db: SaveDatabase) {}
 
   gameState(): { managedTeamId: string | null; currentDate: Date; seasonNumber: number } {
@@ -26,6 +35,23 @@ export class SeasonRepository {
       currentDate: state.currentDate,
       seasonNumber: state.seasonNumber
     };
+  }
+
+  /**
+   * Los países que se juegan: los elegidos al crear la partida y el del club
+   * dirigido, que va siempre aunque la carrera lo haya llevado a otro.
+   */
+  activeCountries(): string[] {
+    if (!this.countries) {
+      const state = this.db.select().from(gameStateTable).get();
+      const team = state?.managedTeamId ? this.findTeam(state.managedTeamId) : null;
+      const competition = team ? this.findCompetition(team.competitionId) : null;
+      this.countries = resolveActiveCountries(
+        parseActiveCountries(state?.activeCountries ?? null),
+        competition?.country ?? null
+      );
+    }
+    return [...this.countries];
   }
 
   setCurrentDate(date: Date): void {
@@ -192,18 +218,13 @@ export class SeasonRepository {
   }
 
   listCompetitions(): CompetitionRow[] {
-    return this.db.select().from(competitionsTable).all();
+    this.competitions ??= this.db.select().from(competitionsTable).all();
+    return [...this.competitions];
   }
 
   /** La competición de un id, para saber si es liga o copa. */
   findCompetition(competitionId: string): CompetitionRow | null {
-    return (
-      this.db
-        .select()
-        .from(competitionsTable)
-        .where(eq(competitionsTable.id, competitionId))
-        .get() ?? null
-    );
+    return this.listCompetitions().find((row) => row.id === competitionId) ?? null;
   }
 
   /**

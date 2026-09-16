@@ -19,6 +19,7 @@ import {
 import { loadDataset } from '../../saves/dataset';
 import { seedSave } from '../../saves/save-seeder';
 import { BoardService } from '../../club/board.service';
+import { SeasonRepository } from '../../season/season.repository';
 import { SeasonService } from '../../season/season.service';
 import {
   CareerService,
@@ -27,6 +28,7 @@ import {
   NotUnemployedError,
   OfferNotAvailableError
 } from '../career.service';
+import { CareerRepository } from '../career.repository';
 
 /**
  * La carrera del entrenador, con despido y fichaje de verdad.
@@ -46,14 +48,15 @@ let filePath: string;
 let db: SaveDatabase;
 let career: CareerService;
 
-function openSave(careerMode: boolean): void {
+function openSave(careerMode: boolean, activeCountries?: string[]): void {
   directory = mkdtempSync(join(tmpdir(), 'vbm-career-'));
   filePath = join(directory, 'partida.sqlite');
   db = openSaveDatabase(filePath, MIGRATIONS);
   seedSave(db, loadDataset(SEED_DIRECTORY), {
     managedTeamId: MANAGED_TEAM,
     managerName: 'Carlos',
-    careerMode
+    careerMode,
+    activeCountries
   });
 
   const resolveDb = (): SaveDatabase => db;
@@ -147,6 +150,14 @@ describe('modo carrera', () => {
       expect(
         offer.teamId.startsWith('liga-nacional-') || offer.teamId.startsWith('liga-plata-')
       ).toBe(true);
+    }
+  });
+
+  it('cada oferta dice de qué país es', () => {
+    getDismissed();
+
+    for (const offer of career.getStatus().offers) {
+      expect(offer.countryName).toBe('España');
     }
   });
 
@@ -306,5 +317,43 @@ describe('ofertas teniendo equipo', () => {
     expect(status.spells).toHaveLength(2);
     expect(status.spells[0]!.endReason).toBe('left');
     expect(status.spells.find((spell) => spell.endSeason === null)?.teamId).toBe(oferta.teamId);
+  });
+});
+
+describe('carrera con varios países jugándose', () => {
+  beforeEach(() => openSave(true, ['GRE', 'LTU']));
+
+  it('las ofertas pueden venir de cualquiera de ellos, y de ninguno más', () => {
+    getDismissed();
+
+    // La bolsa de la que salen: los clubes de liga de los tres países.
+    const pool = new CareerRepository(db).clubsInCountries(
+      new SeasonRepository(db).activeCountries()
+    );
+    expect(new Set(pool.map((row) => row.competition.country))).toEqual(
+      new Set(['ESP', 'GRE', 'LTU'])
+    );
+
+    const allowed = new Set(['España', 'Grecia', 'Lituania']);
+    for (const offer of career.getStatus().offers) {
+      expect(allowed.has(offer.countryName), offer.teamName).toBe(true);
+    }
+  });
+
+  it('firmar en el extranjero lleva la partida a esa liga, que ya tiene calendario', () => {
+    getDismissed();
+    const greek = db
+      .select()
+      .from(teamsTable)
+      .where(eq(teamsTable.competitionId, 'grecia-1'))
+      .all()[0]!;
+    // La oferta se fuerza: lo que se comprueba es la llegada, no el mercado.
+    db.update(careerSpellsTable).set({ endSeason: 1, endReason: 'dismissed' }).run();
+    db.update(gameStateTable).set({ managedTeamId: greek.id }).run();
+    db.update(boardTable).set({ dismissed: false, confidence: 60 }).run();
+
+    const current = new SeasonService(() => db).getCurrent();
+    expect(current.competitionId).toBe('grecia-1');
+    expect(current.totalRounds).toBeGreaterThan(0);
   });
 });

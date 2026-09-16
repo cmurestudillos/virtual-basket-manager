@@ -4,6 +4,7 @@ import type { SettingsApi, SettingsKey } from '@shared/contracts/settings.contra
 import type { CreateSaveRequest, SavesApi, SaveSummary } from '@shared/contracts/saves.contract';
 import type {
   CatalogLeague,
+  CatalogScope,
   CatalogTeam,
   TeamSummary,
   TeamsApi
@@ -111,7 +112,8 @@ const teams: TeamsApi = {
   list: () => ipcRenderer.invoke(IPC_CHANNELS.teamsList) as Promise<TeamSummary[]>,
   get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.teamsGet, id) as Promise<TeamSummary | null>,
   listCatalog: () => ipcRenderer.invoke(IPC_CHANNELS.teamsListCatalog) as Promise<CatalogTeam[]>,
-  listLeagues: () => ipcRenderer.invoke(IPC_CHANNELS.teamsListLeagues) as Promise<CatalogLeague[]>
+  listLeagues: () => ipcRenderer.invoke(IPC_CHANNELS.teamsListLeagues) as Promise<CatalogLeague[]>,
+  listScope: () => ipcRenderer.invoke(IPC_CHANNELS.teamsListScope) as Promise<CatalogScope>
 };
 
 const players: PlayersApi = {
@@ -130,8 +132,10 @@ const season: SeasonApi = {
   getStandings: (competitionId?: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.seasonGetStandings, competitionId) as Promise<StandingEntry[]>,
   listLeagues: () => ipcRenderer.invoke(IPC_CHANNELS.seasonListLeagues) as Promise<LeagueEntry[]>,
-  listFixtures: (round?: number) =>
-    ipcRenderer.invoke(IPC_CHANNELS.seasonListFixtures, round) as Promise<FixtureEntry[]>,
+  listFixtures: (round?: number, competitionId?: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.seasonListFixtures, round, competitionId) as Promise<
+      FixtureEntry[]
+    >,
   listTeamFixtures: (teamId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.seasonListTeamFixtures, teamId) as Promise<FixtureEntry[]>,
   getNextGame: () =>
@@ -139,9 +143,13 @@ const season: SeasonApi = {
   advanceDay: () => ipcRenderer.invoke(IPC_CHANNELS.seasonAdvanceDay) as Promise<AdvanceResult>,
   advanceToNextGame: () =>
     ipcRenderer.invoke(IPC_CHANNELS.seasonAdvanceToNextGame) as Promise<AdvanceResult>,
-  getPlayoffs: () =>
-    ipcRenderer.invoke(IPC_CHANNELS.seasonGetPlayoffs) as Promise<PlayoffBracket | null>,
-  getCup: () => ipcRenderer.invoke(IPC_CHANNELS.seasonGetCup) as Promise<CupBracket | null>,
+  getPlayoffs: (competitionId?: string) =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.seasonGetPlayoffs,
+      competitionId
+    ) as Promise<PlayoffBracket | null>,
+  getCup: (country?: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.seasonGetCup, country) as Promise<CupBracket | null>,
   listContinental: () =>
     ipcRenderer.invoke(IPC_CHANNELS.seasonListContinental) as Promise<ContinentalSummary[]>,
   getContinental: (competitionId?: string) =>

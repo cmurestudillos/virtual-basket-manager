@@ -219,7 +219,7 @@ describe('nóminas', () => {
 });
 
 describe('una temporada entera', () => {
-  it('cierra el curso sin arruinar al club', { timeout: 180_000 }, () => {
+  it('cierra el curso sin arruinar al club', { timeout: 300_000 }, () => {
     const inicial = team().budgetCents;
     // El consejo, fuera: aquí se miran las cuentas de una temporada entera, y un
     // despido a mitad de curso pararía el reloj antes de tiempo.

@@ -31,7 +31,15 @@ export const gameStateTable = sqliteTable('game_state', {
    * La última foto del club que vio la bandeja, en JSON. Los avisos salen de
    * compararla con la de ahora; nula hasta la primera vez que se mira.
    */
-  inboxSnapshot: text('inbox_snapshot')
+  inboxSnapshot: text('inbox_snapshot'),
+  /**
+   * Los países cuyas ligas y copas se juegan, en JSON (`["ESP","GRE"]`). Se
+   * eligen al crear la partida y no cambian: una liga que empezara a jugarse a
+   * mitad de partida no tendría historia ni clasificación del año anterior.
+   * Nulo en las partidas de antes de poder elegir, que juegan sólo el país del
+   * club dirigido.
+   */
+  activeCountries: text('active_countries')
 });
 
 export type GameStateRow = typeof gameStateTable.$inferSelect;

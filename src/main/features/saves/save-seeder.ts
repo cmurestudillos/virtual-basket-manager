@@ -1,6 +1,7 @@
 import { randomUUID } from 'node:crypto';
 import { DEFAULT_TACTICS } from '@shared/domain/tactics';
 import { randomName } from '@shared/domain/names';
+import { resolveActiveCountries } from '@shared/domain/simulation-scope';
 import { STAFF_ROLES, staffLevelForReputation } from '@shared/domain/staff';
 import { createRng, seedFromString } from '@shared/engine/basketball/rng';
 import { buildAutomaticRotation } from '@shared/domain/rotation';
@@ -58,6 +59,8 @@ export function seedSave(
     managerName: string;
     dismissalEnabled?: boolean;
     careerMode?: boolean;
+    /** Países que se juegan, además del del club dirigido. */
+    activeCountries?: readonly string[];
   }
 ): void {
   // Todo en una transacción: una partida a medio sembrar es peor que ninguna.
@@ -230,7 +233,13 @@ export function seedSave(
         currentDate: new Date(Date.UTC(dataset.seasonStartYear, 8, 1)),
         seasonNumber: 1,
         dismissalEnabled: options.dismissalEnabled ?? true,
-        careerMode: options.careerMode ?? false
+        careerMode: options.careerMode ?? false,
+        activeCountries: JSON.stringify(
+          resolveActiveCountries(
+            options.activeCountries ?? [],
+            dataset.teams.find((team) => team.id === options.managedTeamId)?.country ?? null
+          )
+        )
       })
       .run();
 

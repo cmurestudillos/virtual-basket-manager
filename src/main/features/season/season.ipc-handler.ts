@@ -11,8 +11,9 @@ export function registerSeasonIpcHandlers(): void {
     service.getStandings(competitionId)
   );
   ipcMain.handle(IPC_CHANNELS.seasonListLeagues, () => service.listLeagues());
-  ipcMain.handle(IPC_CHANNELS.seasonListFixtures, (_event, round?: number) =>
-    service.listFixtures(round)
+  ipcMain.handle(
+    IPC_CHANNELS.seasonListFixtures,
+    (_event, round?: number, competitionId?: string) => service.listFixtures(round, competitionId)
   );
   ipcMain.handle(IPC_CHANNELS.seasonListTeamFixtures, (_event, teamId: string) =>
     service.listTeamFixtures(teamId)
@@ -20,8 +21,10 @@ export function registerSeasonIpcHandlers(): void {
   ipcMain.handle(IPC_CHANNELS.seasonGetNextGame, () => service.getNextGame());
   ipcMain.handle(IPC_CHANNELS.seasonAdvanceDay, () => service.advanceDay());
   ipcMain.handle(IPC_CHANNELS.seasonAdvanceToNextGame, () => service.advanceToNextGame());
-  ipcMain.handle(IPC_CHANNELS.seasonGetPlayoffs, () => service.getPlayoffs());
-  ipcMain.handle(IPC_CHANNELS.seasonGetCup, () => service.getCup());
+  ipcMain.handle(IPC_CHANNELS.seasonGetPlayoffs, (_event, competitionId?: string) =>
+    service.getPlayoffs(competitionId)
+  );
+  ipcMain.handle(IPC_CHANNELS.seasonGetCup, (_event, country?: string) => service.getCup(country));
   ipcMain.handle(IPC_CHANNELS.seasonListContinental, () => service.listContinental());
   ipcMain.handle(IPC_CHANNELS.seasonGetContinental, (_event, competitionId?: string) =>
     service.getContinental(competitionId)

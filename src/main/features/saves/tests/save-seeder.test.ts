@@ -105,6 +105,22 @@ describe('seedSave', () => {
     }
   });
 
+  it('cada país con liga tiene su copa, una y sólo una', () => {
+    const competitions = db.select().from(competitionsTable).all();
+    const countries = new Set(
+      competitions.filter((row) => row.format === 'league').map((row) => row.country)
+    );
+
+    for (const country of countries) {
+      expect(
+        competitions.filter((row) => row.format === 'cup' && row.country === country),
+        country
+      ).toHaveLength(1);
+    }
+    // La española conserva su id: las partidas de antes la buscan por él.
+    expect(competitions.find((row) => row.id === 'copa-nacional')?.country).toBe('ESP');
+  });
+
   it('da pizarra por defecto a todos los equipos, no sólo al del usuario', () => {
     expect(db.select().from(teamTacticsTable).all()).toHaveLength(dataset.teams.length);
   });

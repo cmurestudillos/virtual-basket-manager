@@ -8,7 +8,12 @@ export const createSaveRequestSchema = z.object({
   /** Con el despido apagado el consejo sigue opinando, pero no te echa. */
   dismissalEnabled: z.boolean().default(true),
   /** Modo carrera: si te echan, buscas otro banquillo en vez de acabar la partida. */
-  careerMode: z.boolean().default(false)
+  careerMode: z.boolean().default(false),
+  /**
+   * Países cuyas ligas se juegan. El del club va siempre, esté o no en la
+   * lista; vacía, se juega sólo ese.
+   */
+  activeCountries: z.array(z.string().trim().min(2).max(3)).max(20).default([])
 });
 export type CreateSaveRequest = z.infer<typeof createSaveRequestSchema>;
 

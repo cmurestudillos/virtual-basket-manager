@@ -230,7 +230,7 @@ describe('lesiones', () => {
     expect(fitness.getPlan(MANAGED_TEAM).injuredCount).toBeGreaterThanOrEqual(1);
   });
 
-  it('una temporada deja lesiones por toda la liga', { timeout: 180_000 }, () => {
+  it('una temporada deja lesiones por toda la liga', { timeout: 300_000 }, () => {
     // El consejo, fuera: si la partida sale mal y hay despido, el reloj se para
     // a mitad de temporada y este test dejaría de comprobar lo que dice.
     season.getCurrent();

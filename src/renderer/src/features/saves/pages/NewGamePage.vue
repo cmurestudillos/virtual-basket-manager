@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
-import type { CatalogLeague, CatalogTeam } from '@shared/contracts/teams.contract';
+import type { CatalogLeague, CatalogScope, CatalogTeam } from '@shared/contracts/teams.contract';
+import { estimateSeconds, formatEstimate } from '@shared/domain/simulation-scope';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { AppButton, AppPageHeader } from '@renderer/shared/ui';
 
@@ -29,6 +30,14 @@ const dismissalEnabled = ref(true);
  * y por eso se elige aquí y no en un ajuste: cambia de qué va la partida.
  */
 const careerMode = ref(false);
+/** Países y continentales que se pueden jugar, con su coste. */
+const scope = ref<CatalogScope>({ countries: [], continents: [] });
+/**
+ * Países elegidos además del del club, que va siempre. Se elige aquí y no se
+ * cambia después: una liga que empezara a mitad de partida no tendría ni
+ * clasificación del año anterior ni historia.
+ */
+const chosenCountries = ref<string[]>([]);
 const saveName = ref('');
 const creating = ref(false);
 const error = ref<string | null>(null);
@@ -41,6 +50,7 @@ const canCreate = computed(
 onMounted(async () => {
   teams.value = await window.api.teams.listCatalog();
   leagues.value = await window.api.teams.listLeagues();
+  scope.value = await window.api.teams.listScope();
   // Se abre en la liga de casa y no en el mundo entero: el catálogo va por
   // reputación, así que sin filtro lo encabezan los clubes americanos y el
   // primer contacto con el juego sería una lista de trescientos equipos.
@@ -63,6 +73,59 @@ const visibleTeams = computed(() => {
     }
     return team.name.toLowerCase().includes(needle) || team.city.toLowerCase().includes(needle);
   });
+});
+
+/** El país de la liga del club elegido: ese se juega sí o sí. */
+const managedCountry = computed(() => {
+  const competitionId = selectedTeam.value?.competitionId;
+  return leagues.value.find((row) => row.competitionId === competitionId)?.country ?? null;
+});
+
+const activeCountries = computed(() => {
+  const codes = new Set(chosenCountries.value);
+  if (managedCountry.value) {
+    codes.add(managedCountry.value);
+  }
+  return codes;
+});
+
+function isActive(code: string): boolean {
+  return activeCountries.value.has(code);
+}
+
+function toggleCountry(code: string): void {
+  if (code === managedCountry.value) {
+    return;
+  }
+  chosenCountries.value = chosenCountries.value.includes(code)
+    ? chosenCountries.value.filter((row) => row !== code)
+    : [...chosenCountries.value, code];
+}
+
+/** Atajos: nadie quiere marcar catorce casillas una a una. */
+function choosePreset(preset: 'mine' | 'continent' | 'world'): void {
+  const continent = scope.value.countries.find(
+    (row) => row.code === managedCountry.value
+  )?.continent;
+  chosenCountries.value = scope.value.countries
+    .filter((row) =>
+      preset === 'world' ? true : preset === 'continent' ? row.continent === continent : false
+    )
+    .map((row) => row.code);
+}
+
+/**
+ * Lo que cuesta cada temporada con esta elección: las ligas y copas de cada
+ * país y las continentales de cada continente que entra en juego.
+ */
+const scopeGames = computed(() => {
+  const countries = scope.value.countries.filter((row) => isActive(row.code));
+  const continents = new Set(countries.map((row) => row.continent));
+  const domestic = countries.reduce((sum, row) => sum + row.games, 0);
+  const continental = scope.value.continents
+    .filter((row) => continents.has(row.code))
+    .reduce((sum, row) => sum + row.games, 0);
+  return domestic + continental;
 });
 
 /** Las ligas agrupadas por país, que es como las busca el que elige. */
@@ -94,7 +157,8 @@ async function create(): Promise<void> {
       teamId: selectedTeamId.value,
       managerName: managerName.value.trim(),
       dismissalEnabled: dismissalEnabled.value,
-      careerMode: careerMode.value
+      careerMode: careerMode.value,
+      activeCountries: [...activeCountries.value]
     });
     await store.refresh();
     await router.push({ name: 'dashboard' });
@@ -133,7 +197,9 @@ async function create(): Promise<void> {
           </AppButton>
 
           <div v-for="[country, rows] in leaguesByCountry" :key="country" class="mt-3">
-            <p class="px-2 text-xs uppercase tracking-wide text-court-600">{{ country }}</p>
+            <p class="px-2 text-xs uppercase tracking-wide text-court-600">
+              {{ rows[0]?.countryName ?? country }}
+            </p>
             <AppButton
               v-for="row in rows"
               :key="row.competitionId"
@@ -192,7 +258,7 @@ async function create(): Promise<void> {
         </div>
       </section>
 
-      <aside class="flex flex-col gap-4 rounded border border-court-700 p-4">
+      <aside class="flex flex-col gap-4 overflow-auto rounded border border-court-700 p-4">
         <label class="flex flex-col gap-1 text-sm">
           <span class="text-court-300">Tu nombre</span>
           <input
@@ -237,6 +303,53 @@ async function create(): Promise<void> {
             </span>
           </span>
         </label>
+
+        <fieldset class="flex flex-col gap-2 text-sm">
+          <legend class="text-court-300">Ligas que se juegan</legend>
+          <p class="text-xs text-court-300">
+            Cada país añade su calendario, sus playoffs, sus ascensos y su copa. El resto del mundo
+            sigue existiendo, pero sus ligas no se disputan.
+          </p>
+          <div class="flex flex-wrap gap-1">
+            <AppButton size="sm" variant="ghost" @click="choosePreset('mine')"
+              >Sólo el mío</AppButton
+            >
+            <AppButton size="sm" variant="ghost" @click="choosePreset('continent')">
+              Su continente
+            </AppButton>
+            <AppButton size="sm" variant="ghost" @click="choosePreset('world')">Todos</AppButton>
+          </div>
+          <ul class="flex flex-col gap-1">
+            <li v-for="country in scope.countries" :key="country.code">
+              <label
+                class="flex items-center gap-2"
+                :class="country.code === managedCountry ? 'cursor-default' : 'cursor-pointer'"
+              >
+                <input
+                  type="checkbox"
+                  :checked="isActive(country.code)"
+                  :disabled="country.code === managedCountry"
+                  @change="toggleCountry(country.code)"
+                />
+                <span class="flex-1">
+                  {{ country.name }}
+                  <span v-if="country.code === managedCountry" class="text-xs text-ball-400">
+                    · tu club
+                  </span>
+                </span>
+                <span class="text-xs tabular-nums text-court-600">
+                  {{ formatEstimate(estimateSeconds(country.games)) }}
+                </span>
+              </label>
+            </li>
+          </ul>
+          <p class="text-xs text-court-300">
+            {{ activeCountries.size }} {{ activeCountries.size === 1 ? 'país' : 'países' }} · unos
+            {{ scopeGames.toLocaleString('es-ES') }} partidos y
+            <span class="text-court-100">≈ {{ formatEstimate(estimateSeconds(scopeGames)) }}</span>
+            de simulación por temporada, competiciones continentales incluidas.
+          </p>
+        </fieldset>
 
         <p v-if="error" class="text-sm text-ball-400">{{ error }}</p>
 

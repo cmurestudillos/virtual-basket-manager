@@ -1,0 +1,1 @@
+ALTER TABLE `game_state` ADD `active_countries` text;

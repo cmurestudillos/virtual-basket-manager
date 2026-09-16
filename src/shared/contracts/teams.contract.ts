@@ -20,6 +20,7 @@ export interface CatalogLeague {
   competitionId: string;
   name: string;
   country: string;
+  countryName: string;
   /** 1 es la máxima categoría del país. */
   tier: number;
   teams: number;
@@ -31,6 +32,35 @@ export interface CatalogLeague {
   isHome: boolean;
 }
 
+/**
+ * Un país que se puede jugar, con lo que cuesta jugarlo.
+ *
+ * La unidad es el país y no la liga: sus divisiones van atadas por los
+ * ascensos. El coste se da en partidos y en segundos orientativos por
+ * temporada, para que quien elige catorce países sepa a qué espera se apunta.
+ */
+export interface CatalogCountry {
+  code: string;
+  name: string;
+  continent: string;
+  leagues: { competitionId: string; name: string; tier: number; teams: number }[];
+  hasCup: boolean;
+  /** Partidos de liga y copa por temporada. */
+  games: number;
+}
+
+/** Las competiciones continentales de un continente, que se juegan si entra alguno de sus países. */
+export interface CatalogContinent {
+  code: string;
+  competitions: number;
+  games: number;
+}
+
+export interface CatalogScope {
+  countries: CatalogCountry[];
+  continents: CatalogContinent[];
+}
+
 export interface TeamsApi {
   list: () => Promise<TeamSummary[]>;
   get: (id: string) => Promise<TeamSummary | null>;
@@ -38,6 +68,8 @@ export interface TeamsApi {
   listLeagues: () => Promise<CatalogLeague[]>;
   /** Equipos del catálogo, leídos del dataset antes de que exista partida. */
   listCatalog: () => Promise<CatalogTeam[]>;
+  /** Los países que se pueden jugar, con su coste, para elegirlos al crear la partida. */
+  listScope: () => Promise<CatalogScope>;
 }
 
 /**

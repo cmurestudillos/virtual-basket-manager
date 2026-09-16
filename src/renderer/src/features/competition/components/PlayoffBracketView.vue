@@ -4,11 +4,14 @@ import type { PlayoffBracket } from '@shared/contracts/season.contract';
 import { AppEmpty, AppSectionTitle } from '@renderer/shared/ui';
 import SeriesCard from '@renderer/features/competition/components/SeriesCard.vue';
 
+/** Liga del cuadro; sin ella, la del club. */
+const props = defineProps<{ competitionId?: string }>();
+
 const bracket = ref<PlayoffBracket | null>(null);
 const loaded = ref(false);
 
 onMounted(async () => {
-  bracket.value = await window.api.season.getPlayoffs();
+  bracket.value = await window.api.season.getPlayoffs(props.competitionId);
   loaded.value = true;
 });
 </script>
