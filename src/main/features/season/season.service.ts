@@ -57,6 +57,7 @@ import {
   playoffGameDate,
   roundRobinLaps
 } from '@shared/domain/schedule';
+import { countryName } from '@shared/domain/simulation-scope';
 import { computeStandings, type PlayedGame, type StandingRow } from '@shared/domain/standings';
 import type { SaveDatabase } from '../../database/save-database';
 import type { CompetitionRow, GameRow, NewGameRow, SeasonRow } from '../../database/schema/save';
@@ -156,6 +157,9 @@ export class SeasonService {
       currentRound: season.currentRound,
       totalRounds: games.reduce((max, game) => Math.max(max, game.round), 0),
       stage: season.stage as SeasonSummary['stage'],
+      pendingLeagues: this.unfinishedLeagues(repository, season.seasonNumber).map(
+        (row) => repository.findCompetition(row.competitionId)?.name ?? row.competitionId
+      ),
       tier: competition.tier,
       playoffTeams: competition.playoffTeams,
       championTeamId: season.championTeamId,
@@ -178,13 +182,18 @@ export class SeasonService {
     const managedTeamId = repository.gameState().managedTeamId;
     const names = repository.teamNames();
 
-    const leagues = this.leagueSeasons(repository, season);
+    const target = this.findLeagueSeason(repository, season, competitionId);
+    const competition = repository.findCompetition(target.competitionId);
+    // Las zonas de ascenso y descenso son cosa de las divisiones de su país.
+    const leagues = this.leagueSeasonsOf(
+      repository,
+      competition?.country ?? '',
+      season.seasonNumber
+    );
     const index = Math.max(
       0,
-      leagues.findIndex((row) => row.competitionId === (competitionId ?? season.competitionId))
+      leagues.findIndex((row) => row.id === target.id)
     );
-    const target = leagues[index] ?? season;
-    const competition = repository.findCompetition(target.competitionId);
     const standings = this.regularStandings(repository, target);
 
     return standings.map((row) => ({
@@ -200,20 +209,31 @@ export class SeasonService {
     }));
   }
 
-  /** Las divisiones que se juegan, para poder asomarse a la de al lado. */
+  /**
+   * Las divisiones que se juegan, para poder asomarse a la de al lado: las del
+   * país del club primero y después las de los demás países elegidos.
+   */
   listLeagues(): LeagueEntry[] {
     const repository = new SeasonRepository(this.resolveDb());
     const season = this.ensureSeason(repository);
     const names = repository.teamNames();
     const managedTeamId = repository.gameState().managedTeamId;
 
-    return this.leagueSeasons(repository, season).map((row) => {
+    return this.allLeagueSeasons(repository, season).map((row) => {
       const competition = repository.findCompetition(row.competitionId);
 
       return {
         competitionId: row.competitionId,
         name: competition?.name ?? row.competitionId,
+        country: competition?.country ?? '',
+        countryName: countryName(competition?.country ?? ''),
         tier: competition?.tier ?? 1,
+        stage: row.stage as LeagueEntry['stage'],
+        currentRound: row.currentRound,
+        totalRounds: repository
+          .listRegularGames(row.id)
+          .reduce((max, game) => Math.max(max, game.round), 0),
+        playoffTeams: competition?.playoffTeams ?? 0,
         isManaged: row.id === season.id,
         championTeamId: row.championTeamId,
         championTeamName: row.championTeamId ? (names.get(row.championTeamId) ?? null) : null,
@@ -224,12 +244,15 @@ export class SeasonService {
     });
   }
 
-  /** Calendario de liga regular. Los playoffs tienen su propio cuadro. */
-  listFixtures(round?: number): FixtureEntry[] {
+  /**
+   * Calendario de liga regular; por defecto, el de la liga del usuario. Los
+   * playoffs tienen su propio cuadro.
+   */
+  listFixtures(round?: number, competitionId?: string): FixtureEntry[] {
     const repository = new SeasonRepository(this.resolveDb());
     const season = this.ensureSeason(repository);
     const games = repository
-      .listRegularGames(season.id)
+      .listRegularGames(this.findLeagueSeason(repository, season, competitionId).id)
       .filter((game) => round === undefined || game.round === round);
 
     return this.toFixtures(repository, games);
@@ -281,7 +304,7 @@ export class SeasonService {
       return { status: 'dismissed', date: state.currentDate.getTime() };
     }
 
-    if (season.stage === 'finished') {
+    if (this.worldFinished(repository, season.seasonNumber)) {
       return { status: 'seasonOver', date: state.currentDate.getTime() };
     }
 
@@ -330,7 +353,7 @@ export class SeasonService {
     const season = this.ensureStage(repository);
 
     const nextScheduled = repository.nextScheduledDate(this.activeSeasonIds(repository, season));
-    if (!nextScheduled || season.stage === 'finished') {
+    if (!nextScheduled || this.worldFinished(repository, season.seasonNumber)) {
       const date = repository.gameState().currentDate;
       return { status: 'seasonOver', date: date.getTime() };
     }
@@ -357,11 +380,16 @@ export class SeasonService {
     return { status: 'seasonOver', date: repository.gameState().currentDate.getTime() };
   }
 
-  /** Cuadro de Copa; `null` mientras no se haya cerrado la primera vuelta. */
-  getCup(): CupBracket | null {
+  /**
+   * Cuadro de Copa de un país; por defecto, la del país del club. `null`
+   * mientras no se haya cerrado la primera vuelta o si el país no se juega.
+   */
+  getCup(country?: string): CupBracket | null {
     const repository = new SeasonRepository(this.resolveDb());
     const season = this.ensureStage(repository);
-    const cup = this.cupSeason(repository, season);
+    const home = this.leagueCountry(repository, season) ?? '';
+    const target = country && repository.activeCountries().includes(country) ? country : home;
+    const cup = this.cupSeason(repository, season, target);
     if (!cup) {
       return null;
     }
@@ -392,14 +420,21 @@ export class SeasonService {
   listContinental(): ContinentalSummary[] {
     const repository = new SeasonRepository(this.resolveDb());
     const season = this.ensureStage(repository);
-    const continent = this.managedContinent(repository, season);
-    if (!continent) {
-      return [];
-    }
-
     const names = repository.teamNames();
     const managedTeamId = repository.gameState().managedTeamId;
 
+    return this.activeContinents(repository, season).flatMap((continent) =>
+      this.continentalSummaries(repository, season, continent, names, managedTeamId)
+    );
+  }
+
+  private continentalSummaries(
+    repository: SeasonRepository,
+    season: SeasonRow,
+    continent: string,
+    names: ReadonlyMap<string, string>,
+    managedTeamId: string | null
+  ): ContinentalSummary[] {
     return this.continentalCompetitions(repository, continent).flatMap((competition) => {
       const continental = repository.findSeasonOf(competition.id, season.seasonNumber);
       if (!continental) {
@@ -483,12 +518,16 @@ export class SeasonService {
     };
   }
 
-  /** Cuadro de playoffs; `null` mientras la liga regular no haya acabado. */
-  getPlayoffs(): PlayoffBracket | null {
+  /**
+   * Cuadro de playoffs de una liga; por defecto, el de la del usuario. `null`
+   * mientras la liga regular no haya acabado.
+   */
+  getPlayoffs(competitionId?: string): PlayoffBracket | null {
     const repository = new SeasonRepository(this.resolveDb());
-    const season = this.ensureStage(repository);
-    const competition = repository.competitionOfTeam(this.requireManagedTeam(repository));
-    if (competition.playoffTeams < 2) {
+    const managed = this.ensureStage(repository);
+    const season = this.findLeagueSeason(repository, managed, competitionId);
+    const competition = repository.findCompetition(season.competitionId);
+    if (!competition || competition.playoffTeams < 2) {
       return null;
     }
 
@@ -534,7 +573,7 @@ export class SeasonService {
     }
 
     const season = this.ensureStage(repository);
-    if (season.stage !== 'finished') {
+    if (!this.worldFinished(repository, season.seasonNumber)) {
       throw new SeasonNotFinishedError();
     }
 
@@ -608,10 +647,12 @@ export class SeasonService {
     this.youthService.runIntake(season.seasonNumber, season.startYear);
 
     // Las demás divisiones del país, que se juegan igual aunque el usuario no
-    // esté en ellas.
-    for (const other of this.leagueCompetitions(repository, competition.country)) {
-      if (!repository.findSeason(other.id, state.seasonNumber)) {
-        this.createLeagueSeason(repository, other, state);
+    // esté en ellas, y las de los otros países elegidos al crear la partida.
+    for (const country of repository.activeCountries()) {
+      for (const other of this.leagueCompetitions(repository, country)) {
+        if (!repository.findSeason(other.id, state.seasonNumber)) {
+          this.createLeagueSeason(repository, other, state);
+        }
       }
     }
 
@@ -668,7 +709,16 @@ export class SeasonService {
    * sería sólo cambiar de rivales.
    */
   private applyPromotions(repository: SeasonRepository, season: SeasonRow): void {
-    const leagues = this.leagueSeasons(repository, season);
+    for (const country of repository.activeCountries()) {
+      this.applyCountryPromotions(
+        repository,
+        this.leagueSeasonsOf(repository, country, season.seasonNumber)
+      );
+    }
+  }
+
+  /** Los ascensos y descensos entre las divisiones de un país. */
+  private applyCountryPromotions(repository: SeasonRepository, leagues: SeasonRow[]): void {
     const managedTeamId = repository.gameState().managedTeamId;
     const today = repository.gameState().currentDate;
 
@@ -729,13 +779,74 @@ export class SeasonService {
       .sort((a, b) => a.tier - b.tier);
   }
 
-  /** Las temporadas de liga en marcha este curso, de primera hacia abajo. */
-  private leagueSeasons(repository: SeasonRepository, season: SeasonRow): SeasonRow[] {
-    const country = this.leagueCountry(repository, season) ?? '';
-
+  /** Las temporadas de liga de un país este curso, de primera hacia abajo. */
+  private leagueSeasonsOf(
+    repository: SeasonRepository,
+    country: string,
+    seasonNumber: number
+  ): SeasonRow[] {
     return this.leagueCompetitions(repository, country)
-      .map((competition) => repository.findSeason(competition.id, season.seasonNumber))
+      .map((competition) => repository.findSeason(competition.id, seasonNumber))
       .filter((row): row is SeasonRow => row !== null);
+  }
+
+  /** Las temporadas de liga de todos los países que se juegan: el del club, primero. */
+  private allLeagueSeasons(repository: SeasonRepository, season: SeasonRow): SeasonRow[] {
+    const home = this.leagueCountry(repository, season);
+    const countries = repository
+      .activeCountries()
+      .sort((a, b) => Number(b === home) - Number(a === home));
+
+    return countries.flatMap((country) =>
+      this.leagueSeasonsOf(repository, country, season.seasonNumber)
+    );
+  }
+
+  /** Una liga que se juega, o la del usuario si no se pide ninguna o no se juega. */
+  private findLeagueSeason(
+    repository: SeasonRepository,
+    season: SeasonRow,
+    competitionId: string | undefined
+  ): SeasonRow {
+    if (!competitionId || competitionId === season.competitionId) {
+      return season;
+    }
+    return (
+      this.allLeagueSeasons(repository, season).find(
+        (row) => row.competitionId === competitionId
+      ) ?? season
+    );
+  }
+
+  /** Las ligas que aún no han coronado campeón este curso. */
+  private unfinishedLeagues(repository: SeasonRepository, seasonNumber: number): SeasonRow[] {
+    return repository
+      .activeCountries()
+      .flatMap((country) => this.leagueSeasonsOf(repository, country, seasonNumber))
+      .filter((row) => row.stage !== 'finished');
+  }
+
+  /**
+   * El curso se acaba cuando han terminado **todas** las ligas que se juegan,
+   * no sólo la del usuario: si se pasara de temporada con la griega en
+   * semifinales, Grecia se quedaría sin campeón y sin ascensos.
+   */
+  private worldFinished(repository: SeasonRepository, seasonNumber: number): boolean {
+    return this.unfinishedLeagues(repository, seasonNumber).length === 0;
+  }
+
+  /** Los continentes de los países que se juegan; el del club, primero. */
+  private activeContinents(repository: SeasonRepository, season: SeasonRow): string[] {
+    const home = repository.findCompetition(season.competitionId)?.continent ?? null;
+    const continents = new Set<string>(home ? [home] : []);
+    for (const country of repository.activeCountries()) {
+      for (const league of this.leagueCompetitions(repository, country)) {
+        if (league.continent) {
+          continents.add(league.continent);
+        }
+      }
+    }
+    return [...continents];
   }
 
   /**
@@ -747,14 +858,18 @@ export class SeasonService {
    */
   private ensureStage(repository: SeasonRepository): SeasonRow {
     const season = this.ensureSeason(repository);
-    // La Copa corre en paralelo y tiene su propio cuadro que mover.
-    this.ensureCup(repository, season);
+    // Las copas corren en paralelo y cada una tiene su propio cuadro que mover.
+    for (const country of repository.activeCountries()) {
+      this.ensureCup(repository, season, country);
+    }
     // Y Europa —o América— otros tantos.
-    this.ensureContinental(repository, season);
+    for (const continent of this.activeContinents(repository, season)) {
+      this.ensureContinental(repository, season, continent);
+    }
 
     // Y las otras divisiones también terminan, con su campeón: si la segunda se
     // quedara a medias no habría a quién ascender en septiembre.
-    for (const other of this.leagueSeasons(repository, season)) {
+    for (const other of this.allLeagueSeasons(repository, season)) {
       if (other.id !== season.id) {
         this.advanceLeague(repository, other);
       }
@@ -814,20 +929,21 @@ export class SeasonService {
    * Vive en su propia temporada —la de la competición de copa— para que sus
    * partidos no se cuelen jamás en la clasificación de la liga.
    */
-  private ensureCup(repository: SeasonRepository, season: SeasonRow): void {
-    const cupCompetition = repository
-      .listCompetitions()
-      .find(
-        (row) => row.format === 'cup' && row.country === this.leagueCountry(repository, season)
-      );
+  private ensureCup(repository: SeasonRepository, season: SeasonRow, country: string): void {
+    const cupCompetition = this.cupCompetition(repository, country);
     if (!cupCompetition) {
       return;
     }
 
     // La Copa es de la máxima categoría: la juegan los ocho primeros de la
     // primera división, esté el usuario en ella o mirándola desde abajo.
-    const league = this.leagueSeasons(repository, season)[0];
+    const league = this.leagueSeasonsOf(repository, country, season.seasonNumber)[0];
     if (!league) {
+      return;
+    }
+
+    // Una liga de menos de ocho no tiene Copa que montar.
+    if (repository.teamIdsInCompetition(league.competitionId).length < CUP_TEAMS) {
       return;
     }
 
@@ -911,16 +1027,16 @@ export class SeasonService {
   /**
    * Las competiciones continentales del club del usuario.
    *
-   * Sólo se juegan las de **su** continente: simular a la vez la Euroliga y la
-   * American League sería duplicar el trabajo del reloj para enseñar un
-   * palmarés que el jugador no va a mirar.
+   * Sólo se juegan las de los continentes de los países elegidos: simular a
+   * la vez la Euroliga y la American League sin que se juegue ninguna liga
+   * americana sería duplicar el trabajo del reloj para enseñar un palmarés que
+   * el jugador no va a mirar.
    */
-  private ensureContinental(repository: SeasonRepository, season: SeasonRow): void {
-    const continent = this.managedContinent(repository, season);
-    if (!continent) {
-      return;
-    }
-
+  private ensureContinental(
+    repository: SeasonRepository,
+    season: SeasonRow,
+    continent: string
+  ): void {
     // Por rango: la primera se queda a los mejores y la siguiente recoge.
     const taken = new Set<string>();
     for (const competition of this.continentalCompetitions(repository, continent)) {
@@ -954,11 +1070,6 @@ export class SeasonService {
       .listCompetitions()
       .filter((row) => row.format === 'continental' && row.continent === continent)
       .sort((a, b) => a.tier - b.tier);
-  }
-
-  /** El continente donde juega el club del usuario. */
-  private managedContinent(repository: SeasonRepository, season: SeasonRow): string | null {
-    return repository.findCompetition(season.competitionId)?.continent ?? null;
   }
 
   /**
@@ -1314,6 +1425,7 @@ export class SeasonService {
       return;
     }
 
+    const name = repository.findCompetition(cup.competitionId)?.name ?? 'Copa';
     this.clubService.recordEntry({
       teamId: managedTeamId,
       seasonId: cup.id,
@@ -1321,20 +1433,27 @@ export class SeasonService {
       type: 'prize',
       description:
         championTeamId === managedTeamId
-          ? 'Campeón de Copa'
-          : `Copa: ${buildCupFormat(CUP_TEAMS)[round - 1]?.name ?? 'ronda'}`,
+          ? `Campeón de ${name}`
+          : `${name}: ${buildCupFormat(CUP_TEAMS)[round - 1]?.name ?? 'ronda'}`,
       amountCents: cupPrizeCents(round, championTeamId === managedTeamId)
     });
   }
 
-  /** Temporada de Copa del curso en marcha, si ya existe. */
-  private cupSeason(repository: SeasonRepository, season: SeasonRow): SeasonRow | null {
-    const cupCompetition = repository
-      .listCompetitions()
-      .find(
-        (row) => row.format === 'cup' && row.country === this.leagueCountry(repository, season)
-      );
+  private cupCompetition(repository: SeasonRepository, country: string): CompetitionRow | null {
+    return (
+      repository
+        .listCompetitions()
+        .find((row) => row.format === 'cup' && row.country === country) ?? null
+    );
+  }
 
+  /** Temporada de Copa de un país en el curso en marcha, si ya existe. */
+  private cupSeason(
+    repository: SeasonRepository,
+    season: SeasonRow,
+    country: string
+  ): SeasonRow | null {
+    const cupCompetition = this.cupCompetition(repository, country);
     return cupCompetition ? repository.findSeasonOf(cupCompetition.id, season.seasonNumber) : null;
   }
 
@@ -1345,18 +1464,19 @@ export class SeasonService {
   /**
    * Todas las competiciones con partidos vivos este curso.
    *
-   * El reloj las mira a la vez: la liga del usuario, la división de al lado y
-   * la Copa comparten calendario y se juegan los mismos días.
+   * El reloj las mira a la vez: las ligas de todos los países elegidos, sus
+   * copas y las continentales comparten calendario y se juegan los mismos días.
    */
   private activeSeasonIds(repository: SeasonRepository, season: SeasonRow): string[] {
-    const cup = this.cupSeason(repository, season);
-    const ids = this.leagueSeasons(repository, season).map((row) => row.id);
-    if (cup) {
-      ids.push(cup.id);
+    const ids = this.allLeagueSeasons(repository, season).map((row) => row.id);
+    for (const country of repository.activeCountries()) {
+      const cup = this.cupSeason(repository, season, country);
+      if (cup) {
+        ids.push(cup.id);
+      }
     }
 
-    const continent = this.managedContinent(repository, season);
-    if (continent) {
+    for (const continent of this.activeContinents(repository, season)) {
       for (const competition of this.continentalCompetitions(repository, continent)) {
         const continental = repository.findSeasonOf(competition.id, season.seasonNumber);
         if (continental) {

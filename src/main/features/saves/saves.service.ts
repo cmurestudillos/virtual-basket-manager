@@ -31,6 +31,13 @@ export class UnknownTeamError extends Error {
   }
 }
 
+export class UnknownCountryError extends Error {
+  constructor(country: string) {
+    super(`No hay ninguna liga de ${country} que jugar`);
+    this.name = 'UnknownCountryError';
+  }
+}
+
 /**
  * Alta, carga y baja de partidas.
  *
@@ -76,6 +83,14 @@ export class SavesService {
       throw new UnknownTeamError(validated.teamId);
     }
 
+    const leagueCountries = new Set(
+      dataset.competitions.filter((row) => row.format === 'league').map((row) => row.country)
+    );
+    const unknownCountry = validated.activeCountries.find((code) => !leagueCountries.has(code));
+    if (unknownCountry) {
+      throw new UnknownCountryError(unknownCountry);
+    }
+
     const id = randomUUID();
     const fileName = toSaveFileName(validated.name, id);
     const filePath = prepareSaveFilePath(this.savesDirectory, fileName);
@@ -87,7 +102,8 @@ export class SavesService {
       managedTeamId: validated.teamId,
       managerName: validated.managerName,
       dismissalEnabled: validated.dismissalEnabled,
-      careerMode: validated.careerMode
+      careerMode: validated.careerMode,
+      activeCountries: validated.activeCountries
     });
 
     const now = new Date();

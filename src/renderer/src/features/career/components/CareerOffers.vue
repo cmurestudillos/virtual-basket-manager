@@ -68,7 +68,7 @@ function reputationTone(reputation: number): 'good' | 'warn' | 'neutral' {
             <span v-if="offer.tier > 1" class="text-xs text-court-300">2ª división</span>
           </p>
           <p class="text-sm text-court-300">
-            {{ offer.competitionName }} ·
+            {{ offer.competitionName }} ({{ offer.countryName }}) ·
             <span v-if="offer.position">va {{ offer.position }}º de {{ offer.teams }}</span>
             <span v-else>sin empezar</span>
             · {{ offer.stepLabel }}

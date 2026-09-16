@@ -23,6 +23,8 @@ export interface CareerOffer {
   teamId: string;
   teamName: string;
   competitionName: string;
+  /** País de la liga: con varios países jugándose, una oferta puede ser un cambio de vida. */
+  countryName: string;
   /** 1 = máxima categoría: bajar a segunda tras un despido es una salida real. */
   tier: number;
   reputation: number;

@@ -4,11 +4,14 @@ import type { CupBracket } from '@shared/contracts/season.contract';
 import { formatMatchDate } from '@renderer/shared/format';
 import { AppSectionTitle } from '@renderer/shared/ui';
 
+/** País de la copa; sin él, la del país del club. */
+const props = defineProps<{ country?: string }>();
+
 const bracket = ref<CupBracket | null>(null);
 const loaded = ref(false);
 
 onMounted(async () => {
-  bracket.value = await window.api.season.getCup();
+  bracket.value = await window.api.season.getCup(props.country);
   loaded.value = true;
 });
 </script>

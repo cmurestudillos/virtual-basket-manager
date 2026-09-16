@@ -9,6 +9,11 @@ export interface SeasonSummary {
   currentRound: number;
   totalRounds: number;
   stage: 'regular' | 'playoffs' | 'finished';
+  /**
+   * Ligas de los países elegidos que aún no han terminado. La temporada no se
+   * cierra hasta que esté vacía, aunque la del usuario ya tenga campeón.
+   */
+  pendingLeagues: string[];
   /** Categoría: 1 es la primera división, 2 la segunda. */
   tier: number;
   /** Equipos que juegan los playoffs; 0 si la liga los corona sin eliminatoria. */
@@ -38,7 +43,15 @@ export interface StandingEntry {
 export interface LeagueEntry {
   competitionId: string;
   name: string;
+  /** Código del país de la liga (`ESP`) y su nombre para enseñar. */
+  country: string;
+  countryName: string;
   tier: number;
+  stage: SeasonSummary['stage'];
+  currentRound: number;
+  totalRounds: number;
+  /** Equipos que juegan los playoffs; 0 si la liga los corona sin eliminatoria. */
+  playoffTeams: number;
   /** La del equipo del usuario. */
   isManaged: boolean;
   /** Igual que `isManaged`; se mantiene aparte por si un día hay filiales. */
@@ -164,15 +177,16 @@ export interface SeasonApi {
   getStandings: (competitionId?: string) => Promise<StandingEntry[]>;
   /** Las divisiones que se juegan, para asomarse a la de al lado. */
   listLeagues: () => Promise<LeagueEntry[]>;
-  listFixtures: (round?: number) => Promise<FixtureEntry[]>;
+  /** Calendario de una jornada; sin liga, el de la del usuario. */
+  listFixtures: (round?: number, competitionId?: string) => Promise<FixtureEntry[]>;
   listTeamFixtures: (teamId: string) => Promise<FixtureEntry[]>;
   getNextGame: () => Promise<FixtureEntry | null>;
   advanceDay: () => Promise<AdvanceResult>;
   advanceToNextGame: () => Promise<AdvanceResult>;
   /** Cuadro de playoffs; `null` mientras la liga regular no haya acabado. */
-  getPlayoffs: () => Promise<PlayoffBracket | null>;
-  /** Cuadro de Copa; `null` mientras no se cierre la primera vuelta. */
-  getCup: () => Promise<CupBracket | null>;
+  getPlayoffs: (competitionId?: string) => Promise<PlayoffBracket | null>;
+  /** Cuadro de Copa de un país (sin él, el del club); `null` mientras no se cierre la primera vuelta. */
+  getCup: (country?: string) => Promise<CupBracket | null>;
   /** Las competiciones continentales que se juegan este curso. */
   listContinental: () => Promise<ContinentalSummary[]>;
   /** Una de ellas por dentro; sin argumento, la que juega el club del usuario. */

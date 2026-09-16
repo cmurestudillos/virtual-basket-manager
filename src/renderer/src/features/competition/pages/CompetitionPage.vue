@@ -19,6 +19,12 @@ const round = ref(1);
 const leagues = ref<LeagueEntry[]>([]);
 /** División que se está mirando; arranca en la del equipo del usuario. */
 const league = ref<string | null>(null);
+/** País que se está mirando: con varios países jugándose, primero se elige país. */
+const country = ref<string | null>(null);
+
+const selectedLeague = computed(() =>
+  leagues.value.find((row) => row.competitionId === league.value)
+);
 
 /** Sólo se pintan las zonas que esa división tiene de verdad. */
 const zonesShown = computed(() => {
@@ -38,24 +44,40 @@ const ZONE_CLASSES: Record<Exclude<StandingZone, null>, string> = {
  * En segunda no hay cuadro que enseñar: lo que se juega allí es subir, y una
  * pestaña de playoffs siempre vacía sólo confunde.
  */
-const hasPlayoffs = computed(() => (seasonStore.season?.playoffTeams ?? 0) >= 2);
+const hasPlayoffs = computed(() => (selectedLeague.value?.playoffTeams ?? 0) >= 2);
+const countryOptions = computed(() => {
+  const seen = new Map<string, string>();
+  for (const row of leagues.value) {
+    if (!seen.has(row.country)) {
+      seen.set(row.country, row.countryName);
+    }
+  }
+  const home = leagues.value.find((row) => row.isManaged)?.country;
+  return [...seen.entries()].map(([id, label]) => ({
+    id,
+    label,
+    hint: id === home ? ' · tu país' : ''
+  }));
+});
 const leagueOptions = computed(() =>
-  leagues.value.map((row) => ({
-    id: row.competitionId,
-    label: row.name,
-    hint: row.isManaged ? ' · tu liga' : ''
-  }))
+  leagues.value
+    .filter((row) => row.country === country.value)
+    .map((row) => ({
+      id: row.competitionId,
+      label: row.name,
+      hint: row.isManaged ? ' · tu liga' : ''
+    }))
 );
 
 const tabs = computed(() => [
   { id: 'standings' as Tab, label: 'Clasificación' },
   { id: 'fixtures' as Tab, label: 'Calendario' },
   { id: 'cup' as Tab, label: 'Copa' },
-  { id: 'continental' as Tab, label: 'Europa' },
+  { id: 'continental' as Tab, label: 'Continental' },
   ...(hasPlayoffs.value ? [{ id: 'playoffs' as Tab, label: 'Playoffs' }] : [])
 ]);
 
-const totalRounds = computed(() => seasonStore.season?.totalRounds ?? 34);
+const totalRounds = computed(() => selectedLeague.value?.totalRounds || 34);
 const roundDate = computed(() => fixtures.value[0]?.scheduledOn ?? null);
 
 onMounted(async () => {
@@ -63,24 +85,42 @@ onMounted(async () => {
   // Se abre en la jornada en curso, no en la primera: es la que interesa. Y con
   // la liga regular acabada, en el cuadro, que es donde está el juego.
   round.value = seasonStore.season?.currentRound ?? 1;
+  leagues.value = await window.api.season.listLeagues();
+  const managed = leagues.value.find((row) => row.isManaged);
+  country.value = managed?.country ?? null;
+  league.value = managed?.competitionId ?? null;
   if (seasonStore.season && seasonStore.season.stage !== 'regular' && hasPlayoffs.value) {
     tab.value = 'playoffs';
   }
-  leagues.value = await window.api.season.listLeagues();
-  league.value = leagues.value.find((row) => row.isManaged)?.competitionId ?? null;
+  // La clasificación y la jornada las carga el watch de la liga.
+});
+
+watch(round, loadRound);
+watch(league, async () => {
+  // Otra liga, otro calendario: se abre en su jornada en curso.
+  round.value = selectedLeague.value?.currentRound ?? 1;
+  if (tab.value === 'playoffs' && !hasPlayoffs.value) {
+    tab.value = 'standings';
+  }
   await loadStandings();
   await loadRound();
 });
 
-watch(round, loadRound);
-watch(league, loadStandings);
+/** Al cambiar de país se mira su primera división. */
+function selectCountry(code: string): void {
+  country.value = code;
+  league.value =
+    leagues.value.find((row) => row.country === code && row.isManaged)?.competitionId ??
+    leagues.value.find((row) => row.country === code)?.competitionId ??
+    null;
+}
 
 async function loadStandings(): Promise<void> {
   standings.value = await window.api.season.getStandings(league.value ?? undefined);
 }
 
 async function loadRound(): Promise<void> {
-  fixtures.value = await window.api.season.listFixtures(round.value);
+  fixtures.value = await window.api.season.listFixtures(round.value, league.value ?? undefined);
 }
 
 function stepRound(delta: number): void {
@@ -95,30 +135,40 @@ function streakLabel(streak: number): string {
 
 <template>
   <div class="flex flex-col gap-4">
-    <AppPageHeader :title="seasonStore.season?.competitionName ?? 'Liga'">
-      <span v-if="seasonStore.season?.stage === 'regular'" class="text-sm text-court-300">
-        Jornada {{ seasonStore.season?.currentRound ?? 1 }} de {{ totalRounds }}
+    <AppPageHeader :title="selectedLeague?.name ?? seasonStore.season?.competitionName ?? 'Liga'">
+      <span v-if="selectedLeague?.stage === 'regular'" class="text-sm text-court-300">
+        Jornada {{ selectedLeague.currentRound }} de {{ totalRounds }}
       </span>
       <span
-        v-else-if="seasonStore.season?.championTeamName && tab !== 'playoffs'"
+        v-else-if="selectedLeague?.championTeamName && tab !== 'playoffs'"
         class="text-sm text-court-300"
       >
-        Campeón: <span class="text-ball-400">{{ seasonStore.season.championTeamName }}</span>
+        Campeón: <span class="text-ball-400">{{ selectedLeague.championTeamName }}</span>
       </span>
-      <span v-else class="text-sm text-ball-400">Playoffs</span>
+      <span v-else-if="selectedLeague" class="text-sm text-ball-400">Playoffs</span>
     </AppPageHeader>
 
-    <AppTabs :model-value="tab" :options="tabs" @update:model-value="tab = $event as Tab" />
-
-    <div v-if="tab === 'standings'" class="flex flex-col gap-3">
+    <!-- Con varios países jugándose, primero el país y luego la división. -->
+    <div v-if="countryOptions.length > 1 || leagueOptions.length > 1" class="flex flex-col gap-2">
       <AppTabs
-        v-if="leagueOptions.length > 1"
+        v-if="countryOptions.length > 1"
+        :model-value="country ?? ''"
+        :options="countryOptions"
+        variant="pills"
+        @update:model-value="selectCountry($event)"
+      />
+      <AppTabs
+        v-if="leagueOptions.length > 1 && tab !== 'cup' && tab !== 'continental'"
         :model-value="league ?? ''"
         :options="leagueOptions"
         variant="pills"
         @update:model-value="league = $event"
       />
+    </div>
 
+    <AppTabs :model-value="tab" :options="tabs" @update:model-value="tab = $event as Tab" />
+
+    <div v-if="tab === 'standings'" class="flex flex-col gap-3">
       <div class="overflow-auto rounded border border-court-700">
         <table class="data-table">
           <thead>
@@ -169,11 +219,19 @@ function streakLabel(streak: number): string {
       </ul>
     </div>
 
-    <CupBracketView v-else-if="tab === 'cup'" />
+    <CupBracketView
+      v-else-if="tab === 'cup'"
+      :key="`cup-${country}`"
+      :country="country ?? undefined"
+    />
 
     <ContinentalView v-else-if="tab === 'continental'" />
 
-    <PlayoffBracketView v-else-if="tab === 'playoffs'" />
+    <PlayoffBracketView
+      v-else-if="tab === 'playoffs'"
+      :key="`playoffs-${league}`"
+      :competition-id="league ?? undefined"
+    />
 
     <div v-else class="flex flex-col gap-3">
       <div class="flex items-center gap-3">

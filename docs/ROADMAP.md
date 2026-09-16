@@ -208,8 +208,8 @@ Israel, Argentina, Chile y Australia con una; y Bélgica y Países Bajos
 compartiendo la suya, como la BNXT de verdad. Cada liga juega **las vueltas que
 le caben** en 34 jornadas —dieciocho equipos juegan ida y vuelta, diez juegan
 tres vueltas, treinta juegan una—, así que ninguna necesita un formato propio.
-Sólo se simulan las ligas del país del club que diriges: elegir un club griego
-juega la liga griega y no la española.
+Al principio sólo se simulaban las ligas del país del club; desde la fase 4 se
+eligen los países al crear la partida.
 
 Las **cuatro competiciones continentales** se juegan igual —dieciséis equipos,
 fase de liga a una vuelta los jueves, cuartos al mejor de tres y Final Four a
@@ -225,9 +225,26 @@ un objetivo claro a ampliar el pabellón.
 
 |     | Pieza                       | Detalle                                                          |     |
 | --- | --------------------------- | ---------------------------------------------------------------- | --- |
-| ⬜  | Escoger ligas jugables      | Elegir qué ligas se simulan, con su coste en tiempo de partida   | M   |
+| ✅  | Escoger ligas jugables      | Elegir qué países se juegan, con su coste en tiempo de partida   | M   |
 | ⬜  | Selecciones y ventanas FIBA |                                                                  | M   |
 | ⬜  | Formato NBA                 | Conferencias, divisiones, _cap_, draft — es casi un juego aparte | L   |
+
+**Escoger ligas jugables.** Se eligen **países**, no ligas, y sólo al crear la
+partida: las divisiones de un país van atadas por los ascensos, y una liga que
+empezara a jugarse a mitad de partida no tendría ni clasificación del año
+anterior ni historia. El país del club va siempre. Cada país elegido se juega
+entero —calendario, playoffs, ascensos y **su copa**, que ahora tienen los
+catorce— y el resto del mundo sigue existiendo: sus clubes fichan, entran en las
+continentales y se pueden consultar, pero su liga no se disputa. Las
+continentales se juegan en los continentes de los países elegidos.
+
+La pantalla de nueva partida enseña lo que cuesta cada país en tiempo de espera
+por temporada, con atajos para jugar sólo el tuyo, tu continente o el mundo
+entero. La temporada no se cierra hasta que terminan **todas** las ligas
+elegidas: si la tuya ya tiene campeón, el panel dice cuáles faltan. Las ofertas
+de la carrera llegan de cualquiera de los países que se juegan, así que irse al
+extranjero ya es posible. Las partidas anteriores siguen jugando sólo el país de
+su club.
 
 ## Bloque 5 — Ver el partido
 
@@ -363,9 +380,9 @@ Firmar ahí cierra la etapa como marcha, no como despido, igual que dimitir, que
 se hace desde la hoja de servicios en dos pasos. Mientras no hay banquillo, la
 bandeja deja de contar las lesiones y fichajes del club que dejaste.
 
-Queda una limitación, la misma de las ofertas: todo pasa dentro del país, porque
-sólo sus ligas tienen calendario. Irse al extranjero depende de **escoger ligas
-jugables**, en el Bloque 4.
+Las ofertas llegan de los países que se juegan en la partida, que se eligen al
+crearla (Bloque 4, fase 4): con Grecia elegida, un banquillo griego es una salida
+más.
 
 ### Prensa y notificaciones
 

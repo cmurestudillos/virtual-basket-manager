@@ -32,6 +32,12 @@ export interface LeagueCountry {
   code: string;
   continent: 'EUR' | 'AME' | 'OCE';
   rulesetId: 'fiba' | 'nba';
+  /**
+   * La copa del país: los ocho primeros de la máxima categoría al cerrar la
+   * primera vuelta, a partido único y en sede neutral. Casi todas las ligas
+   * del mundo tienen la suya, con fechas y formatos parecidos.
+   */
+  cup: { id: string; name: string; shortName: string };
   /** Prefijos de club del país: genéricos, nunca marcas. */
   prefixes: string[];
   /** Ciudades inventadas; una por club, y sobran para crecer. */
@@ -46,6 +52,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'ESP',
     continent: 'EUR',
     rulesetId: 'fiba',
+    cup: { id: 'copa-nacional', name: 'Copa Nacional', shortName: 'Copa' },
     prefixes: ['CB', 'Club Baloncesto', 'Basket', 'BC'],
     cities: [],
     flags: ['ESP'],
@@ -81,6 +88,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'TUR',
     continent: 'EUR',
     rulesetId: 'fiba',
+    cup: { id: 'turquia-copa', name: 'Türkiye Kupası', shortName: 'TK' },
     prefixes: ['SK', 'Basketbol', 'BK'],
     cities: [
       'Kayalar',
@@ -118,6 +126,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'GRE',
     continent: 'EUR',
     rulesetId: 'fiba',
+    cup: { id: 'grecia-copa', name: 'Kýpello Elládos', shortName: 'KE' },
     prefixes: ['AS', 'GS', 'AO'],
     cities: [
       'Kalithéa',
@@ -177,6 +186,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'ITA',
     continent: 'EUR',
     rulesetId: 'fiba',
+    cup: { id: 'italia-copa', name: 'Coppa Nazionale', shortName: 'CN' },
     prefixes: ['Pallacanestro', 'Basket', 'PB'],
     cities: [
       'Montefiore',
@@ -214,6 +224,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'FRA',
     continent: 'EUR',
     rulesetId: 'fiba',
+    cup: { id: 'francia-copa', name: 'Coupe Nationale', shortName: 'CDN' },
     prefixes: ['BC', 'Basket Club', 'ASB'],
     cities: [
       'Villeneuve-la-Roche',
@@ -281,6 +292,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'GER',
     continent: 'EUR',
     rulesetId: 'fiba',
+    cup: { id: 'alemania-copa', name: 'Pokal', shortName: 'PKL' },
     prefixes: ['SG', 'BC', 'TSV'],
     cities: [
       'Rotenfels',
@@ -346,6 +358,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'ISR',
     continent: 'EUR',
     rulesetId: 'fiba',
+    cup: { id: 'israel-copa', name: 'Gvia HaMedina', shortName: 'GHM' },
     prefixes: ['BC', 'Ironi', 'Hapoel'],
     cities: [
       'Kfar Naveh',
@@ -379,6 +392,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'LTU',
     continent: 'EUR',
     rulesetId: 'fiba',
+    cup: { id: 'lituania-copa', name: 'Lietuvos Taurė', shortName: 'LT' },
     prefixes: ['BC', 'KK', 'Krepšinio'],
     cities: [
       'Aukštupys',
@@ -434,6 +448,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'ABA',
     continent: 'EUR',
     rulesetId: 'fiba',
+    cup: { id: 'adriatica-copa', name: 'Supercopa Adriática', shortName: 'SCA' },
     prefixes: ['KK', 'BC'],
     cities: [
       'Bela Reka',
@@ -496,6 +511,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'BNL',
     continent: 'EUR',
     rulesetId: 'fiba',
+    cup: { id: 'bnxt-copa', name: 'Copa BeNe', shortName: 'CBN' },
     prefixes: ['BC', 'Basketbal', 'BBC'],
     cities: [
       'Hoogveld',
@@ -536,6 +552,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'ARG',
     continent: 'AME',
     rulesetId: 'fiba',
+    cup: { id: 'argentina-copa', name: 'Copa Argentina', shortName: 'CA' },
     prefixes: ['Club', 'Atlético', 'CA'],
     cities: [
       'Villa Esperanza',
@@ -577,6 +594,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'CHI',
     continent: 'AME',
     rulesetId: 'fiba',
+    cup: { id: 'chile-copa', name: 'Copa Chile', shortName: 'CCH' },
     prefixes: ['Club', 'CD', 'Deportivo'],
     cities: [
       'Puerto Frío',
@@ -610,6 +628,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'USA',
     continent: 'AME',
     rulesetId: 'nba',
+    cup: { id: 'usa-copa', name: 'Copa de Temporada', shortName: 'CT' },
     prefixes: [''],
     cities: [
       'Redstone',
@@ -689,6 +708,7 @@ export const WORLD: LeagueCountry[] = [
     code: 'AUS',
     continent: 'OCE',
     rulesetId: 'fiba',
+    cup: { id: 'australia-copa', name: 'Copa de Australia', shortName: 'CAU' },
     prefixes: ['BC', 'Basketball Club'],
     cities: [
       'Port Kembala',

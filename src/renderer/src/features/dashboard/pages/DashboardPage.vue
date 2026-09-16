@@ -285,6 +285,25 @@ function fixtureRound(fixture: FixtureEntry): string {
         </div>
       </div>
 
+      <!-- Tu liga ya tiene campeón, pero otras de las que se juegan todavía no. -->
+      <div
+        v-else-if="stage === 'finished' && (seasonStore.season?.pendingLeagues.length ?? 0) > 0"
+        class="mt-3 flex items-center justify-between gap-4"
+      >
+        <div>
+          <p class="text-xl">
+            Campeón:
+            <span class="font-semibold text-ball-400">
+              {{ seasonStore.season?.championTeamName ?? '—' }}
+            </span>
+          </p>
+          <p class="text-sm text-court-300">
+            Faltan por terminar: {{ seasonStore.season?.pendingLeagues.join(', ') }}
+          </p>
+        </div>
+        <AppButton :disabled="seasonStore.busy" @click="advance('nextGame')">Avanzar</AppButton>
+      </div>
+
       <!-- Temporada cerrada: hay campeón y toca empezar la siguiente. -->
       <div v-else-if="stage === 'finished'" class="mt-3 flex items-center justify-between">
         <div>

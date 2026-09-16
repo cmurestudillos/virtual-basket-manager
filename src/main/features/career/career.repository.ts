@@ -1,4 +1,4 @@
-import { and, asc, eq, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { SaveDatabase } from '../../database/save-database';
 import {
   boardTable,
@@ -106,21 +106,28 @@ export class CareerRepository {
   }
 
   /**
-   * Los clubes de las ligas que se están simulando, que son las del país del
-   * club dirigido.
+   * Los clubes de las ligas de unos países.
    *
-   * Las ofertas salen sólo de aquí, y no de las veintiuna ligas del mundo, por
-   * una razón de fondo: únicamente esas ligas tienen calendario este año. Un
-   * entrenador al que echan en enero y se va a Grecia se encontraría una liga
-   * griega que esta temporada no existe. Además es lo que pasa de verdad: al
-   * destituido lo recoge un club de su propia liga, o uno de segunda.
+   * Las ofertas salen sólo de los países que se juegan, y no de las veintiuna
+   * ligas del mundo, por una razón de fondo: únicamente esas ligas tienen
+   * calendario este año. Un entrenador al que echan en enero y se va a una liga
+   * que no se simula se encontraría una competición que esta temporada no
+   * existe.
    */
-  clubsInCountry(country: string): { team: TeamRow; competition: CompetitionRow }[] {
+  clubsInCountries(countries: readonly string[]): { team: TeamRow; competition: CompetitionRow }[] {
+    if (countries.length === 0) {
+      return [];
+    }
     return this.db
       .select({ team: teamsTable, competition: competitionsTable })
       .from(teamsTable)
       .innerJoin(competitionsTable, eq(competitionsTable.id, teamsTable.competitionId))
-      .where(and(eq(competitionsTable.country, country), eq(competitionsTable.format, 'league')))
+      .where(
+        and(
+          inArray(competitionsTable.country, [...countries]),
+          eq(competitionsTable.format, 'league')
+        )
+      )
       .all();
   }
 

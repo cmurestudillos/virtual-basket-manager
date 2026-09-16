@@ -260,19 +260,22 @@ for (const country of WORLD) {
   });
 }
 
-// La Copa nacional: de momento sólo la española, que es la que se juega.
-competitions.push({
-  id: 'copa-nacional',
-  name: 'Copa Nacional',
-  shortName: 'Copa',
-  country: 'ESP',
-  continent: 'EUR',
-  rulesetId: 'fiba',
-  tier: 1,
-  format: 'cup',
-  playoffTeams: 0,
-  playoffSeriesLength: 1
-});
+// La copa de cada país. Se juega sólo si el país está entre los elegidos al
+// crear la partida, igual que su liga.
+for (const country of WORLD) {
+  competitions.push({
+    id: country.cup.id,
+    name: country.cup.name,
+    shortName: country.cup.shortName,
+    country: country.code,
+    continent: country.continent,
+    rulesetId: country.rulesetId,
+    tier: 1,
+    format: 'cup',
+    playoffTeams: 0,
+    playoffSeriesLength: 1
+  });
+}
 
 for (const competition of CONTINENTAL_COMPETITIONS) {
   competitions.push({

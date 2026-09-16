@@ -15,11 +15,13 @@ import {
   type CareerSeasonRecord
 } from '@shared/domain/career';
 import { createRng, seedFromString } from '@shared/engine/basketball/rng';
+import { countryName } from '@shared/domain/simulation-scope';
 import { computeStandings } from '@shared/domain/standings';
 import type { SaveDatabase } from '../../database/save-database';
 import type { CareerSpellRow } from '../../database/schema/save';
 import { BoardService } from '../club/board.service';
 import { HistoryRepository } from '../history/history.repository';
+import { SeasonRepository } from '../season/season.repository';
 import { SeasonService } from '../season/season.service';
 import { CareerRepository } from './career.repository';
 
@@ -215,7 +217,7 @@ export class CareerService {
     const competition = team ? repository.findCompetition(team.competitionId) : null;
     if (competition) {
       const teams = repository
-        .clubsInCountry(competition.country)
+        .clubsInCountries([competition.country])
         .filter((row) => row.competition.id === competition.id).length;
       new BoardService(() => db).ensureForSeason(state.seasonNumber, teams, competition.tier);
     }
@@ -378,8 +380,7 @@ export class CareerService {
     const spells = repository.spells();
     const last = spells[spells.length - 1];
     const lastTeam = last ? repository.findTeam(last.teamId) : null;
-    const country = lastTeam ? repository.findCompetition(lastTeam.competitionId)?.country : null;
-    if (!country) {
+    if (!lastTeam) {
       return [];
     }
 
@@ -390,7 +391,8 @@ export class CareerService {
     };
 
     const eligible = repository
-      .clubsInCountry(country)
+      // Cualquier país que se juegue: el del último club va siempre entre ellos.
+      .clubsInCountries(new SeasonRepository(db).activeCountries())
       .filter((row) => row.team.id !== last?.teamId)
       .filter((row) => clubWouldHire(row.team.reputation, reputation))
       .filter(
@@ -431,6 +433,7 @@ export class CareerService {
         teamId: row.team.id,
         teamName: row.team.name,
         competitionName: row.competition.name,
+        countryName: countryName(row.competition.country),
         tier: row.competition.tier,
         reputation: row.team.reputation,
         position: standing.position,

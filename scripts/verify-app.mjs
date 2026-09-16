@@ -115,6 +115,12 @@ await page.locator('tbody tr').nth(3).click();
 await page.locator('aside input').first().fill('Carlos');
 // Modo carrera: mientras no te echen se juega igual, y deja ver su pestaña.
 await page.getByText('Modo carrera').click();
+// Y Grecia además de España: dos países con calendario, copa y ascensos.
+await page.locator('aside label', { hasText: 'Grecia' }).click();
+console.log(
+  'coste de la elección:',
+  await page.locator('aside p', { hasText: 'por temporada' }).innerText()
+);
 await page.screenshot({ path: `${SHOTS}/02-nueva-partida.png` });
 
 await page.getByText('Empezar').click();
@@ -412,6 +418,15 @@ await page.screenshot({ path: `${SHOTS}/16b-segunda-division.png` });
 await page.getByRole('button', { name: /Liga Nacional/ }).click();
 await page.waitForTimeout(1000);
 
+// El otro país elegido al crear la partida, con sus dos divisiones.
+await page.getByRole('button', { name: 'Grecia' }).click();
+await page.waitForTimeout(1200);
+console.log('cabecera en Grecia:', await page.locator('main h1').first().innerText());
+console.log('equipos en la primera griega:', await page.locator('tbody tr').count());
+await page.screenshot({ path: `${SHOTS}/16c-grecia.png` });
+await page.getByRole('button', { name: /^España/ }).click();
+await page.waitForTimeout(1000);
+
 await page.getByRole('button', { name: 'Calendario' }).click();
 await page.waitForTimeout(1200);
 console.log('partidos de la jornada:', await page.locator('ul li').count());
@@ -426,7 +441,7 @@ await page.screenshot({ path: `${SHOTS}/17b-copa.png` });
 
 // Europa: la fase de liga arranca en octubre, así que en la jornada 1 la
 // pantalla tiene que explicarse en vez de quedarse en blanco.
-await page.getByRole('button', { name: 'Europa' }).click();
+await page.getByRole('button', { name: 'Continental' }).click();
 await page.waitForTimeout(1500);
 console.log('europa:', (await page.locator('main nav').last().innerText()).replace(/\n/g, ' | '));
 await page.screenshot({ path: `${SHOTS}/17c-europa.png` });
@@ -470,7 +485,7 @@ console.log('series en el cuadro:', await page.locator('main li').count());
 await page.screenshot({ path: `${SHOTS}/22-cuadro.png` });
 
 // Europa, ya terminada: fase de liga, cuadro y campeón.
-await page.getByRole('button', { name: 'Europa' }).click();
+await page.getByRole('button', { name: 'Continental' }).click();
 await page.waitForTimeout(2000);
 console.log('campeón continental:', await page.locator('main p').first().innerText());
 console.log('equipos en la fase de liga:', await page.locator('tbody tr').count());

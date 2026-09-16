@@ -1,4 +1,14 @@
-import type { CatalogLeague, CatalogTeam, TeamSummary } from '@shared/contracts/teams.contract';
+import type {
+  CatalogLeague,
+  CatalogScope,
+  CatalogTeam,
+  TeamSummary
+} from '@shared/contracts/teams.contract';
+import {
+  countryName,
+  estimateContinentalGames,
+  estimateCountryGames
+} from '@shared/domain/simulation-scope';
 import { requireActiveSaveDatabase } from '../../database/resolve-save-database';
 import { loadDataset } from '../saves/dataset';
 import { applyWorldEdits, type WorldEdit } from '../world-editor/apply-world-edits';
@@ -71,6 +81,7 @@ export class TeamsService {
           competitionId: competition.id,
           name: competition.name,
           country: competition.country,
+          countryName: countryName(competition.country),
           tier: competition.tier,
           teams: sizes.get(competition.id) ?? 0,
           isHome: competition.id === home
@@ -78,5 +89,63 @@ export class TeamsService {
         // Por país y por categoría: es como las busca quien está eligiendo club.
         .sort((a, b) => a.country.localeCompare(b.country) || a.tier - b.tier)
     );
+  }
+
+  /**
+   * Los países jugables y las continentales de cada continente, con su coste
+   * en partidos por temporada. Sale del mundo base, como el catálogo: se elige
+   * antes de que exista la partida.
+   */
+  listScope(): CatalogScope {
+    const dataset = this.world();
+    const sizes = new Map<string, number>();
+    for (const team of dataset.teams) {
+      sizes.set(team.competitionId, (sizes.get(team.competitionId) ?? 0) + 1);
+    }
+
+    const leagues = dataset.competitions.filter((row) => row.format === 'league');
+    const codes = [...new Set(leagues.map((row) => row.country))];
+
+    const countries = codes
+      .map((code) => {
+        const own = leagues
+          .filter((row) => row.country === code)
+          .sort((a, b) => a.tier - b.tier)
+          .map((row) => ({
+            competitionId: row.id,
+            name: row.name,
+            tier: row.tier,
+            teams: sizes.get(row.id) ?? 0,
+            playoffTeams: row.playoffTeams,
+            playoffSeriesLength: row.playoffSeriesLength
+          }));
+        const hasCup = dataset.competitions.some(
+          (row) => row.format === 'cup' && row.country === code
+        );
+
+        return {
+          code,
+          name: countryName(code),
+          continent: leagues.find((row) => row.country === code)?.continent ?? '',
+          leagues: own.map(({ competitionId, name, tier, teams }) => ({
+            competitionId,
+            name,
+            tier,
+            teams
+          })),
+          hasCup,
+          games: estimateCountryGames(own, hasCup)
+        };
+      })
+      .sort((a, b) => a.name.localeCompare(b.name, 'es'));
+
+    const continents = [...new Set(countries.map((row) => row.continent))].map((code) => {
+      const competitions = dataset.competitions.filter(
+        (row) => row.format === 'continental' && row.continent === code
+      ).length;
+      return { code, competitions, games: competitions * estimateContinentalGames() };
+    });
+
+    return { countries, continents };
   }
 }
