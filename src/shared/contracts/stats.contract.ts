@@ -23,6 +23,8 @@ export type LeadersRequest = z.input<typeof leadersRequestSchema>;
 export interface PlayerSeasonStats {
   playerId: string;
   playerName: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   teamId: string;
   teamName: string;
   position: Position;

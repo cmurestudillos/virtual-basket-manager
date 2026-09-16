@@ -13,7 +13,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "liga-plata",
@@ -25,7 +26,8 @@
       "tier": 2,
       "format": "league",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "turquia-1",
@@ -37,7 +39,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "grecia-1",
@@ -49,7 +52,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "grecia-2",
@@ -61,7 +65,8 @@
       "tier": 2,
       "format": "league",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "italia-1",
@@ -73,7 +78,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "francia-1",
@@ -85,7 +91,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "francia-2",
@@ -97,7 +104,8 @@
       "tier": 2,
       "format": "league",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "alemania-1",
@@ -109,7 +117,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "alemania-2",
@@ -121,7 +130,8 @@
       "tier": 2,
       "format": "league",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "israel-1",
@@ -133,7 +143,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "lituania-1",
@@ -145,7 +156,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "lituania-2",
@@ -157,7 +169,8 @@
       "tier": 2,
       "format": "league",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "adriatica-1",
@@ -169,7 +182,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "adriatica-2",
@@ -181,7 +195,8 @@
       "tier": 2,
       "format": "league",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "bnxt-1",
@@ -193,7 +208,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 3
+      "playoffSeriesLength": 3,
+      "nbaFormat": false
     },
     {
       "id": "argentina-1",
@@ -205,7 +221,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "chile-1",
@@ -217,7 +234,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 3
+      "playoffSeriesLength": 3,
+      "nbaFormat": false
     },
     {
       "id": "usa-1",
@@ -228,8 +246,9 @@
       "rulesetId": "nba",
       "tier": 1,
       "format": "league",
-      "playoffTeams": 8,
-      "playoffSeriesLength": 7
+      "playoffTeams": 16,
+      "playoffSeriesLength": 7,
+      "nbaFormat": true
     },
     {
       "id": "usa-2",
@@ -241,7 +260,8 @@
       "tier": 2,
       "format": "league",
       "playoffTeams": 8,
-      "playoffSeriesLength": 3
+      "playoffSeriesLength": 3,
+      "nbaFormat": false
     },
     {
       "id": "australia-1",
@@ -253,7 +273,8 @@
       "tier": 1,
       "format": "league",
       "playoffTeams": 4,
-      "playoffSeriesLength": 5
+      "playoffSeriesLength": 5,
+      "nbaFormat": false
     },
     {
       "id": "copa-nacional",
@@ -265,7 +286,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "turquia-copa",
@@ -277,7 +299,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "grecia-copa",
@@ -289,7 +312,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "italia-copa",
@@ -301,7 +325,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "francia-copa",
@@ -313,7 +338,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "alemania-copa",
@@ -325,7 +351,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "israel-copa",
@@ -337,7 +364,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "lituania-copa",
@@ -349,7 +377,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "adriatica-copa",
@@ -361,7 +390,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "bnxt-copa",
@@ -373,7 +403,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "argentina-copa",
@@ -385,7 +416,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "chile-copa",
@@ -397,7 +429,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "usa-copa",
@@ -409,7 +442,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "australia-copa",
@@ -421,7 +455,8 @@
       "tier": 1,
       "format": "cup",
       "playoffTeams": 0,
-      "playoffSeriesLength": 1
+      "playoffSeriesLength": 1,
+      "nbaFormat": false
     },
     {
       "id": "euroliga",
@@ -433,7 +468,8 @@
       "tier": 1,
       "format": "continental",
       "playoffTeams": 8,
-      "playoffSeriesLength": 3
+      "playoffSeriesLength": 3,
+      "nbaFormat": false
     },
     {
       "id": "eurocup",
@@ -445,7 +481,8 @@
       "tier": 2,
       "format": "continental",
       "playoffTeams": 8,
-      "playoffSeriesLength": 3
+      "playoffSeriesLength": 3,
+      "nbaFormat": false
     },
     {
       "id": "europe-league",
@@ -457,7 +494,8 @@
       "tier": 3,
       "format": "continental",
       "playoffTeams": 8,
-      "playoffSeriesLength": 3
+      "playoffSeriesLength": 3,
+      "nbaFormat": false
     },
     {
       "id": "american-league",
@@ -469,7 +507,8 @@
       "tier": 1,
       "format": "continental",
       "playoffTeams": 8,
-      "playoffSeriesLength": 3
+      "playoffSeriesLength": 3,
+      "nbaFormat": false
     }
   ],
   "teams": [

@@ -11,6 +11,8 @@ export type StaffRequest = z.infer<typeof staffRequestSchema>;
 export interface StaffMember {
   id: string;
   name: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   role: StaffRole;
   roleLabel: string;
   roleHint: string;

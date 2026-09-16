@@ -48,6 +48,20 @@ import {
   quarterfinalPairings,
   type ContinentalCandidate
 } from '@shared/domain/continental';
+import {
+  NBA_LEAGUE_ID,
+  NBA_PLAYOFF_TEAMS,
+  PLAY_IN_ROUND,
+  boardPlayoffRound,
+  buildNbaPlayoffFormat,
+  conferenceOrder,
+  conferenceSeeds,
+  nbaFirstRoundPairings,
+  nbaNextRoundPairings,
+  nbaZone,
+  playInOpeners,
+  type Conference
+} from '@shared/domain/nba';
 import { DIVISION_REPUTATION_STEP, divisionSwap, zoneFor } from '@shared/domain/promotion';
 import {
   firstPlayoffDate,
@@ -68,6 +82,7 @@ import { FitnessService } from '../fitness/fitness.service';
 import { MarketService } from '../market/market.service';
 import { YouthService } from '../youth/youth.service';
 import { MatchService } from '../match/match.service';
+import { DraftService } from '../draft/draft.service';
 import { NationalService } from '../national/national.service';
 import { SeasonRepository } from './season.repository';
 
@@ -121,6 +136,7 @@ export class SeasonService {
   private readonly youthService: YouthService;
   private readonly marketService: MarketService;
   private readonly nationalService: NationalService;
+  private readonly draftService: DraftService;
 
   /**
    * La conexión llega como resolutor y no como instancia porque la partida
@@ -136,6 +152,7 @@ export class SeasonService {
     this.youthService = new YouthService(resolveDb);
     this.marketService = new MarketService(resolveDb);
     this.nationalService = new NationalService(resolveDb);
+    this.draftService = new DraftService(resolveDb);
   }
 
   /**
@@ -202,6 +219,31 @@ export class SeasonService {
     );
     const standings = this.regularStandings(repository, target);
 
+    // En formato NBA la tabla se lee por conferencias: cada una con sus seis
+    // directos y sus cuatro de play-in, y nadie baja.
+    if (competition?.nbaFormat) {
+      const membership = repository.conferencesOf(competition.id);
+      const byConference = conferenceOrder(
+        standings.map((row) => row.teamId),
+        new Map([...membership].map(([teamId, value]) => [teamId, value.conference]))
+      );
+      return standings.map((row) => {
+        const member = membership.get(row.teamId);
+        const conferenceRank = member
+          ? byConference[member.conference].indexOf(row.teamId) + 1
+          : null;
+        return {
+          ...row,
+          teamName: names.get(row.teamId) ?? row.teamId,
+          isManaged: row.teamId === managedTeamId,
+          zone: conferenceRank ? nbaZone(conferenceRank) : null,
+          conference: member?.conference ?? null,
+          division: member?.division ?? null,
+          conferenceRank
+        };
+      });
+    }
+
     return standings.map((row) => ({
       ...row,
       teamName: names.get(row.teamId) ?? row.teamId,
@@ -240,6 +282,7 @@ export class SeasonService {
           .listRegularGames(row.id)
           .reduce((max, game) => Math.max(max, game.round), 0),
         playoffTeams: competition?.playoffTeams ?? 0,
+        nbaFormat: competition?.nbaFormat ?? false,
         isManaged: row.id === season.id,
         championTeamId: row.championTeamId,
         championTeamName: row.championTeamId ? (names.get(row.championTeamId) ?? null) : null,
@@ -550,7 +593,7 @@ export class SeasonService {
 
     const names = repository.teamNames();
     const managedTeamId = repository.gameState().managedTeamId;
-    const format = buildPlayoffFormat(competition.playoffTeams, competition.playoffSeriesLength);
+    const format = playoffFormatFor(competition);
 
     return {
       rounds: format
@@ -592,6 +635,9 @@ export class SeasonService {
     // El verano de selecciones que no juega el usuario se resuelve aquí, de
     // golpe: no tiene sentido hacerle esperar dos meses a un Mundial ajeno.
     this.nationalService.completeSeason(season.seasonNumber);
+    // Y el draft de la liga NBA: lo que no haya elegido el usuario lo elige la IA,
+    // antes de que el mercado del verano reparta a los agentes libres.
+    this.draftService.complete(season.seasonNumber);
 
     const today = repository.gameState().currentDate;
     const nextSeasonStart = new Date(Date.UTC(season.startYear + 1, 8, 1));
@@ -721,6 +767,15 @@ export class SeasonService {
     };
     repository.insertSeason(season);
 
+    // Las partidas de antes del formato NBA lo estrenan al empezar temporada, y
+    // una liga NBA reparte conferencias la primera vez.
+    if (competition.id === NBA_LEAGUE_ID && !competition.nbaFormat) {
+      repository.enableNbaFormat(competition.id, NBA_PLAYOFF_TEAMS);
+    }
+    if (repository.findCompetition(competition.id)?.nbaFormat) {
+      repository.ensureConferences(competition.id);
+    }
+
     const teamIds = repository.teamIdsInCompetition(competition.id);
     // Las vueltas que le quepan a la liga en la temporada: dieciocho equipos
     // juegan ida y vuelta, diez juegan tres vueltas y una de treinta, una sola.
@@ -762,6 +817,11 @@ export class SeasonService {
   private applyCountryPromotions(repository: SeasonRepository, leagues: SeasonRow[]): void {
     const managedTeamId = repository.gameState().managedTeamId;
     const today = repository.gameState().currentDate;
+    // En la liga americana no sube ni baja nadie: es una liga cerrada, y la de
+    // desarrollo es otra cosa.
+    if (leagues.some((row) => repository.findCompetition(row.competitionId)?.nbaFormat)) {
+      return;
+    }
 
     for (let index = 0; index + 1 < leagues.length; index += 1) {
       const upper = leagues[index] as SeasonRow;
@@ -953,6 +1013,11 @@ export class SeasonService {
         this.closeClubSeason(repository, season, champion?.teamId ?? null);
         repository.setStage(season.id, 'finished');
       }
+      return repository.findSeasonById(season.id) ?? season;
+    }
+
+    if (competition.nbaFormat) {
+      this.advanceNbaPostseason(repository, season, competition, regular, regularFinished);
       return repository.findSeasonById(season.id) ?? season;
     }
 
@@ -1621,6 +1686,8 @@ export class SeasonService {
       tier: repository.findCompetition(season.competitionId)?.tier ?? 1
     });
     this.boardService.closeSeason(result);
+    // En la liga NBA, pasarse del umbral de nómina se paga al cerrar el curso.
+    this.marketService.chargeLuxuryTax(season.id, repository.gameState().currentDate);
   }
 
   /** Hasta dónde llegó un equipo en el cuadro: 0 fuera, 1 cuartos, 2 semis, 3 final. */
@@ -1630,13 +1697,14 @@ export class SeasonService {
       return 0;
     }
 
-    return this.readSeries(repository, season, competition).reduce(
-      (deepest, entry) =>
+    const deepest = this.readSeries(repository, season, competition).reduce(
+      (max, entry) =>
         entry.pairing.higherSeedTeamId === teamId || entry.pairing.lowerSeedTeamId === teamId
-          ? Math.max(deepest, entry.round)
-          : deepest,
+          ? Math.max(max, entry.round)
+          : max,
       0
     );
+    return competition.nbaFormat ? boardPlayoffRound(deepest) : deepest;
   }
 
   /** Clasificación de la liga regular, sin contar los playoffs. */
@@ -1660,6 +1728,183 @@ export class SeasonService {
     return new Map(
       this.regularStandings(repository, season).map((row) => [row.teamId, row.position])
     );
+  }
+
+  /**
+   * Play-in y playoffs de la liga de formato NBA.
+   *
+   * El play-in es la ronda cero: por conferencia, 7º-8º y 9º-10º, y después el
+   * perdedor del primero contra el ganador del segundo por el octavo puesto. Con
+   * los ocho de cada conferencia se monta un cuadro al mejor de siete que sólo
+   * cruza conferencias en las finales.
+   */
+  private advanceNbaPostseason(
+    repository: SeasonRepository,
+    season: SeasonRow,
+    competition: CompetitionRow,
+    regular: readonly GameRow[],
+    regularFinished: boolean
+  ): void {
+    const format = playoffFormatFor(competition);
+    const playIn = format[0] as PlayoffRound;
+    const record = this.regularSeeds(repository, season);
+
+    if (season.stage === 'regular') {
+      if (!regularFinished) {
+        return;
+      }
+      const order = this.nbaConferenceOrder(repository, season, competition);
+      const lastMatchday = regular.reduce(
+        (latest, game) => (game.scheduledOn > latest ? game.scheduledOn : latest),
+        regular[0]?.scheduledOn ?? new Date()
+      );
+      // s0 y s1 el Este, s2 y s3 el Oeste; los partidos por el octavo, s4 y s5.
+      this.createRound(
+        repository,
+        season,
+        playIn,
+        [...playInOpeners(order.east), ...playInOpeners(order.west)].map((pairing) =>
+          this.withRecordSeeds(pairing, record)
+        ),
+        firstPlayoffDate(lastMatchday)
+      );
+      repository.setStage(season.id, 'playoffs');
+      return;
+    }
+
+    const series = this.readSeries(repository, season, competition);
+    const playInSeries = series.filter((entry) => entry.round === PLAY_IN_ROUND);
+    if (!playInSeries.every((entry) => entry.winnerTeamId)) {
+      return;
+    }
+
+    const bySlot = (slot: number) =>
+      playInSeries.find((entry) => entry.seriesId.endsWith(`-s${slot}`));
+    const loserOf = (entry: SeriesState | undefined) =>
+      entry
+        ? entry.winnerTeamId === entry.pairing.higherSeedTeamId
+          ? entry.pairing.lowerSeedTeamId
+          : entry.pairing.higherSeedTeamId
+        : '';
+
+    // Los partidos por el octavo puesto, en cuanto se conocen sus dos equipos.
+    if (playInSeries.length === 4) {
+      const openerDate =
+        playInSeries[0]?.games[0]?.scheduledOn ?? repository.gameState().currentDate;
+      const finals = [
+        {
+          higherSeedTeamId: loserOf(bySlot(0)),
+          higherSeed: 0,
+          lowerSeedTeamId: bySlot(1)?.winnerTeamId as string,
+          lowerSeed: 0
+        },
+        {
+          higherSeedTeamId: loserOf(bySlot(2)),
+          higherSeed: 0,
+          lowerSeedTeamId: bySlot(3)?.winnerTeamId as string,
+          lowerSeed: 0
+        }
+      ];
+      this.createRound(
+        repository,
+        season,
+        playIn,
+        finals,
+        new Date(openerDate.getTime() + 2 * DAY_MS),
+        4
+      );
+      return;
+    }
+
+    const playoffSeries = series.filter((entry) => entry.round >= 1);
+    if (playoffSeries.length === 0) {
+      const order = this.nbaConferenceOrder(repository, season, competition);
+      const east = conferenceSeeds(
+        order.east,
+        bySlot(0)?.winnerTeamId as string,
+        bySlot(4)?.winnerTeamId as string
+      );
+      const west = conferenceSeeds(
+        order.west,
+        bySlot(2)?.winnerTeamId as string,
+        bySlot(5)?.winnerTeamId as string
+      );
+      const lastPlayIn = playInSeries.reduce((latest, entry) => {
+        const date = entry.games[0]?.scheduledOn ?? latest;
+        return date > latest ? date : latest;
+      }, playInSeries[0]?.games[0]?.scheduledOn ?? repository.gameState().currentDate);
+      this.createRound(
+        repository,
+        season,
+        format[1] as PlayoffRound,
+        nbaFirstRoundPairings(east, west),
+        new Date(lastPlayIn.getTime() + 3 * DAY_MS)
+      );
+      return;
+    }
+
+    const currentRound = playoffSeries.reduce((max, entry) => Math.max(max, entry.round), 1);
+    const inRound = playoffSeries.filter((entry) => entry.round === currentRound);
+    for (const entry of inRound) {
+      if (entry.winnerTeamId) {
+        repository.deleteGames(
+          entry.games.filter((game) => !isPlayed(game)).map((game) => game.id)
+        );
+      }
+    }
+    if (!inRound.every((entry) => entry.winnerTeamId)) {
+      return;
+    }
+
+    const lastRound = format[format.length - 1] as PlayoffRound;
+    if (currentRound >= lastRound.round) {
+      const champion = (inRound[0] as SeriesState).winnerTeamId as string;
+      repository.setChampion(season.id, champion);
+      this.closeClubSeason(repository, season, champion);
+      repository.setStage(season.id, 'finished');
+      return;
+    }
+
+    const roundStart = inRound.reduce((earliest, entry) => {
+      const first = entry.games[0]?.scheduledOn ?? earliest;
+      return first < earliest ? first : earliest;
+    }, inRound[0]?.games[0]?.scheduledOn ?? repository.gameState().currentDate);
+
+    this.createRound(
+      repository,
+      season,
+      format.find((round) => round.round === currentRound + 1) as PlayoffRound,
+      nbaNextRoundPairings(
+        inRound.map((entry) => entry.winnerTeamId as string),
+        record
+      ),
+      nextPlayoffRoundStart(roundStart, (inRound[0] as SeriesState).bestOf)
+    );
+  }
+
+  /** La clasificación de cada conferencia, en el orden de la general. */
+  private nbaConferenceOrder(
+    repository: SeasonRepository,
+    season: SeasonRow,
+    competition: CompetitionRow
+  ): Record<Conference, string[]> {
+    const membership = repository.conferencesOf(competition.id);
+    return conferenceOrder(
+      this.regularStandings(repository, season).map((row) => row.teamId),
+      new Map([...membership].map(([teamId, value]) => [teamId, value.conference]))
+    );
+  }
+
+  /** Un cruce con los puestos de la general, que es lo que se enseña en el cuadro. */
+  private withRecordSeeds(
+    pairing: SeriesPairing,
+    record: ReadonlyMap<string, number>
+  ): SeriesPairing {
+    return {
+      ...pairing,
+      higherSeed: record.get(pairing.higherSeedTeamId) ?? pairing.higherSeed,
+      lowerSeed: record.get(pairing.lowerSeedTeamId) ?? pairing.lowerSeed
+    };
   }
 
   private createFirstPlayoffRound(
@@ -1753,12 +1998,13 @@ export class SeasonService {
     season: SeasonRow,
     format: PlayoffRound,
     pairings: readonly SeriesPairing[],
-    roundStart: Date
+    roundStart: Date,
+    firstIndex = 0
   ): void {
     const games: NewGameRow[] = pairings.flatMap((pairing, index) => {
       // El id de la serie lleva ronda y posición en el cuadro: así el bracket
       // se ordena solo y el cruce de semifinales es siempre el mismo.
-      const seriesId = `${season.id}-r${format.round}-s${index}`;
+      const seriesId = `${season.id}-r${format.round}-s${firstIndex + index}`;
 
       return homeAdvantagePattern(format.bestOf).map((host, gameIndex) => {
         const higherIsHome = host === 'higher';
@@ -1790,7 +2036,7 @@ export class SeasonService {
     season: SeasonRow,
     competition: CompetitionRow
   ): SeriesState[] {
-    const format = buildPlayoffFormat(competition.playoffTeams, competition.playoffSeriesLength);
+    const format = playoffFormatFor(competition);
     const seeds = this.regularSeeds(repository, season);
 
     const bySeries = new Map<string, GameRow[]>();
@@ -1804,7 +2050,8 @@ export class SeasonService {
       .map(([seriesId, games]) => {
         const ordered = [...games].sort((a, b) => (a.seriesGame ?? 0) - (b.seriesGame ?? 0));
         const opener = ordered[0] as GameRow;
-        const roundFormat = format[opener.round - 1] as PlayoffRound;
+        const roundFormat = (format.find((round) => round.round === opener.round) ??
+          format[0]) as PlayoffRound;
         const pairing: SeriesPairing = {
           higherSeedTeamId: opener.homeTeamId,
           higherSeed: seeds.get(opener.homeTeamId) ?? 0,
@@ -1918,6 +2165,13 @@ export class SeasonService {
       seriesGame: game.seriesGame
     }));
   }
+}
+
+/** El cuadro de una liga: el de formato NBA, con su play-in, o el de siempre. */
+function playoffFormatFor(competition: CompetitionRow): PlayoffRound[] {
+  return competition.nbaFormat
+    ? buildNbaPlayoffFormat()
+    : buildPlayoffFormat(competition.playoffTeams, competition.playoffSeriesLength);
 }
 
 /** Los primeros de mes que caen dentro del tramo `(from, to]`. */

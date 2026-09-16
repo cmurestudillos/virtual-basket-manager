@@ -25,6 +25,7 @@ export class GameStateService {
       teamId: team.id,
       teamName: team.name,
       managerName: state.managerName,
+      managerNationality: state.managerNationality,
       currentDate: state.currentDate.getTime(),
       seasonNumber: state.seasonNumber
     };

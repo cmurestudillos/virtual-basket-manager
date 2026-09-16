@@ -68,6 +68,12 @@ export const playersTable = sqliteTable('players', {
   /** Foco de entrenamiento propio; nulo = el del bloque. */
   trainingFocus: text('training_focus'),
   /**
+   * Temporada del draft al que se presenta, mientras no se haya celebrado. Un
+   * prospecto no es agente libre todavía: nadie lo puede fichar hasta que pase
+   * el draft.
+   */
+  draftClass: integer('draft_class'),
+  /**
    * De la cantera: no se viste, no entra en la rotación y no aparece en el
    * acta. Promocionar es poner esto a `false`, no mover al jugador de tabla.
    */

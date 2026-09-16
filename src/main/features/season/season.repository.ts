@@ -1,4 +1,5 @@
 import { and, asc, eq, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
+import { assignConferences, type Conference } from '@shared/domain/nba';
 import { parseActiveCountries, resolveActiveCountries } from '@shared/domain/simulation-scope';
 import type { SaveDatabase } from '../../database/client';
 import {
@@ -52,6 +53,51 @@ export class SeasonRepository {
       );
     }
     return [...this.countries];
+  }
+
+  /** Conferencia y división de cada equipo de una liga de formato NBA. */
+  conferencesOf(competitionId: string): Map<string, { conference: Conference; division: string }> {
+    return new Map(
+      this.db
+        .select({
+          id: teamsTable.id,
+          conference: teamsTable.conference,
+          division: teamsTable.division
+        })
+        .from(teamsTable)
+        .where(eq(teamsTable.competitionId, competitionId))
+        .all()
+        .filter((row) => row.conference && row.division)
+        .map((row) => [
+          row.id,
+          { conference: row.conference as Conference, division: row.division as string }
+        ])
+    );
+  }
+
+  /** Reparte conferencias a los equipos de la liga que aún no la tengan. */
+  ensureConferences(competitionId: string): void {
+    const teamIds = this.teamIdsInCompetition(competitionId);
+    if (this.conferencesOf(competitionId).size === teamIds.length) {
+      return;
+    }
+    for (const [teamId, value] of assignConferences(teamIds)) {
+      this.db
+        .update(teamsTable)
+        .set({ conference: value.conference, division: value.division })
+        .where(eq(teamsTable.id, teamId))
+        .run();
+    }
+  }
+
+  /** Pasa una liga al formato NBA: la usan las partidas de antes de que existiera. */
+  enableNbaFormat(competitionId: string, playoffTeams: number): void {
+    this.db
+      .update(competitionsTable)
+      .set({ nbaFormat: true, playoffTeams })
+      .where(eq(competitionsTable.id, competitionId))
+      .run();
+    this.competitions = null;
   }
 
   setCurrentDate(date: Date): void {

@@ -20,6 +20,8 @@ export interface LeagueTier {
   teams: number;
   /** Equipos que juegan el playoff final; 0 = campeón el primero de la tabla. */
   playoffTeams: number;
+  /** Formato NBA: conferencias, play-in, draft y tope salarial, sin descensos. */
+  nbaFormat?: boolean;
   playoffSeriesLength: number;
   /** De cuánta reputación va el mejor de la liga al peor. */
   reputation: [number, number];
@@ -682,13 +684,14 @@ export const WORLD: LeagueCountry[] = [
     tiers: [
       {
         id: 'usa-1',
-        // La liga más rica del mundo. Aquí es una liga como las demás: las
-        // conferencias, el draft y el tope salarial son otra pieza del roadmap.
+        // La liga más rica del mundo, con su formato: conferencias, play-in,
+        // playoffs de dieciséis, draft y tope salarial.
         name: 'Liga Profesional Americana',
         shortName: 'LPA',
         teams: 30,
-        playoffTeams: 8,
+        playoffTeams: 16,
         playoffSeriesLength: 7,
+        nbaFormat: true,
         reputation: [92, 60],
         capacity: 18000
       },

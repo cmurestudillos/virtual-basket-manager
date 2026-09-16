@@ -483,8 +483,9 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
                 <span class="text-ball-400">{{ line.position }}</span>
                 <RouterLink
                   :to="{ name: 'player', params: { playerId: line.playerId } }"
-                  class="ml-2 hover:text-ball-400"
+                  class="ml-2 inline-flex items-center gap-1.5 hover:text-ball-400"
                 >
+                  <AppFlag :code="line.nationality" />
                   {{ line.playerName }}
                 </RouterLink>
               </td>
@@ -532,7 +533,9 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
               class="flex gap-2 text-court-300"
             >
               <span class="w-6 text-ball-400">{{ line.position }}</span>
-              <span>{{ line.playerName }}</span>
+              <span class="inline-flex items-center gap-1.5">
+                <AppFlag :code="line.nationality" />{{ line.playerName }}
+              </span>
             </li>
           </ul>
         </div>

@@ -5,6 +5,8 @@ export const createSaveRequestSchema = z.object({
   /** Equipo que dirigirá el usuario. */
   teamId: z.string().min(1),
   managerName: z.string().trim().min(1).max(60),
+  /** Nacionalidad del entrenador; nula = la del país del club. */
+  managerNationality: z.string().trim().length(3).toUpperCase().nullable().default(null),
   /** Con el despido apagado el consejo sigue opinando, pero no te echa. */
   dismissalEnabled: z.boolean().default(true),
   /** Modo carrera: si te echan, buscas otro banquillo en vez de acabar la partida. */

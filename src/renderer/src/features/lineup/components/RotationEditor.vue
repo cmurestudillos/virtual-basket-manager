@@ -4,7 +4,7 @@ import type { RotationSlotView, TeamRotation } from '@shared/contracts/rotation.
 import { POSITION_LABELS, outOfPositionPenalty } from '@shared/domain/positions';
 import { LINEUP_SIZE, MAX_TARGET_MINUTES } from '@shared/domain/rotation';
 import { injuryLabel } from '@shared/domain/injuries';
-import { AppAvatar, AppButton } from '@renderer/shared/ui';
+import { AppAvatar, AppButton, AppFlag } from '@renderer/shared/ui';
 
 const props = defineProps<{ teamId: string }>();
 
@@ -256,7 +256,9 @@ function messageOf(cause: unknown): string {
               <td class="numeric text-court-300">{{ slot.depth + 1 }}</td>
               <td>
                 <span class="inline-flex items-center gap-2">
-                  <AppAvatar kind="player" :seed="slot.playerId" />{{ slot.playerName }}
+                  <AppAvatar kind="player" :seed="slot.playerId" /><AppFlag
+                    :code="slot.nationality"
+                  />{{ slot.playerName }}
                 </span>
               </td>
               <td class="text-court-300">{{ slot.position }}</td>

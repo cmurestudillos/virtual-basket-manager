@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
+import { UNHAPPY_MORALE, moraleLabel } from '@shared/domain/morale';
 import type {
   ContractEntry,
   LoanEntry,
@@ -9,7 +10,7 @@ import type {
 import { MAX_CONTRACT_YEARS, MIN_CONTRACT_YEARS } from '@shared/domain/market';
 import { POSITIONS, type Position } from '@shared/domain/positions';
 import { formatMoney } from '@renderer/shared/format';
-import { AppAvatar, AppButton, AppPageHeader, AppTabs } from '@renderer/shared/ui';
+import { AppAvatar, AppButton, AppFlag, AppPageHeader, AppTabs } from '@renderer/shared/ui';
 
 type Tab = 'search' | 'contracts' | 'loans';
 
@@ -198,14 +199,29 @@ async function release(entry: ContractEntry): Promise<void> {
         Caja {{ formatMoney(status.balanceCents) }} · plantilla {{ status.rosterSize }}/{{
           status.maxRoster
         }}
-        · formación
-        <span :class="status.homegrownInSquad <= status.minHomegrown ? 'text-line-500' : ''">
-          {{ status.homegrownInSquad }}/{{ status.minHomegrown }}
-        </span>
-        · nóminas {{ formatMoney(status.seasonWagesCents) }} de
-        {{ formatMoney(status.wageCeilingCents) }}
+        <template v-if="status.salaryCap">
+          · nómina {{ formatMoney(status.seasonWagesCents) }} · tope
+          {{ formatMoney(status.salaryCap.capCents) }} · impuesto desde
+          {{ formatMoney(status.salaryCap.taxLineCents) }}
+          <span v-if="status.salaryCap.projectedTaxCents > 0" class="text-bad-400">
+            (pagarías {{ formatMoney(status.salaryCap.projectedTaxCents) }})
+          </span>
+        </template>
+        <template v-else>
+          · formación
+          <span :class="status.homegrownInSquad <= status.minHomegrown ? 'text-line-500' : ''">
+            {{ status.homegrownInSquad }}/{{ status.minHomegrown }}
+          </span>
+          · nóminas {{ formatMoney(status.seasonWagesCents) }} de
+          {{ formatMoney(status.wageCeilingCents) }}
+        </template>
       </span>
     </AppPageHeader>
+    <p v-if="status.salaryCap" class="-mt-2 text-xs text-court-300">
+      Tope salarial blando: por debajo del tope se firma lo que quepa; por encima, sólo contratos
+      mínimos ({{ formatMoney(status.salaryCap.minimumCents) }}). Renovar a los tuyos no cuenta,
+      pero la nómina por encima del umbral paga impuesto de lujo al cerrar la temporada.
+    </p>
 
     <AppTabs
       :model-value="tab"
@@ -262,7 +278,7 @@ async function release(entry: ContractEntry): Promise<void> {
           <div>
             <p class="text-xs uppercase tracking-wide text-court-300">Oferta por</p>
             <p class="text-lg">
-              {{ target.playerName }}
+              <AppFlag :code="target.nationality" /> {{ target.playerName }}
               <span class="text-sm text-court-300">
                 {{ target.position }} · {{ target.age }} años ·
                 {{ target.teamName ?? 'agente libre' }}
@@ -348,6 +364,7 @@ async function release(entry: ContractEntry): Promise<void> {
                   class="inline-flex items-center gap-2 hover:text-ball-400"
                 >
                   <AppAvatar kind="player" :seed="player.playerId" />
+                  <AppFlag :code="player.nationality" />
                   {{ player.playerName }}
                 </RouterLink>
               </td>
@@ -406,10 +423,19 @@ async function release(entry: ContractEntry): Promise<void> {
           <tr v-for="entry in contracts" :key="entry.playerId">
             <td>
               <span class="inline-flex items-center gap-2">
-                <AppAvatar kind="player" :seed="entry.playerId" />{{ entry.playerName }}
+                <AppAvatar kind="player" :seed="entry.playerId" /><AppFlag
+                  :code="entry.nationality"
+                />{{ entry.playerName }}
               </span>
               <span v-if="entry.isHomegrown" class="ml-1 text-xs text-good-400">form.</span>
               <span v-if="entry.isOnLoan" class="ml-1 text-xs text-court-600">cedido aquí</span>
+              <span
+                v-if="entry.morale < UNHAPPY_MORALE"
+                class="ml-1 text-xs"
+                :class="entry.refusesRenewal ? 'text-bad-400' : 'text-line-500'"
+              >
+                {{ moraleLabel(entry.morale).toLowerCase() }}
+              </span>
             </td>
             <td class="text-ball-400">{{ entry.position }}</td>
             <td class="numeric">{{ entry.age }}</td>
@@ -422,7 +448,14 @@ async function release(entry: ContractEntry): Promise<void> {
             <td class="numeric text-court-300">{{ formatMoney(entry.renewalWageCents) }}</td>
             <td class="numeric text-court-300">{{ formatMoney(entry.releaseCostCents) }}</td>
             <td>
-              <AppButton size="sm" :disabled="busy" @click="renew(entry)"> Renovar </AppButton>
+              <AppButton
+                size="sm"
+                :disabled="busy || entry.refusesRenewal"
+                :title="entry.refusesRenewal ? 'Está enfadado: no quiere renovar' : ''"
+                @click="renew(entry)"
+              >
+                Renovar
+              </AppButton>
               <AppButton
                 size="sm"
                 class="ml-1"
@@ -461,7 +494,11 @@ async function release(entry: ContractEntry): Promise<void> {
             <td colspan="5" class="text-court-300">No hay ninguna cesión en marcha.</td>
           </tr>
           <tr v-for="loan in loans" :key="loan.playerId">
-            <td>{{ loan.playerName }}</td>
+            <td>
+              <span class="inline-flex items-center gap-2">
+                <AppFlag :code="loan.nationality" />{{ loan.playerName }}
+              </span>
+            </td>
             <td class="text-ball-400">{{ loan.position }}</td>
             <td class="numeric font-semibold">{{ loan.overall }}</td>
             <td :class="loan.direction === 'out' ? 'text-court-300' : 'text-good-400'">

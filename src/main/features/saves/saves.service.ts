@@ -110,6 +110,7 @@ export class SavesService {
     seedSave(db, dataset, {
       managedTeamId: validated.teamId,
       managerName: validated.managerName,
+      managerNationality: validated.managerNationality ?? undefined,
       dismissalEnabled: validated.dismissalEnabled,
       careerMode: validated.careerMode,
       activeCountries: validated.activeCountries

@@ -19,6 +19,7 @@ import {
 export interface RawRecord {
   playerId: string;
   playerName: string;
+  nationality: string;
   teamId: string;
   teamName: string;
   value: number;
@@ -179,6 +180,7 @@ export class HistoryRepository {
         playerId: gamePlayerStatsTable.playerId,
         firstName: playersTable.firstName,
         lastName: playersTable.lastName,
+        nationality: playersTable.nationality,
         teamId: gamePlayerStatsTable.teamId,
         teamName: teamsTable.name,
         value: expression,
@@ -196,6 +198,7 @@ export class HistoryRepository {
       .map((row) => ({
         playerId: row.playerId,
         playerName: `${row.firstName} ${row.lastName}`,
+        nationality: row.nationality,
         teamId: row.teamId,
         teamName: row.teamName,
         value: Number(row.value),

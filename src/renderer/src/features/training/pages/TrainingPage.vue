@@ -10,7 +10,14 @@ import {
 } from '@shared/domain/training';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import StaffPanel from '@renderer/features/staff/components/StaffPanel.vue';
-import { AppAvatar, AppButton, AppPageHeader, AppSectionTitle, AppTabs } from '@renderer/shared/ui';
+import {
+  AppAvatar,
+  AppButton,
+  AppFlag,
+  AppPageHeader,
+  AppSectionTitle,
+  AppTabs
+} from '@renderer/shared/ui';
 
 const store = useGameStateStore();
 
@@ -126,6 +133,7 @@ function conditionColor(condition: number): string {
         <AppSectionTitle size="xs">Parte médico</AppSectionTitle>
         <ul class="mt-2 flex flex-wrap gap-x-6 gap-y-1">
           <li v-for="player in injured" :key="player.playerId">
+            <AppFlag :code="player.nationality" />
             <span class="text-court-100">{{ player.playerName }}</span>
             <span class="ml-2 text-bad-400">{{ player.injuryName }}</span>
             <span class="ml-2 text-court-300">· {{ player.injuryLabel }}</span>
@@ -192,6 +200,7 @@ function conditionColor(condition: number): string {
                   class="inline-flex items-center gap-2 hover:text-ball-400"
                 >
                   <AppAvatar kind="player" :seed="player.playerId" />
+                  <AppFlag :code="player.nationality" />
                   {{ player.playerName }}
                 </RouterLink>
               </td>

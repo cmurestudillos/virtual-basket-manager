@@ -30,7 +30,10 @@ onMounted(async () => {
       </p>
 
       <section v-for="round in bracket.rounds" :key="round.round" class="flex flex-col gap-2">
-        <AppSectionTitle :hint="`· al mejor de ${round.bestOf}`">{{ round.name }}</AppSectionTitle>
+        <AppSectionTitle
+          :hint="round.bestOf === 1 ? '· partido único' : `· al mejor de ${round.bestOf}`"
+          >{{ round.name }}</AppSectionTitle
+        >
 
         <ul class="grid gap-2 md:grid-cols-2">
           <SeriesCard v-for="series in round.series" :key="series.seriesId" :series="series" />

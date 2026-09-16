@@ -16,6 +16,8 @@ export const staffTable = sqliteTable('staff', {
   lastName: text('last_name').notNull(),
   /** `assistant`, `fitness`, `physio`, `analyst` u `scout`. */
   role: text('role').notNull(),
+  /** Código de nacionalidad, para su bandera. */
+  nationality: text('nationality').notNull().default('ESP'),
   /** 1-5. Decide lo que aporta y lo que cobra. */
   level: integer('level').notNull().default(1)
 });

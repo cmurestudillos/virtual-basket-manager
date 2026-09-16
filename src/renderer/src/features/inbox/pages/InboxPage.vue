@@ -33,7 +33,8 @@ const CATEGORY: Record<InboxCategory, { label: string; tone: Tone }> = {
   contract: { label: 'Contratos', tone: 'warn' },
   career: { label: 'Carrera', tone: 'accent' },
   press: { label: 'Prensa', tone: 'neutral' },
-  national: { label: 'Selección', tone: 'accent' }
+  national: { label: 'Selección', tone: 'accent' },
+  morale: { label: 'Vestuario', tone: 'warn' }
 };
 
 const unread = computed(() => view.value?.unread ?? 0);

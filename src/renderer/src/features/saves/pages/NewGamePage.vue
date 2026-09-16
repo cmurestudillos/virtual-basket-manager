@@ -3,6 +3,7 @@ import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { CatalogLeague, CatalogScope, CatalogTeam } from '@shared/contracts/teams.contract';
 import { estimateSeconds, formatEstimate } from '@shared/domain/simulation-scope';
+import { NATION_NAMES } from '@shared/domain/national-teams';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { AppButton, AppFlag, AppPageHeader } from '@renderer/shared/ui';
 
@@ -16,6 +17,11 @@ const league = ref<string | null>(null);
 const search = ref('');
 const selectedTeamId = ref<string | null>(null);
 const managerName = ref('');
+/** Nacionalidad del entrenador; sin elegir, la del país del club. */
+const managerNationality = ref<string | null>(null);
+const nationalityOptions = Object.entries(NATION_NAMES).sort((a, b) =>
+  a[1].localeCompare(b[1], 'es')
+);
 /**
  * Con el despido apagado el consejo sigue puntuando, pero no te echa.
  *
@@ -161,6 +167,7 @@ async function create(): Promise<void> {
       name: saveName.value.trim() || (selectedTeam.value?.name ?? 'Partida'),
       teamId: selectedTeamId.value,
       managerName: managerName.value.trim(),
+      managerNationality: managerNationality.value,
       dismissalEnabled: dismissalEnabled.value,
       careerMode: careerMode.value,
       activeCountries: [...activeCountries.value],
@@ -273,6 +280,23 @@ async function create(): Promise<void> {
             maxlength="60"
             class="rounded border border-court-600 bg-court-900 px-3 py-2"
           />
+        </label>
+
+        <label class="flex flex-col gap-1 text-sm" for="manager-nationality">
+          <span class="text-court-300">Tu nacionalidad</span>
+          <span class="flex items-center gap-2">
+            <AppFlag :code="managerNationality ?? selectedTeam?.country" size="md" />
+            <select
+              id="manager-nationality"
+              v-model="managerNationality"
+              class="flex-1 rounded border border-court-600 bg-court-900 px-3 py-2"
+            >
+              <option :value="null">La del club</option>
+              <option v-for="[code, name] in nationalityOptions" :key="code" :value="code">
+                {{ name }}
+              </option>
+            </select>
+          </span>
         </label>
 
         <label class="flex flex-col gap-1 text-sm">

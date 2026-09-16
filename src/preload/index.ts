@@ -25,6 +25,7 @@ import type {
 } from '@shared/contracts/season.contract';
 import type { HistoryApi, HistoryView } from '@shared/contracts/history.contract';
 import type { CareerApi, CareerStatus } from '@shared/contracts/career.contract';
+import type { DraftApi, DraftView } from '@shared/contracts/draft.contract';
 import type {
   CallupResult,
   NationalApi,
@@ -280,6 +281,16 @@ const career: CareerApi = {
   leaveNational: () => ipcRenderer.invoke(IPC_CHANNELS.careerLeaveNational) as Promise<CareerStatus>
 };
 
+const draft: DraftApi = {
+  get: () => ipcRenderer.invoke(IPC_CHANNELS.draftGet) as Promise<DraftView | null>,
+  simulateToUser: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.draftSimulateToUser) as Promise<DraftView | null>,
+  pick: (playerId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.draftPick, playerId) as Promise<DraftView | null>,
+  pass: () => ipcRenderer.invoke(IPC_CHANNELS.draftPass) as Promise<DraftView | null>,
+  simulateAll: () => ipcRenderer.invoke(IPC_CHANNELS.draftSimulateAll) as Promise<DraftView | null>
+};
+
 const national: NationalApi = {
   getOverview: () =>
     ipcRenderer.invoke(IPC_CHANNELS.nationalGetOverview) as Promise<NationalOverview>,
@@ -356,6 +367,7 @@ export const api = {
   history,
   career,
   national,
+  draft,
   inbox,
   editor,
   updates

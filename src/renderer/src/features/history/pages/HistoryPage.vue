@@ -346,6 +346,7 @@ function positionTone(position: number | null, teams: number): 'good' | 'warn' |
           <span>
             <span class="text-xs uppercase tracking-wide text-court-300">{{ record.label }}</span>
             <span class="block">
+              <AppFlag :code="record.nationality" />
               <span :class="record.isManaged ? 'text-ball-400' : ''">{{ record.playerName }}</span>
               <span class="ml-2 text-xs text-court-300">
                 {{ record.teamName }} · {{ record.context }}

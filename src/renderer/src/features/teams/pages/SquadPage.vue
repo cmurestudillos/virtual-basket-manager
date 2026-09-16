@@ -8,6 +8,15 @@ import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
 import { AppAvatar, AppFlag, AppPageHeader } from '@renderer/shared/ui';
 import { nationName } from '@shared/domain/national-teams';
+import { moraleLabel, moraleTone, type MoraleTone } from '@shared/domain/morale';
+
+/** El ánimo se lee por color: el que está mal tiene que saltar a la vista. */
+const MORALE_TEXT: Record<MoraleTone, string> = {
+  good: 'text-good-400',
+  neutral: 'text-court-300',
+  warn: 'text-line-500',
+  bad: 'text-bad-400'
+};
 
 const store = useGameStateStore();
 const players = ref<PlayerSummary[]>([]);
@@ -38,6 +47,7 @@ onMounted(async () => {
             <th class="numeric">Media</th>
             <th class="numeric">Pot.</th>
             <th>Forma</th>
+            <th>Ánimo</th>
             <th>Estado</th>
             <th class="numeric">T3</th>
             <th class="numeric">Reb</th>
@@ -75,6 +85,9 @@ onMounted(async () => {
             <td class="numeric text-court-300">{{ player.potential }}</td>
             <td :class="player.condition >= 75 ? 'text-court-300' : 'text-line-500'">
               {{ conditionLabel(player.condition) }}
+            </td>
+            <td :class="MORALE_TEXT[moraleTone(player.morale)]" :title="`Ánimo ${player.morale}`">
+              {{ moraleLabel(player.morale) }}
             </td>
             <td :class="player.injuryDaysLeft > 0 ? 'text-bad-400' : 'text-court-600'">
               {{

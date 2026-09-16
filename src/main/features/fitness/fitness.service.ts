@@ -36,6 +36,15 @@ import {
 import { createRng, seedFromString } from '@shared/engine/basketball/rng';
 import type { SaveDatabase } from '../../database/save-database';
 import type { PlayerRow } from '../../database/schema/save';
+import {
+  CALLUP_MORALE_BOOST,
+  clampMorale,
+  moraleAfterGame,
+  moraleAfterRest,
+  moraleRecoveryPoints,
+  trainingMoraleDelta
+} from '@shared/domain/morale';
+import { isNationalTeam, nationalSquad } from '../national/national-squad';
 import { ageAt } from '../players/players.mapper';
 import { EMPTY_STAFF, StaffService, type StaffLevels } from '../staff/staff.service';
 import { FitnessRepository, type PlayerFitnessUpdate } from './fitness.repository';
@@ -139,21 +148,44 @@ export class FitnessService {
    * que le queda: lesionarse es consecuencia de haber salido cargado, y eso ya
    * estaba decidido antes del salto inicial.
    */
-  applyGameEffects(
-    gameId: string,
-    lines: readonly { playerId: string; secondsPlayed: number }[],
-    playedOn: Date
-  ): void {
+  applyGameEffects(gameId: string, lines: readonly GameEffectLine[], playedOn: Date): void {
     const repository = new FitnessRepository(this.resolveDb());
     const rows = new Map(
       repository.listPlayersById(lines.map((line) => line.playerId)).map((row) => [row.id, row])
     );
+    const roles = this.roleRanks(lines, playedOn);
 
     const staffByTeam = new Map<string, StaffLevels>();
     const updates: PlayerFitnessUpdate[] = [];
     for (const line of lines) {
       const row = rows.get(line.playerId);
-      if (!row || line.secondsPlayed <= 0) {
+      if (!row) {
+        continue;
+      }
+
+      // El ánimo se mueve a todo el que se vistió, haya jugado o no: quedarse
+      // en el banquillo es justo lo que enfada a un titular.
+      const morale =
+        line.teamId !== undefined && line.won !== undefined
+          ? moraleAfterGame({
+              morale: row.morale,
+              minutesPlayed: line.secondsPlayed / 60,
+              roleRank: roles.get(line.playerId) ?? 99,
+              won: line.won,
+              margin: line.margin ?? 0
+            })
+          : row.morale;
+
+      if (line.secondsPlayed <= 0) {
+        if (morale !== row.morale) {
+          updates.push({
+            playerId: row.id,
+            condition: row.condition,
+            injuryDaysLeft: row.injuryDaysLeft,
+            injuryName: row.injuryName,
+            morale
+          });
+        }
         continue;
       }
 
@@ -183,11 +215,50 @@ export class FitnessService {
         injuryDaysLeft: injury
           ? Math.max(1, Math.round(injury.days * injuryDurationFactor(staff.physio)))
           : row.injuryDaysLeft,
-        injuryName: injury?.name ?? row.injuryName
+        injuryName: injury?.name ?? row.injuryName,
+        morale
       });
     }
 
     repository.applyUpdates(updates);
+  }
+
+  /**
+   * El lugar de cada jugador en su plantilla (1 = el mejor): es contra lo que
+   * mide si los minutos que le dan son pocos. En una selección, entre sus
+   * convocados.
+   */
+  private roleRanks(lines: readonly GameEffectLine[], date: Date): Map<string, number> {
+    const db = this.resolveDb();
+    const repository = new FitnessRepository(db);
+    const ranks = new Map<string, number>();
+    for (const teamId of new Set(lines.map((line) => line.teamId).filter(Boolean))) {
+      const roster = isNationalTeam(db, teamId as string)
+        ? nationalSquad(db, teamId as string, date)
+        : repository.listRoster(teamId as string).filter((row) => !row.isYouth);
+      roster
+        .map((row) => ({
+          id: row.id,
+          overall: overallForPosition(toAttributes(row), row.position as Position)
+        }))
+        .sort((a, b) => b.overall - a.overall)
+        .forEach((row, index) => ranks.set(row.id, index + 1));
+    }
+    return ranks;
+  }
+
+  /** Que te llame tu selección sube el ánimo. */
+  boostCalledUp(playerIds: readonly string[]): void {
+    const repository = new FitnessRepository(this.resolveDb());
+    repository.applyUpdates(
+      repository.listPlayersById(playerIds).map((row) => ({
+        playerId: row.id,
+        condition: row.condition,
+        injuryDaysLeft: row.injuryDaysLeft,
+        injuryName: row.injuryName,
+        morale: clampMorale(row.morale + CALLUP_MORALE_BOOST)
+      }))
+    );
   }
 
   /**
@@ -206,11 +277,17 @@ export class FitnessService {
 
     const repository = new FitnessRepository(this.resolveDb());
     const staffByTeam = new Map<string, StaffLevels>();
+    const moralePoints = moraleRecoveryPoints(from, to);
     repository.applyUpdates(
       repository
         .listAllPlayers()
         .map((row) =>
-          restUpdate(row, days, recoveryBoost(this.staffLevelsOf(row.teamId, staffByTeam).fitness))
+          restUpdate(
+            row,
+            days,
+            recoveryBoost(this.staffLevelsOf(row.teamId, staffByTeam).fitness),
+            moralePoints
+          )
         )
         .filter(changesSomething)
     );
@@ -239,7 +316,9 @@ export class FitnessService {
         playerId: row.id,
         condition: 100,
         injuryDaysLeft: Math.max(0, row.injuryDaysLeft - days),
-        injuryName: row.injuryDaysLeft - days > 0 ? row.injuryName : null
+        injuryName: row.injuryDaysLeft - days > 0 ? row.injuryName : null,
+        // El verano también cura el ánimo: se vuelve con la cabeza despejada.
+        morale: moraleAfterRest(row.morale, moraleRecoveryPoints(from, to))
       }))
     );
   }
@@ -304,7 +383,8 @@ export class FitnessService {
           ? Math.max(1, Math.round(injury.days * injuryDurationFactor(staff.physio)))
           : 0,
         injuryName: injury?.name ?? null,
-        attributes: changes.length > 0 ? changedAttributes(row, changes) : undefined
+        attributes: changes.length > 0 ? changedAttributes(row, changes) : undefined,
+        morale: clampMorale(row.morale + trainingMoraleDelta(intensity))
       });
     }
 
@@ -343,14 +423,16 @@ function changesSomething(update: PlayerFitnessUpdate & { previous: PlayerRow })
   return (
     update.condition !== update.previous.condition ||
     update.injuryDaysLeft !== update.previous.injuryDaysLeft ||
-    update.injuryName !== update.previous.injuryName
+    update.injuryName !== update.previous.injuryName ||
+    update.morale !== update.previous.morale
   );
 }
 
 function restUpdate(
   row: PlayerRow,
   days: number,
-  recoveryFactor: number
+  recoveryFactor: number,
+  moralePoints: number
 ): PlayerFitnessUpdate & { previous: PlayerRow } {
   const injuryDaysLeft = Math.max(0, row.injuryDaysLeft - days);
 
@@ -359,8 +441,19 @@ function restUpdate(
     condition: conditionAfterRest(row.condition, days, row.stamina, recoveryFactor),
     injuryDaysLeft,
     injuryName: injuryDaysLeft > 0 ? row.injuryName : null,
+    morale: moraleAfterRest(row.morale, moralePoints),
     previous: row
   };
+}
+
+/** Lo que el partido deja en cada jugador que se vistió. */
+export interface GameEffectLine {
+  playerId: string;
+  secondsPlayed: number;
+  /** Equipo con el que jugó, si ganó y por cuánto: lo que mueve el ánimo. */
+  teamId?: string;
+  won?: boolean;
+  margin?: number;
 }
 
 function changedAttributes(
@@ -384,6 +477,7 @@ function toTrainingPlayer(row: PlayerRow, teamFocus: TrainingFocus, today: Date)
   return {
     playerId: row.id,
     playerName: `${row.firstName} ${row.lastName}`,
+    nationality: row.nationality,
     position: row.position as Position,
     age: ageAt(row.birthDate, today),
     overall: overallForPosition(attributes, row.position as Position),

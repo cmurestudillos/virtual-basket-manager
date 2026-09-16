@@ -8,10 +8,12 @@ import { formatMatchDate } from '@renderer/shared/format';
 import PlayoffBracketView from '@renderer/features/competition/components/PlayoffBracketView.vue';
 import CupBracketView from '@renderer/features/competition/components/CupBracketView.vue';
 import ContinentalView from '@renderer/features/competition/components/ContinentalView.vue';
+import DraftBoard from '@renderer/features/competition/components/DraftBoard.vue';
+import { CONFERENCE_LABELS, type Conference } from '@shared/domain/nba';
 
 const seasonStore = useSeasonStore();
 
-type Tab = 'standings' | 'fixtures' | 'cup' | 'continental' | 'playoffs';
+type Tab = 'standings' | 'fixtures' | 'cup' | 'continental' | 'playoffs' | 'draft';
 const tab = ref<Tab>('standings');
 const standings = ref<StandingEntry[]>([]);
 const fixtures = ref<FixtureEntry[]>([]);
@@ -26,14 +28,33 @@ const selectedLeague = computed(() =>
   leagues.value.find((row) => row.competitionId === league.value)
 );
 
+/**
+ * La tabla, de una pieza o por conferencias: en la liga NBA cada conferencia se
+ * lee aparte, con su puesto y su división.
+ */
+const standingGroups = computed(() => {
+  if (!selectedLeague.value?.nbaFormat) {
+    return [{ title: null as string | null, rows: standings.value }];
+  }
+  return (['east', 'west'] as Conference[]).map((conference) => ({
+    title: CONFERENCE_LABELS[conference] as string | null,
+    rows: standings.value
+      .filter((row) => row.conference === conference)
+      .sort((a, b) => (a.conferenceRank ?? 99) - (b.conferenceRank ?? 99))
+  }));
+});
+
 /** Sólo se pintan las zonas que esa división tiene de verdad. */
 const zonesShown = computed(() => {
   const seen = new Set<StandingZone>(standings.value.map((row) => row.zone));
-  return (['playoffs', 'promotion', 'relegation'] as const).filter((zone) => seen.has(zone));
+  return (['playoffs', 'playIn', 'promotion', 'relegation'] as const).filter((zone) =>
+    seen.has(zone)
+  );
 });
 
 const ZONE_CLASSES: Record<Exclude<StandingZone, null>, string> = {
   playoffs: 'border-ball-500',
+  playIn: 'border-sky-500',
   promotion: 'border-emerald-500',
   relegation: 'border-red-500'
 };
@@ -74,7 +95,8 @@ const tabs = computed(() => [
   { id: 'fixtures' as Tab, label: 'Calendario' },
   { id: 'cup' as Tab, label: 'Copa' },
   { id: 'continental' as Tab, label: 'Continental' },
-  ...(hasPlayoffs.value ? [{ id: 'playoffs' as Tab, label: 'Playoffs' }] : [])
+  ...(hasPlayoffs.value ? [{ id: 'playoffs' as Tab, label: 'Playoffs' }] : []),
+  ...(selectedLeague.value?.nbaFormat ? [{ id: 'draft' as Tab, label: 'Draft' }] : [])
 ]);
 
 const totalRounds = computed(() => selectedLeague.value?.totalRounds || 34);
@@ -99,7 +121,10 @@ watch(round, loadRound);
 watch(league, async () => {
   // Otra liga, otro calendario: se abre en su jornada en curso.
   round.value = selectedLeague.value?.currentRound ?? 1;
-  if (tab.value === 'playoffs' && !hasPlayoffs.value) {
+  if (
+    (tab.value === 'playoffs' && !hasPlayoffs.value) ||
+    (tab.value === 'draft' && !selectedLeague.value?.nbaFormat)
+  ) {
     tab.value = 'standings';
   }
   await loadStandings();
@@ -169,12 +194,20 @@ function streakLabel(streak: number): string {
     <AppTabs :model-value="tab" :options="tabs" @update:model-value="tab = $event as Tab" />
 
     <div v-if="tab === 'standings'" class="flex flex-col gap-3">
-      <div class="overflow-auto rounded border border-court-700">
+      <div
+        v-for="group in standingGroups"
+        :key="group.title ?? 'liga'"
+        class="overflow-auto rounded border border-court-700"
+      >
+        <p v-if="group.title" class="border-b border-court-700 bg-court-900 px-4 py-2 text-sm">
+          {{ group.title }}
+        </p>
         <table class="data-table">
           <thead>
             <tr>
               <th class="numeric">#</th>
               <th>Equipo</th>
+              <th v-if="group.title">División</th>
               <th class="numeric">J</th>
               <th class="numeric">G</th>
               <th class="numeric">P</th>
@@ -186,7 +219,7 @@ function streakLabel(streak: number): string {
           </thead>
           <tbody>
             <tr
-              v-for="row in standings"
+              v-for="row in group.rows"
               :key="row.teamId"
               :class="row.isManaged ? 'bg-court-800 text-ball-400' : ''"
             >
@@ -194,9 +227,10 @@ function streakLabel(streak: number): string {
                 class="numeric border-l-4"
                 :class="row.zone ? ZONE_CLASSES[row.zone] : 'border-transparent'"
               >
-                {{ row.position }}
+                {{ row.conferenceRank ?? row.position }}
               </td>
               <td>{{ row.teamName }}</td>
+              <td v-if="group.title" class="text-court-300">{{ row.division }}</td>
               <td class="numeric">{{ row.played }}</td>
               <td class="numeric font-semibold">{{ row.won }}</td>
               <td class="numeric">{{ row.lost }}</td>
@@ -218,6 +252,8 @@ function streakLabel(streak: number): string {
         </li>
       </ul>
     </div>
+
+    <DraftBoard v-else-if="tab === 'draft'" />
 
     <CupBracketView
       v-else-if="tab === 'cup'"

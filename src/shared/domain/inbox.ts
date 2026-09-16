@@ -22,7 +22,8 @@ export type InboxCategory =
   | 'contract'
   | 'career'
   | 'press'
-  | 'national';
+  | 'national'
+  | 'morale';
 
 /** Una lesión vista en la foto. */
 export interface SnapshotInjury {
@@ -63,6 +64,8 @@ export interface ClubSnapshot {
    * que los llama. Opcional: las fotos de antes de las selecciones no lo traen.
    */
   calledUp?: Record<string, string>;
+  /** Jugadores del club descontentos. Opcional por las fotos de antes. */
+  unhappy?: string[];
 }
 
 /** A dónde lleva un aviso al pulsarlo. */
@@ -118,8 +121,25 @@ export function diffSnapshots(
     ...boardDrafts(before, after),
     ...titleDrafts(before, after, names),
     ...divisionDrafts(before, after, names),
-    ...callupDrafts(before, after, names)
+    ...callupDrafts(before, after, names),
+    ...unhappyDrafts(before, after, names)
   ];
+}
+
+/**
+ * Un jugador que se hunde lo dice, una vez: al cruzar la raya del descontento.
+ * Seguir descontento no es noticia, y volver a estar bien tampoco lo avisa.
+ */
+function unhappyDrafts(before: ClubSnapshot, after: ClubSnapshot, names: InboxNames): InboxDraft[] {
+  const previous = new Set(before.unhappy ?? []);
+  return (after.unhappy ?? [])
+    .filter((playerId) => !previous.has(playerId) && after.squad.includes(playerId))
+    .map((playerId) => ({
+      category: 'morale' as const,
+      title: `${names.player(playerId)} está descontento`,
+      body: 'No está a gusto con su papel en el equipo. Si no cambia nada, rendirá por debajo de lo que vale y pedirá más para renovar.',
+      route: { name: 'player', params: { playerId } }
+    }));
 }
 
 /**

@@ -18,6 +18,8 @@ export interface PlayerFitnessUpdate {
   injuryName: string | null;
   /** Sólo los atributos que ha movido el entrenamiento. */
   attributes?: Partial<Record<AttributeKey, number>>;
+  /** El ánimo, si ha cambiado. */
+  morale?: number;
 }
 
 /** La columna de cada atributo, para poder escribir sólo lo que cambia. */
@@ -142,6 +144,9 @@ export class FitnessRepository {
           injuryDaysLeft: update.injuryDaysLeft,
           injuryName: update.injuryName
         };
+        if (update.morale !== undefined) {
+          values.morale = update.morale;
+        }
 
         for (const [key, value] of Object.entries(update.attributes ?? {})) {
           values[ATTRIBUTE_COLUMNS[key as AttributeKey]] = value as number;

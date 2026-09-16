@@ -25,6 +25,8 @@ export interface DatasetCompetition {
   format: string;
   playoffTeams: number;
   playoffSeriesLength: number;
+  /** Ausente en datasets de antes del formato NBA. */
+  nbaFormat?: boolean;
 }
 
 export interface DatasetTeam {
