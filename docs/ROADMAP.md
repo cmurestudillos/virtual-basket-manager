@@ -304,17 +304,17 @@ o de otra deja lo mismo en la partida.
 
 ## Bloque 6 — Alrededor
 
-|     | Pieza                   | Detalle                                                 |     |
-| --- | ----------------------- | ------------------------------------------------------- | --- |
-| ✅  | Modos de juego          | Mánager (un club) y carrera (te fichan otros)           | L   |
-| ⬜  | Dimitir y año sabático  | Irse por su pie, escuchar ofertas con equipo y esperar  | M   |
-| ✅  | Dificultad              | Incluye poder jugar sin despido                         | S   |
-| ✅  | Historial y palmarés    | Temporadas, títulos, récords                            | M   |
-| ✅  | Prensa y notificaciones | Bandeja de avisos, ruedas de prensa                     | M   |
-| ⬜  | Editor de datos         | Editar equipos y plantillas dentro del juego            | M   |
-| ⬜  | Ajustes                 | Resolución, reglamento, idioma                          | S   |
-| ⬜  | Firma del instalador    | El instalador ya se genera con icono; falta certificado | S   |
-| ⬜  | Actualizaciones         | Publicación y auto-update, si llega a distribuirse      | M   |
+|     | Pieza                   | Detalle                                                |     |
+| --- | ----------------------- | ------------------------------------------------------ | --- |
+| ✅  | Modos de juego          | Mánager (un club) y carrera (te fichan otros)          | L   |
+| ✅  | Dimitir y año sabático  | Irse por su pie, escuchar ofertas con equipo y esperar | M   |
+| ✅  | Dificultad              | Incluye poder jugar sin despido                        | S   |
+| ✅  | Historial y palmarés    | Temporadas, títulos, récords                           | M   |
+| ✅  | Prensa y notificaciones | Bandeja de avisos, ruedas de prensa                    | M   |
+| ✅  | Editor de datos         | Editar equipos y plantillas dentro del juego           | M   |
+| ✅  | Ajustes                 | Resolución y reglamento; el idioma, al final           | S   |
+| ✅  | Firma del instalador    | Lista para firmar; falta comprar el certificado        | S   |
+| ✅  | Actualizaciones         | Auto-update contra GitHub Releases, sin publicar aún   | M   |
 
 ### Modos de juego y dificultad
 
@@ -344,30 +344,28 @@ del modo. Salen sólo de las ligas que se están jugando —las del país— por
 razón de fondo: son las únicas que tienen calendario ese año, así que fichar por
 un club griego en enero te dejaría en una liga que esa temporada no existe.
 
-**Lo que esta fase deja fuera, y queda pendiente:** no se puede **dimitir**, ni
-escuchar ofertas teniendo equipo, ni **esperar en el paro** — con el banquillo
-libre eliges entre lo que hay.
+**Dimitir y esperar** llegaron después, y las dos cosas iban juntas por una
+razón técnica: esperar en el paro exige que el mundo se juegue sin nadie en el
+banquillo. No se quitó el equipo dirigido de la partida —medio juego lo lee—
+sino que el reloj aprendió a avanzar **como espectador**: nadie para en ningún
+partido, la IA los juega todos, llega el verano y arranca la temporada siguiente.
+El reloj normal sigue parado sin banquillo; sólo la espera lo mueve.
 
-Las dos cosas van juntas y son la misma pieza pendiente. Dimitir sólo tiene
-sentido si los clubes valoran cambiar de entrenador teniendo uno, que hoy no
-hacen: las ofertas salen de que estés libre. Y esperar exige algo que la partida
-todavía no sabe hacer, **simular el mundo sin usuario**: hoy el reloj se para en
-seco cuando no hay equipo que dirigir, porque avanzar el día pasa por el partido
-del club del usuario. Rechazar todas las ofertas dejaría la partida sin salida,
-y por eso ahora mismo no se puede.
+Los banquillos se abren **por meses**. Cada club tira una vez por ventana, y el
+que va mal tira con más probabilidad que el líder: esperar tiene sentido porque
+el mes que viene se abren puertas distintas, y mirar dos veces el mismo mes da
+lo mismo. Estando libre siempre llama alguien —el club que más se parece a lo
+que vales—, así que esperar es para buscar algo mejor, no la única salida.
 
-Con esas dos, la carrera pasa de «te echan y recolocas» a poder construirla:
-irse a tiempo de un club que se hunde, esperar a que se abra el banquillo bueno
-en junio, o aguantar un año fuera si nadie de tu nivel llama.
+Teniendo equipo, las ofertas sólo llegan **con la temporada cerrada** y sólo de
+clubes claramente más grandes: nadie deja su banquillo en enero por uno parecido.
+Firmar ahí cierra la etapa como marcha, no como despido, igual que dimitir, que
+se hace desde la hoja de servicios en dos pasos. Mientras no hay banquillo, la
+bandeja deja de contar las lesiones y fichajes del club que dejaste.
 
-La **dificultad** incluye poder jugar **sin despido**, y no es sólo una
-comodidad: el consejo es la mecánica más punitiva del juego y quien quiera
-construir un club a diez años vista tiene que poder desactivarla. Se elige al
-crear la partida y se guarda con ella. El consejo no cambia —sigue poniendo
-objetivos y sigue perdiendo la paciencia, porque de la confianza salen cosas que
-no son el despido—: lo único que pasa es que a cero nadie te echa. Fue un ajuste
-de la partida y no del dominio, como estaba previsto: `BoardService` decide en un
-solo sitio si estás destituido, y ese sitio es el único que hubo que tocar.
+Queda una limitación, la misma de las ofertas: todo pasa dentro del país, porque
+sólo sus ligas tienen calendario. Irse al extranjero depende de **escoger ligas
+jugables**, en el Bloque 4.
 
 ### Prensa y notificaciones
 
@@ -411,6 +409,94 @@ Hay una columna `players.morale` que **no hace nada**: se inicializa a 70 y
 ningún código la mueve ni el motor la lee. Se dejó sin tocar a propósito — mover
 un número que no cambia nada sería engañar al jugador. Darle efecto en el motor
 sería una pieza aparte.
+
+### Editor del mundo
+
+Edita el **mundo base**: los clubes y jugadores con los que nacen las partidas
+nuevas. Las empezadas no cambian —se sembraron al crearse y ya son suyas—, y por
+eso el editor vive en el menú principal y no dentro de la partida, y lo dice
+arriba.
+
+El dataset no se toca nunca. Una vez instalado el juego está en una carpeta de
+sólo lectura, así que las ediciones se guardan **como parches** en la base de la
+aplicación —sólo los campos cambiados— y se aplican encima del original al crear
+cada partida, y también al listar los clubes en «Nueva partida», para que lo que
+se elige sea lo que se juega. Eso da tres cosas gratis: se puede restaurar un
+club o el mundo entero, poner a mano el valor original deja de contar como
+edición, y una versión nueva del juego con el dataset corregido no pisa lo que
+el usuario editó.
+
+Se editan los datos de cada club —nombre, ciudad, pabellón, aforo, reputación y
+presupuesto—, los de cada jugador —nombre, nacionalidad, posición, altura,
+potencial y los veintiún atributos— y las plantillas, moviendo jugadores de un
+club a otro. Todo pasa por los mismos límites con los que se juega: ninguna
+plantilla por debajo de diez ni por encima de catorce, y ningún atributo fuera
+de la escala de 1 a 99.
+
+### Ajustes
+
+**Resolución**, que se aplica al momento, y **reglamento**, que decide con qué
+reglas nacen las partidas nuevas: «como en la realidad» —FIBA en Europa,
+Sudamérica y Oceanía; NBA en las dos ligas de Estados Unidos—, todo FIBA o todo
+NBA. Sólo para las nuevas, porque cambiar la duración de los cuartos a mitad de
+temporada mezclaría estadísticas de dos reglamentos. Cada ajuste valida su
+valor en el proceso principal: una resolución o un reglamento inventados no
+llegan a la ventana ni a la partida.
+
+El **idioma** no está: la aplicación es sólo en español, y la traducción al
+inglés va la última del proyecto. Es una L —i18n de cientos de textos, más la
+narración, la prensa y los avisos que genera el juego—, no la S de esta tabla.
+
+### Avatares
+
+Cada persona del juego tiene cara: los jugadores con **ToonHead**, el entrenador
+con **Personas** y el cuerpo técnico con **Avataaars**, de DiceBear. Se generan
+**en local** a partir del identificador de cada uno —sin peticiones a ningún
+servidor, así que el juego funciona sin conexión y un jugador tiene siempre la
+misma cara—.
+
+Jugadores y técnicos llevan nombres masculinos y los estilos sortean pelo y
+rasgos sin saberlo, así que se acotan: sin melenas, ni vestidos, ni gestos fuera
+de tono para una ficha de club. Al entrenador no se le impone nada de eso, porque
+es el propio usuario y su cara no tiene por qué suponer quién es. ToonHead y
+Personas son CC BY 4.0 y piden atribución: los créditos están en Ajustes y salen
+de los metadatos de los propios estilos, para que no se queden desfasados.
+
+### Firma y actualizaciones
+
+Las dos piezas quedan **preparadas, no estrenadas**, y es a propósito: firmar de
+verdad exige comprar un certificado, y publicar es decidir que el juego sale.
+Los detalles operativos están en [DISTRIBUCION.md](DISTRIBUCION.md).
+
+La **firma** se configura en `electron-builder.yml` —SHA-256 con sello de tiempo—
+pero el certificado no está en el repositorio: se lee de las variables de entorno
+`CSC_LINK` y `CSC_KEY_PASSWORD`. Sin ellas `pnpm build:win` compila sin firmar,
+como antes; `pnpm release:win` exige firma y falla si falta, para que una versión
+que se va a distribuir no salga sin firmar por olvido.
+
+Las **actualizaciones** van contra las releases de GitHub con electron-updater.
+La aplicación instalada comprueba al arrancar y desde Ajustes, descarga sola y
+verifica el hash, pero **no instala sola**: avisa en Ajustes y en el menú, y se
+instala al pulsar «Reiniciar e instalar» o al cerrar, porque reiniciar sin avisar
+le haría perder a alguien el partido que estuviera jugando.
+
+Se verificó de punta a punta **en local, sin publicar nada**: un instalador 0.2.0
+servido por HTTP, y la aplicación 0.1.0 lo encontró, lo descargó y lo dejó listo.
+Esa prueba destapó tres cosas que se corrigieron:
+
+- **El nombre del instalador.** `latest.yml` lo nombra con guiones y el fichero
+  salía con espacios; GitHub cambia los espacios por puntos al subirlo, así que
+  la aplicación habría buscado un fichero inexistente y ninguna actualización se
+  habría descargado. Ahora se llama `Triple-Manager-Setup-<versión>.exe`.
+- **Una descarga fallida quedaba como promesa rechazada sin atender**, y la
+  comprobación del arranque y la del botón podían pisarse.
+- **Instalar al cerrar, en pruebas.** Con el servidor local la opción estaba
+  activa y, al cerrar la ventana de pruebas, ejecutó en silencio el instalador y
+  dejó la 0.2.0 instalada en la máquina (se desinstaló). En modo de prueba local
+  está ahora desactivada.
+
+Para que las releases sirvan de fuente, el repositorio tiene que ser público: la
+aplicación instalada no lleva credenciales.
 
 ### Historial y palmarés
 

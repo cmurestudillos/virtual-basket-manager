@@ -24,6 +24,7 @@ import {
 import type { SaveDatabase } from '../../database/save-database';
 import type { GameRow, InboxMessageRow, PressConferenceRow } from '../../database/schema/save';
 import { BoardService } from '../club/board.service';
+import { CareerRepository } from '../career/career.repository';
 import { ClubRepository } from '../club/club.repository';
 import { InboxRepository } from './inbox.repository';
 
@@ -114,14 +115,32 @@ export class InboxService {
       return;
     }
 
+    // Sin banquillo, la plantilla que se compara es la del club que ya no
+    // diriges: sus lesiones y fichajes no son asunto tuyo. El despido y los
+    // campeones sí siguen siendo noticia.
+    const offTheBench = current.dismissed || new CareerRepository(db).isUnemployed();
+
     const drafts: InboxDraft[] = diffSnapshots(
       saved,
       current,
       this.names(repository, saved, current)
     );
 
+    if (offTheBench) {
+      const clubNews = new Set<InboxCategory>(['injury', 'recovery', 'squad', 'contract']);
+      for (let index = drafts.length - 1; index >= 0; index -= 1) {
+        if (clubNews.has(drafts[index]!.category)) {
+          drafts.splice(index, 1);
+        }
+      }
+    }
+
     // Temporada nueva: los contratos que acaban este año, avisados a tiempo.
-    if (current.seasonNumber !== saved.seasonNumber && current.teamId === saved.teamId) {
+    if (
+      !offTheBench &&
+      current.seasonNumber !== saved.seasonNumber &&
+      current.teamId === saved.teamId
+    ) {
       drafts.push(...this.expiringContracts(repository, current, state.currentDate));
     }
 
@@ -131,6 +150,7 @@ export class InboxService {
 
     // Partido nuevo del mismo club: quizá toca rueda de prensa.
     if (
+      !offTheBench &&
       current.teamId === saved.teamId &&
       current.lastGameId &&
       current.lastGameId !== saved.lastGameId

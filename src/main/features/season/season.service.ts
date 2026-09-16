@@ -61,6 +61,7 @@ import { computeStandings, type PlayedGame, type StandingRow } from '@shared/dom
 import type { SaveDatabase } from '../../database/save-database';
 import type { CompetitionRow, GameRow, NewGameRow, SeasonRow } from '../../database/schema/save';
 import { BoardService } from '../club/board.service';
+import { CareerRepository } from '../career/career.repository';
 import { ClubService } from '../club/club.service';
 import { FitnessService } from '../fitness/fitness.service';
 import { MarketService } from '../market/market.service';
@@ -77,6 +78,11 @@ export class NoManagedTeamError extends Error {
     super('La partida no tiene equipo asignado');
     this.name = 'NoManagedTeamError';
   }
+}
+
+/** Cómo avanza el reloj: con entrenador, o como espectador sin banquillo. */
+export interface AdvanceOptions {
+  spectator?: boolean;
 }
 
 export class DismissedError extends Error {
@@ -258,15 +264,20 @@ export class SeasonService {
    *
    * El día no pasa mientras quede pendiente un partido del equipo del usuario:
    * ese lo juega él, cuarto a cuarto. Los demás se resuelven aquí.
+   *
+   * Como **espectador** el día pasa sin entrenador: nadie para en ningún
+   * partido, todos los juega la IA, y ni el despido ni estar en el paro detienen
+   * el reloj. Es lo que usa la carrera para esperar un banquillo mejor: el mundo
+   * sigue jugándose aunque no dirijas a nadie.
    */
-  advanceDay(): AdvanceResult {
+  advanceDay(options: AdvanceOptions = {}): AdvanceResult {
     const db = this.resolveDb();
     const repository = new SeasonRepository(db);
     const season = this.ensureStage(repository);
     const state = repository.gameState();
-    const managedTeamId = this.requireManagedTeam(repository);
+    const managedTeamId = options.spectator ? null : this.requireManagedTeam(repository);
 
-    if (this.boardService.isDismissed()) {
+    if (!options.spectator && this.isOffTheBench()) {
       return { status: 'dismissed', date: state.currentDate.getTime() };
     }
 
@@ -278,9 +289,11 @@ export class SeasonService {
       this.activeSeasonIds(repository, season),
       state.currentDate
     );
-    const userGame = pending.find(
-      (game) => game.homeTeamId === managedTeamId || game.awayTeamId === managedTeamId
-    );
+    const userGame = managedTeamId
+      ? pending.find(
+          (game) => game.homeTeamId === managedTeamId || game.awayTeamId === managedTeamId
+        )
+      : undefined;
     if (userGame) {
       return { status: 'userGame', gameId: userGame.id, date: state.currentDate.getTime() };
     }
@@ -511,11 +524,12 @@ export class SeasonService {
    * número de temporada: el calendario nuevo lo genera {@link ensureSeason} la
    * primera vez que alguien pregunte, igual que el de la primera temporada.
    */
-  startNextSeason(): SeasonSummary {
+  startNextSeason(options: AdvanceOptions = {}): SeasonSummary {
     const repository = new SeasonRepository(this.resolveDb());
     // Lo primero, porque es lo más definitivo: a un destituido no le toca
-    // decidir si empieza otra temporada.
-    if (this.boardService.isDismissed()) {
+    // decidir si empieza otra temporada. Al espectador sí: el verano llega
+    // igual para quien está en el paro.
+    if (!options.spectator && this.isOffTheBench()) {
       throw new DismissedError();
     }
 
@@ -541,6 +555,18 @@ export class SeasonService {
   }
 
   // ------------------------------------------------------------------------
+
+  /**
+   * Sin banquillo: destituido, o en carrera sin etapa en curso (tras dimitir o
+   * mientras se espera). En los dos casos el reloj normal no avanza; sólo el
+   * de espectador.
+   */
+  private isOffTheBench(): boolean {
+    if (this.boardService.isDismissed()) {
+      return true;
+    }
+    return new CareerRepository(this.resolveDb()).isUnemployed();
+  }
 
   private requireManagedTeam(repository: SeasonRepository): string {
     const managedTeamId = repository.gameState().managedTeamId;

@@ -118,6 +118,37 @@ export function offerCountFor(reputation: number): number {
   return 1;
 }
 
+/**
+ * Probabilidad de que un club busque entrenador en una ventana del mercado.
+ *
+ * Los banquillos no se abren a la vez ni al azar puro: el que va mal cambia de
+ * entrenador mucho antes que el que va bien. Por eso esperar en el paro tiene
+ * sentido — cada mes se abren puertas distintas —, y por eso lo que llega no
+ * suele ser el líder, sino el club que necesita un cambio.
+ */
+export function vacancyChance(position: number | null, teams: number): number {
+  if (position === null || teams < 2) {
+    return BASE_VACANCY_CHANCE;
+  }
+  // 0 el primero, 1 el último.
+  const trouble = (position - 1) / (teams - 1);
+  return BASE_VACANCY_CHANCE + trouble * 0.3;
+}
+
+export const BASE_VACANCY_CHANCE = 0.15;
+
+/**
+ * Teniendo equipo, ¿te tienta este club?
+ *
+ * Sólo si es claramente más grande: nadie deja su banquillo para irse a uno
+ * igual. El umbral es el que separa un cambio de un ascenso en la carrera.
+ */
+export const EMPLOYED_OFFER_STEP = 8;
+
+export function tempts(offeredReputation: number, currentReputation: number): boolean {
+  return offeredReputation >= currentReputation + EMPLOYED_OFFER_STEP;
+}
+
 /** Cómo se lee una reputación de entrenador en pantalla. */
 export function managerReputationLabel(reputation: number): string {
   if (reputation >= 85) return 'Entrenador de época';

@@ -22,13 +22,15 @@ export class CareerRepository {
     managerName: string;
     seasonNumber: number;
     careerMode: boolean;
+    currentDate: Date;
   } {
     const state = this.db.select().from(gameStateTable).get();
     return {
       managedTeamId: state?.managedTeamId ?? null,
       managerName: state?.managerName ?? 'Entrenador',
       seasonNumber: state?.seasonNumber ?? 1,
-      careerMode: state?.careerMode ?? false
+      careerMode: state?.careerMode ?? false,
+      currentDate: state?.currentDate ?? new Date()
     };
   }
 
@@ -43,6 +45,20 @@ export class CareerRepository {
       .from(careerSpellsTable)
       .orderBy(asc(careerSpellsTable.startSeason))
       .all();
+  }
+
+  /**
+   * En carrera y sin etapa abierta: sin banquillo.
+   *
+   * Exige modo carrera **y** que haya etapas: una partida de mánager siempre
+   * tiene la suya abierta, pero una creada antes de existir las etapas no tiene
+   * ninguna, y no por eso su entrenador está en el paro.
+   */
+  isUnemployed(): boolean {
+    if (!this.gameState().careerMode) {
+      return false;
+    }
+    return this.spells().length > 0 && this.openSpell() === null;
   }
 
   /** La etapa en curso, si la hay: es la que dice si estás colocado. */
@@ -120,10 +136,10 @@ export class CareerRepository {
   }
 
   /** La temporada de una competición en un curso, para leer su clasificación. */
-  seasonOf(competitionId: string, seasonNumber: number): { id: string } | null {
+  seasonOf(competitionId: string, seasonNumber: number): { id: string; stage: string } | null {
     return (
       this.db
-        .select({ id: seasonsTable.id })
+        .select({ id: seasonsTable.id, stage: seasonsTable.stage })
         .from(seasonsTable)
         .where(
           and(

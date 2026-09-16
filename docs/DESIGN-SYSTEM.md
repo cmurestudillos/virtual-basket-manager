@@ -90,6 +90,14 @@ Fuera del kit quedan dos cosas a propósito:
   filas con color— y envolverla en un componente obligaría a un `slot` por
   columna. La clase da lo que sí es común: cabecera pegada, altura de fila y
   cifras alineadas a la derecha con `numeric`.
+
+  **`numeric` va en la cabecera y en las celdas de la columna, las dos.** Hasta
+  el 2026-09-16 no bastaba: la regla de `thead th` pesaba más que `.numeric` y
+  dejaba toda cabecera numérica a la izquierda, así que en todas las tablas los
+  títulos quedaban descuadrados respecto a sus cifras. Ahora
+  `.data-table th.numeric` tiene la especificidad que hace falta, y el arnés de
+  auditoría que lo destapó comparó columna a columna 23 tablas del juego.
+
 - **`SeriesCard`**, en la feature de competición. Se comparte entre el cuadro
   nacional y el europeo, pero sabe de eliminatorias: eso es dominio del juego,
   no del kit.

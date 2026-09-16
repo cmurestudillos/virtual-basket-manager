@@ -1,18 +1,32 @@
 import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join, resolve } from 'node:path';
+import { eq } from 'drizzle-orm';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import {
   closeSaveDatabase,
   openSaveDatabase,
   type SaveDatabase
 } from '../../../database/save-database';
-import { boardTable, careerSpellsTable, gameStateTable } from '../../../database/schema/save';
+import {
+  boardTable,
+  careerSpellsTable,
+  gamesTable,
+  gameStateTable,
+  seasonsTable,
+  teamsTable
+} from '../../../database/schema/save';
 import { loadDataset } from '../../saves/dataset';
 import { seedSave } from '../../saves/save-seeder';
 import { BoardService } from '../../club/board.service';
 import { SeasonService } from '../../season/season.service';
-import { CareerService, NotInCareerModeError, OfferNotAvailableError } from '../career.service';
+import {
+  CareerService,
+  NotEmployedError,
+  NotInCareerModeError,
+  NotUnemployedError,
+  OfferNotAvailableError
+} from '../career.service';
 
 /**
  * La carrera del entrenador, con despido y fichaje de verdad.
@@ -163,10 +177,13 @@ describe('modo carrera', () => {
     expect(() => career.accept(ajeno)).toThrow(OfferNotAvailableError);
   });
 
-  it('teniendo equipo no se puede firmar por otro: esto no es dimitir', () => {
-    const otro = 'liga-nacional-4';
+  it('teniendo equipo, a mitad de temporada nadie te ofrece nada', () => {
+    const status = career.getStatus();
+    expect(status.offers).toHaveLength(0);
+    expect(status.canResign).toBe(true);
+    expect(status.canWait).toBe(false);
 
-    expect(() => career.accept(otro)).toThrow(NotInCareerModeError);
+    expect(() => career.accept('liga-nacional-4')).toThrow(OfferNotAvailableError);
     expect(managedTeamId()).toBe(MANAGED_TEAM);
   });
 
@@ -177,5 +194,117 @@ describe('modo carrera', () => {
     const filas = db.select().from(careerSpellsTable).all();
     expect(filas).toHaveLength(2);
     expect(filas.filter((row) => row.endSeason === null)).toHaveLength(1);
+  });
+});
+
+describe('dimitir y esperar', () => {
+  beforeEach(() => openSave(true));
+
+  it('dimitir cierra la etapa por voluntad propia y deja sin banquillo', () => {
+    const status = career.resign();
+
+    expect(status.unemployed).toBe(true);
+    expect(status.canWait).toBe(true);
+    expect(status.canResign).toBe(false);
+    expect(status.spells[0]!.endReason).toBe('left');
+    // Siempre llama alguien: esperar es para buscar algo mejor, no la única salida.
+    expect(status.offers.length).toBeGreaterThan(0);
+  });
+
+  it('sin banquillo, el reloj normal no avanza', () => {
+    career.resign();
+
+    expect(new SeasonService(() => db).advanceDay().status).toBe('dismissed');
+  });
+
+  it('no se dimite dos veces, ni se espera teniendo equipo', () => {
+    expect(() => career.wait()).toThrow(NotUnemployedError);
+    career.resign();
+    expect(() => career.resign()).toThrow(NotEmployedError);
+  });
+
+  it(
+    'esperar deja pasar el mes con el mundo jugándose, y trae ofertas',
+    { timeout: 180_000 },
+    () => {
+      career.resign();
+      const antes = db.select().from(gameStateTable).get()!.currentDate;
+      const jugadosAntes = db
+        .select()
+        .from(gamesTable)
+        .all()
+        .filter((game) => game.homeScore !== null).length;
+
+      const status = career.wait();
+
+      const despues = db.select().from(gameStateTable).get()!.currentDate;
+      expect(despues.getUTCMonth()).not.toBe(antes.getUTCMonth());
+      // El mundo no se ha parado: se han jugado partidos, también los del club
+      // que dejaste, que ahora lleva la IA.
+      const jugados = db
+        .select()
+        .from(gamesTable)
+        .all()
+        .filter((game) => game.homeScore !== null);
+      expect(jugados.length).toBeGreaterThan(jugadosAntes);
+      expect(
+        jugados.some((game) => game.homeTeamId === MANAGED_TEAM || game.awayTeamId === MANAGED_TEAM)
+      ).toBe(true);
+
+      expect(status.unemployed).toBe(true);
+      expect(status.offers.length).toBeGreaterThan(0);
+    }
+  );
+
+  it('mirar dos veces el mismo mes da las mismas ofertas', () => {
+    career.resign();
+    const una = career.getStatus().offers.map((offer) => offer.teamId);
+    const otra = career.getStatus().offers.map((offer) => offer.teamId);
+
+    expect(otra).toEqual(una);
+  });
+});
+
+describe('modo mánager: ni dimitir ni esperar', () => {
+  beforeEach(() => openSave(false));
+
+  it('no se dimite ni se espera', () => {
+    expect(() => career.resign()).toThrow(NotInCareerModeError);
+    expect(() => career.wait()).toThrow(NotInCareerModeError);
+  });
+});
+
+describe('ofertas teniendo equipo', () => {
+  beforeEach(() => openSave(true));
+
+  /** Temporada cerrada y un club pequeño: el escenario en que llaman los grandes. */
+  function summerAtASmallClub(): void {
+    db.update(teamsTable).set({ reputation: 5 }).where(eq(teamsTable.id, MANAGED_TEAM)).run();
+    db.update(seasonsTable).set({ stage: 'finished' }).run();
+  }
+
+  it('al cerrar la temporada, sólo llaman clubes claramente más grandes', () => {
+    summerAtASmallClub();
+
+    const status = career.getStatus();
+
+    expect(status.offersWhileEmployed).toBe(true);
+    expect(status.offers.length).toBeGreaterThan(0);
+    for (const offer of status.offers) {
+      expect(offer.reputation).toBeGreaterThan(5);
+      expect(offer.teamId).not.toBe(MANAGED_TEAM);
+    }
+  });
+
+  it('firmar con uno es dejar el tuyo: la etapa se cierra como marcha', () => {
+    summerAtASmallClub();
+    const oferta = career.getStatus().offers[0]!;
+
+    const status = career.accept(oferta.teamId);
+
+    expect(managedTeamId()).toBe(oferta.teamId);
+    expect(status.spells).toHaveLength(2);
+    expect(status.spells[0]!.endReason).toBe('left');
+    expect(status.spells.find((spell) => spell.endSeason === null)?.teamId).toBe(oferta.teamId);
   });
 });

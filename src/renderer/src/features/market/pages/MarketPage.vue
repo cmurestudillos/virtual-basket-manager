@@ -9,7 +9,7 @@ import type {
 import { MAX_CONTRACT_YEARS, MIN_CONTRACT_YEARS } from '@shared/domain/market';
 import { POSITIONS, type Position } from '@shared/domain/positions';
 import { formatMoney } from '@renderer/shared/format';
-import { AppButton, AppTabs, AppPageHeader } from '@renderer/shared/ui';
+import { AppAvatar, AppButton, AppPageHeader, AppTabs } from '@renderer/shared/ui';
 
 type Tab = 'search' | 'contracts' | 'loans';
 
@@ -345,8 +345,9 @@ async function release(entry: ContractEntry): Promise<void> {
               <td>
                 <RouterLink
                   :to="{ name: 'player', params: { playerId: player.playerId } }"
-                  class="hover:text-ball-400"
+                  class="inline-flex items-center gap-2 hover:text-ball-400"
                 >
+                  <AppAvatar kind="player" :seed="player.playerId" />
                   {{ player.playerName }}
                 </RouterLink>
               </td>
@@ -404,7 +405,9 @@ async function release(entry: ContractEntry): Promise<void> {
         <tbody>
           <tr v-for="entry in contracts" :key="entry.playerId">
             <td>
-              {{ entry.playerName }}
+              <span class="inline-flex items-center gap-2">
+                <AppAvatar kind="player" :seed="entry.playerId" />{{ entry.playerName }}
+              </span>
               <span v-if="entry.isHomegrown" class="ml-1 text-xs text-good-400">form.</span>
               <span v-if="entry.isOnLoan" class="ml-1 text-xs text-court-600">cedido aquí</span>
             </td>

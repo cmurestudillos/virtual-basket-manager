@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref } from 'vue';
 import {
+  AppAvatar,
   AppBadge,
   AppButton,
   AppEmpty,
@@ -46,6 +47,23 @@ const texto = ref('Carlos');
         <ul class="flex flex-wrap gap-4 text-sm">
           <li v-for="tone in TONES" :key="tone" :class="TONE_TEXT[tone]">{{ tone }}</li>
         </ul>
+      </div>
+    </AppPanel>
+
+    <AppPanel title="Avatares" hint="generados en local a partir del id">
+      <div class="flex flex-wrap items-end gap-6 text-sm text-court-300">
+        <span class="flex flex-col items-center gap-2">
+          <AppAvatar kind="player" seed="jugador-de-muestra" :size="56" />Jugador
+        </span>
+        <span class="flex flex-col items-center gap-2">
+          <AppAvatar kind="coach" seed="Entrenador de muestra" :size="56" />Entrenador
+        </span>
+        <span class="flex flex-col items-center gap-2">
+          <AppAvatar kind="staff" seed="tecnico-de-muestra" :size="56" />Cuerpo técnico
+        </span>
+        <span class="flex items-center gap-2">
+          <AppAvatar kind="player" seed="jugador-de-muestra" />En una fila, a 28 px
+        </span>
       </div>
     </AppPanel>
 

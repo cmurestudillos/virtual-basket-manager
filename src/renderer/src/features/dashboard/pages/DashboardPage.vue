@@ -108,6 +108,34 @@ async function acceptOffer(teamId: string): Promise<void> {
   }
 }
 
+/**
+ * Un mes en el paro. El reloj corre sin banquillo —la IA juega todo— y a la
+ * vuelta hay otros clubes con el suyo abierto.
+ */
+async function waitAMonth(): Promise<void> {
+  if (signing.value) {
+    return;
+  }
+  signing.value = true;
+  try {
+    career.value = await window.api.career.wait();
+    await gameState.refresh();
+    await seasonStore.refresh();
+    await reload();
+  } finally {
+    signing.value = false;
+  }
+}
+
+/** Ofertas teniendo equipo: sólo al cerrar la temporada, y sólo si alguien tienta. */
+const employedOffers = computed(
+  () =>
+    career.value?.careerMode === true &&
+    !career.value.unemployed &&
+    career.value.offersWhileEmployed &&
+    career.value.offers.length > 0
+);
+
 async function advance(mode: 'day' | 'nextGame'): Promise<void> {
   const gameId = await seasonStore.advance(mode);
   if (gameId) {
@@ -187,13 +215,17 @@ function fixtureRound(fixture: FixtureEntry): string {
       </AppStat>
     </div>
 
-    <!-- Sin equipo: lo primero es elegir banquillo. -->
+    <!-- Sin equipo, lo primero es elegir banquillo; con él, quién te busca en verano. -->
     <CareerOffers
-      v-if="unemployed && career"
+      v-if="career && (unemployed || employedOffers)"
       :offers="career.offers"
       :reputation-label="career.reputationLabel"
       :busy="signing"
+      :employed="!unemployed"
+      :can-wait="career.canWait"
+      :current-date="career.currentDate"
       @accept="acceptOffer"
+      @wait="waitAMonth"
     />
 
     <!-- El consejo -->

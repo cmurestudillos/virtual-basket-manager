@@ -50,12 +50,27 @@ export interface CareerStatus {
   /** Temporadas dirigidas y títulos, para la cabecera. */
   seasonsManaged: number;
   titles: number;
-  /** Clubes interesados. Sólo cuando estás libre. */
+  /**
+   * Clubes interesados. Estando libre, los que tienen el banquillo abierto este
+   * mes; con equipo, sólo al acabar la temporada y sólo los que tientan.
+   */
   offers: CareerOffer[];
+  /** Las ofertas llegan teniendo equipo: aceptar una es dejar el tuyo. */
+  offersWhileEmployed: boolean;
+  /** Se puede dimitir: carrera, con banquillo. */
+  canResign: boolean;
+  /** Se puede esperar a otra ventana: carrera, sin banquillo. */
+  canWait: boolean;
+  /** Fecha del juego, para saber cuánto tiempo se lleva esperando. */
+  currentDate: number;
 }
 
 export interface CareerApi {
   getStatus: () => Promise<CareerStatus>;
   /** Acepta la oferta de un club y pasa a dirigirlo desde ya. */
   accept: (teamId: string) => Promise<CareerStatus>;
+  /** Deja el banquillo por voluntad propia. */
+  resign: () => Promise<CareerStatus>;
+  /** Deja pasar un mes sin banquillo, con el mundo jugándose, y trae ofertas nuevas. */
+  wait: () => Promise<CareerStatus>;
 }

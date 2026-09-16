@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { AppAvatar } from '@renderer/shared/ui';
 import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
@@ -53,11 +54,14 @@ watch(
     <header
       class="col-span-2 flex items-center justify-between border-b border-court-700 bg-court-900 px-5"
     >
-      <div class="flex items-baseline gap-3">
+      <div class="flex items-center gap-3">
         <span class="text-lg font-semibold text-ball-500">{{
           store.state?.teamName ?? 'Sin equipo'
         }}</span>
-        <span class="text-sm text-court-300">{{ store.state?.managerName }}</span>
+        <span v-if="store.state" class="inline-flex items-center gap-2 text-sm text-court-300">
+          <AppAvatar kind="coach" :seed="store.state.managerName" :size="24" />
+          {{ store.state.managerName }}
+        </span>
       </div>
       <div class="flex items-center gap-4 text-sm text-court-300">
         <span v-if="store.state">Temporada {{ store.state.seasonNumber }}</span>
@@ -85,8 +89,14 @@ watch(
       </RouterLink>
 
       <RouterLink
-        :to="{ name: 'main-menu' }"
+        :to="{ name: 'settings' }"
         class="mt-auto rounded px-3 py-2 text-sm text-court-300 hover:bg-court-800"
+      >
+        Ajustes
+      </RouterLink>
+      <RouterLink
+        :to="{ name: 'main-menu' }"
+        class="rounded px-3 py-2 text-sm text-court-300 hover:bg-court-800"
       >
         Salir al menú
       </RouterLink>

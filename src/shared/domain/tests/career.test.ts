@@ -8,6 +8,8 @@ import {
   managerReputationLabel,
   offerCountFor,
   overPerformance,
+  tempts,
+  vacancyChance,
   type CareerSeasonRecord
 } from '../career';
 
@@ -144,6 +146,30 @@ describe('quién te quiere', () => {
     expect(offerCountFor(99)).toBeLessThanOrEqual(4);
     // Y nunca cero: quedarse sin ninguna dejaría la partida sin salida.
     expect(offerCountFor(1)).toBeGreaterThan(0);
+  });
+});
+
+describe('banquillos que se abren', () => {
+  it('el que va mal busca entrenador antes que el que va bien', () => {
+    expect(vacancyChance(18, 18)).toBeGreaterThan(vacancyChance(1, 18));
+    expect(vacancyChance(9, 18)).toBeGreaterThan(vacancyChance(2, 18));
+  });
+
+  it('ni el líder está a salvo ni el colista cambia seguro', () => {
+    expect(vacancyChance(1, 18)).toBeGreaterThan(0);
+    expect(vacancyChance(18, 18)).toBeLessThan(1);
+  });
+
+  it('sin clasificación todavía, todos por igual', () => {
+    expect(vacancyChance(null, 18)).toBe(vacancyChance(null, 10));
+  });
+});
+
+describe('ofertas teniendo equipo', () => {
+  it('sólo tienta un club claramente más grande', () => {
+    expect(tempts(70, 50)).toBe(true);
+    expect(tempts(53, 50)).toBe(false);
+    expect(tempts(40, 50)).toBe(false);
   });
 });
 

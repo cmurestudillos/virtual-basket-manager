@@ -28,6 +28,20 @@ export const router = createRouter({
       component: () => import('@renderer/features/app-shell/pages/StyleGuidePage.vue')
     },
     {
+      // Fuera del layout de partida: se entra desde el menú y desde la propia
+      // partida, y vuelve a donde se estaba.
+      path: '/ajustes',
+      name: 'settings',
+      component: () => import('@renderer/features/settings/pages/SettingsPage.vue')
+    },
+    {
+      // Fuera del layout de partida: edita el mundo de las partidas nuevas, no
+      // la que haya cargada.
+      path: '/editor',
+      name: 'world-editor',
+      component: () => import('@renderer/features/world-editor/pages/WorldEditorPage.vue')
+    },
+    {
       path: '/new-game',
       name: 'new-game',
       component: () => import('@renderer/features/saves/pages/NewGamePage.vue')

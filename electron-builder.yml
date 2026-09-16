@@ -24,6 +24,32 @@ win:
     - target: nsis
       arch:
         - x64
+  # Firma de código. El certificado NO va en el repositorio ni en este fichero:
+  # electron-builder lo lee de las variables de entorno CSC_LINK (ruta o base64
+  # del .pfx) y CSC_KEY_PASSWORD. Sin ellas compila igual, sin firmar, que es lo
+  # que hace `pnpm build:win`; `pnpm release:win` exige firma y falla si falta.
+  # Ver docs/DISTRIBUCION.md.
+  signtoolOptions:
+    signingHashAlgorithms:
+      - sha256
+    rfc3161TimeStampServer: http://timestamp.digicert.com
+    # publisherName: tiene que ser el CN exacto del certificado. Se deja sin poner
+    # hasta tenerlo: con él puesto, el auto-update rechaza toda actualización
+    # que no venga firmada por ese nombre, y un valor inventado las rechazaría
+    # todas.
+# Publicación: las versiones se suben como releases de GitHub y la aplicación
+# instalada busca ahí el `latest.yml`. Construir no publica nada
+# (`--publish never` en los scripts); publicar es un paso aparte y deliberado.
+publish:
+  provider: github
+  owner: cmurestudillos
+  repo: virtual-basket-manager
+  releaseType: release
 nsis:
+  # Sin espacios, y a propósito: `latest.yml` nombra el instalador con guiones, y
+  # GitHub cambia los espacios por puntos al subir un fichero a una release. Con
+  # el nombre por defecto («Triple Manager Setup 0.2.0.exe») la aplicación
+  # buscaría un fichero que no existe y ninguna actualización se descargaría.
+  artifactName: Triple-Manager-Setup-${version}.${ext}
   oneClick: false
   allowToChangeInstallationDirectory: true

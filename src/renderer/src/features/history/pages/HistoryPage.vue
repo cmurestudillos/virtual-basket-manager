@@ -9,12 +9,22 @@
  * para que otro club te fichara.
  */
 import { computed, onMounted, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import type { HistoryView } from '@shared/contracts/history.contract';
 import type { CareerStatus } from '@shared/contracts/career.contract';
-import { AppBadge, AppEmpty, AppPageHeader, AppPanel, AppTabs } from '@renderer/shared/ui';
+import {
+  AppAvatar,
+  AppBadge,
+  AppButton,
+  AppEmpty,
+  AppPageHeader,
+  AppPanel,
+  AppTabs
+} from '@renderer/shared/ui';
 
 type Tab = 'seasons' | 'trophies' | 'records' | 'career';
 
+const router = useRouter();
 const tab = ref<Tab>('seasons');
 const view = ref<HistoryView | null>(null);
 /** La hoja de servicios del entrenador. Sólo existe en partidas de carrera. */
@@ -41,6 +51,29 @@ function spellYears(spell: CareerStatus['spells'][number]): string {
     return `Temporada ${spell.startSeason}`;
   }
   return `Temporadas ${spell.startSeason}-${spell.endSeason}`;
+}
+
+/**
+ * Dimitir va en dos pasos: el primero pregunta. Irse de un banquillo no se
+ * deshace, y un clic suelto no debería dejar a nadie en el paro.
+ */
+const confirmingResign = ref(false);
+const resigning = ref(false);
+
+async function resign(): Promise<void> {
+  if (!confirmingResign.value) {
+    confirmingResign.value = true;
+    return;
+  }
+  resigning.value = true;
+  try {
+    career.value = await window.api.career.resign();
+    view.value = await window.api.history.get();
+    await router.push({ name: 'dashboard' });
+  } finally {
+    resigning.value = false;
+    confirmingResign.value = false;
+  }
 }
 
 function spellEnd(spell: CareerStatus['spells'][number]): string {
@@ -155,7 +188,8 @@ function positionTone(position: number | null, teams: number): 'good' | 'warn' |
       :title="career?.managerName ?? 'Carrera'"
       :hint="career?.reputationLabel ?? ''"
     >
-      <div v-if="career" class="mb-4 flex flex-wrap gap-6 text-sm">
+      <div v-if="career" class="mb-4 flex flex-wrap items-center gap-6 text-sm">
+        <AppAvatar kind="coach" :seed="career.managerName" :name="career.managerName" :size="48" />
         <span>
           <span class="text-court-300">Reputación</span>
           <span class="figure ml-2 text-lg">{{ career.reputation }}</span>
@@ -167,6 +201,38 @@ function positionTone(position: number | null, teams: number): 'good' | 'warn' |
         <span>
           <span class="text-court-300">Títulos</span>
           <span class="figure ml-2 text-lg">{{ career.titles }}</span>
+        </span>
+      </div>
+
+      <div
+        v-if="career?.canResign"
+        class="mb-4 flex flex-wrap items-center justify-between gap-3 rounded border border-court-700 px-3 py-2"
+      >
+        <span class="text-sm text-court-300">
+          {{
+            confirmingResign
+              ? `¿Dejar ${career.currentTeamName}? Te quedas sin equipo y buscas otro banquillo.`
+              : `Diriges a ${career.currentTeamName}.`
+          }}
+        </span>
+        <span class="flex gap-2">
+          <AppButton
+            v-if="confirmingResign"
+            size="sm"
+            variant="ghost"
+            :disabled="resigning"
+            @click="confirmingResign = false"
+          >
+            Seguir en el club
+          </AppButton>
+          <AppButton
+            size="sm"
+            :variant="confirmingResign ? 'primary' : 'secondary'"
+            :disabled="resigning"
+            @click="resign"
+          >
+            {{ confirmingResign ? 'Confirmar dimisión' : 'Dimitir' }}
+          </AppButton>
         </span>
       </div>
 

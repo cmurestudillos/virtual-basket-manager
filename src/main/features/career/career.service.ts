@@ -10,13 +10,17 @@ import {
   managerReputation,
   managerReputationLabel,
   offerCountFor,
+  tempts,
+  vacancyChance,
   type CareerSeasonRecord
 } from '@shared/domain/career';
+import { createRng, seedFromString } from '@shared/engine/basketball/rng';
 import { computeStandings } from '@shared/domain/standings';
 import type { SaveDatabase } from '../../database/save-database';
 import type { CareerSpellRow } from '../../database/schema/save';
 import { BoardService } from '../club/board.service';
 import { HistoryRepository } from '../history/history.repository';
+import { SeasonService } from '../season/season.service';
 import { CareerRepository } from './career.repository';
 
 export class NotInCareerModeError extends Error {
@@ -25,6 +29,23 @@ export class NotInCareerModeError extends Error {
     this.name = 'NotInCareerModeError';
   }
 }
+
+export class NotUnemployedError extends Error {
+  constructor() {
+    super('Tienes banquillo: no hay nada que esperar');
+    this.name = 'NotUnemployedError';
+  }
+}
+
+export class NotEmployedError extends Error {
+  constructor() {
+    super('No diriges a ningún club: no hay de qué dimitir');
+    this.name = 'NotEmployedError';
+  }
+}
+
+/** Días máximos que se deja correr el reloj en una espera, por si el mes no cambiara nunca. */
+const MAX_WAIT_DAYS = 62;
 
 export class OfferNotAvailableError extends Error {
   constructor(teamId: string) {
@@ -80,8 +101,71 @@ export class CareerService {
       spells,
       seasonsManaged: records.length,
       titles,
-      offers: open === null ? this.buildOffers(db, repository, reputation, state.seasonNumber) : []
+      offers: this.currentOffers(db, repository, reputation),
+      offersWhileEmployed: open !== null,
+      canResign: open !== null,
+      canWait: open === null,
+      currentDate: state.currentDate.getTime()
     };
+  }
+
+  /**
+   * Deja el banquillo por su pie.
+   *
+   * No es un despido y no resta como tal: la etapa se cierra como «se marchó».
+   * Lo que sí trae es quedarse sin equipo, con lo que haya abierto ese mes.
+   */
+  resign(): CareerStatus {
+    const repository = new CareerRepository(this.resolveDb());
+    const state = repository.gameState();
+    if (!state.careerMode) {
+      throw new NotInCareerModeError();
+    }
+    const open = repository.openSpell();
+    if (!open) {
+      throw new NotEmployedError();
+    }
+
+    repository.closeSpell(open.id, state.seasonNumber, 'left');
+    return this.getStatus();
+  }
+
+  /**
+   * Un mes en el paro.
+   *
+   * El reloj corre como espectador —todos los partidos los juega la IA, el
+   * verano llega y la temporada siguiente arranca— hasta que cambia el mes, que
+   * es cuando se abren otros banquillos. Esperar tiene sentido precisamente
+   * porque lo que llega el mes que viene no es lo que hay hoy.
+   */
+  wait(): CareerStatus {
+    const db = this.resolveDb();
+    const repository = new CareerRepository(db);
+    const state = repository.gameState();
+    if (!state.careerMode) {
+      throw new NotInCareerModeError();
+    }
+    this.closeSpellIfDismissed(repository, state.seasonNumber);
+    if (repository.openSpell()) {
+      throw new NotUnemployedError();
+    }
+
+    const season = new SeasonService(() => db);
+    const startMonth = monthKey(state.currentDate);
+
+    for (let day = 0; day < MAX_WAIT_DAYS; day += 1) {
+      const result = season.advanceDay({ spectator: true });
+      if (result.status === 'seasonOver') {
+        // Con la temporada acabada, el verano: arranca la siguiente y con ella
+        // cambia el mes, así que la espera termina ahí.
+        season.startNextSeason({ spectator: true });
+      }
+      if (monthKey(repository.gameState().currentDate) !== startMonth) {
+        break;
+      }
+    }
+
+    return this.getStatus();
   }
 
   /**
@@ -99,15 +183,19 @@ export class CareerService {
     }
 
     this.closeSpellIfDismissed(repository, state.seasonNumber);
-    if (repository.openSpell()) {
-      throw new NotInCareerModeError();
-    }
 
     const records = this.seasonRecords(db, repository);
     const reputation = managerReputation(records);
-    const offers = this.buildOffers(db, repository, reputation, state.seasonNumber);
+    const offers = this.currentOffers(db, repository, reputation);
     if (!offers.some((offer) => offer.teamId === teamId)) {
       throw new OfferNotAvailableError(teamId);
+    }
+
+    // Teniendo equipo, aceptar es marcharse: la etapa se cierra por voluntad
+    // propia antes de abrir la siguiente.
+    const open = repository.openSpell();
+    if (open) {
+      repository.closeSpell(open.id, state.seasonNumber, 'left');
     }
 
     // El consejo del club nuevo arranca de cero: si este club ya te echó en su
@@ -247,12 +335,46 @@ export class CareerService {
    * el club más grande que esté dispuesto, que es la oferta que de verdad
    * tienta. Nunca aparece el que acaba de echarte.
    */
+  /**
+   * Las ofertas que hay ahora mismo, según estés colocado o no.
+   *
+   * Sin banquillo, las de los clubes con el suyo abierto este mes. Con él,
+   * ninguna durante la temporada —nadie se va a mitad de curso por un club
+   * parecido— y, acabada, sólo las de clubes claramente más grandes.
+   */
+  private currentOffers(
+    db: SaveDatabase,
+    repository: CareerRepository,
+    reputation: number
+  ): CareerOffer[] {
+    const state = repository.gameState();
+    const open = repository.openSpell();
+
+    if (!open) {
+      return this.buildOffers(db, repository, reputation, {
+        window: `${state.seasonNumber}:${monthKey(state.currentDate)}`,
+        employedAt: null
+      });
+    }
+
+    const team = repository.findTeam(open.teamId);
+    const league = team ? repository.seasonOf(team.competitionId, state.seasonNumber) : null;
+    if (!team || league?.stage !== 'finished') {
+      return [];
+    }
+    return this.buildOffers(db, repository, reputation, {
+      window: `${state.seasonNumber}:verano`,
+      employedAt: team.reputation
+    });
+  }
+
   private buildOffers(
     db: SaveDatabase,
     repository: CareerRepository,
     reputation: number,
-    seasonNumber: number
+    options: { window: string; employedAt: number | null }
   ): CareerOffer[] {
+    const seasonNumber = repository.gameState().seasonNumber;
     const spells = repository.spells();
     const last = spells[spells.length - 1];
     const lastTeam = last ? repository.findTeam(last.teamId) : null;
@@ -262,18 +384,47 @@ export class CareerService {
     }
 
     const history = new HistoryRepository(db);
-    const candidates = repository
+    const standingOf = (competitionId: string, teamId: string) => {
+      const season = repository.seasonOf(competitionId, seasonNumber);
+      return season ? this.positionOf(history, season.id, teamId) : { position: null, teams: 0 };
+    };
+
+    const eligible = repository
       .clubsInCountry(country)
       .filter((row) => row.team.id !== last?.teamId)
       .filter((row) => clubWouldHire(row.team.reputation, reputation))
+      .filter(
+        (row) => options.employedAt === null || tempts(row.team.reputation, options.employedAt)
+      );
+
+    // Quién tiene el banquillo abierto en esta ventana. Sale de una tirada
+    // fija por club y ventana: mirar dos veces el mismo mes da lo mismo, y el
+    // mes siguiente, otra cosa.
+    const open = eligible.filter((row) => {
+      const standing = standingOf(row.competition.id, row.team.id);
+      const roll = createRng(seedFromString(`${row.team.id}|${options.window}`));
+      return roll.chance(vacancyChance(standing.position, standing.teams));
+    });
+
+    let chosen = open;
+    // Recién destituido o en el paro, alguien llama siempre: el club que más se
+    // parece a lo que vales. Esperar es para buscar algo mejor, no la única
+    // salida. Con equipo no hay tal garantía: si nadie tienta, nadie llama.
+    if (chosen.length === 0 && options.employedAt === null && eligible.length > 0) {
+      chosen = [
+        [...eligible].sort(
+          (a, b) =>
+            Math.abs(a.team.reputation - reputation) - Math.abs(b.team.reputation - reputation)
+        )[0]!
+      ];
+    }
+
+    const candidates = [...chosen]
       .sort((a, b) => b.team.reputation - a.team.reputation)
       .slice(0, offerCountFor(reputation));
 
     return candidates.map((row) => {
-      const season = repository.seasonOf(row.competition.id, seasonNumber);
-      const standing = season
-        ? this.positionOf(history, season.id, row.team.id)
-        : { position: null, teams: 0 };
+      const standing = standingOf(row.competition.id, row.team.id);
       const objective = objectiveForReputation(row.team.reputation, row.competition.tier);
 
       return {
@@ -289,6 +440,11 @@ export class CareerService {
       };
     });
   }
+}
+
+/** «2025-10»: la ventana del mercado de entrenadores es el mes. */
+function monthKey(date: Date): string {
+  return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
 /** Si una temporada cae dentro de una etapa. */
@@ -330,6 +486,10 @@ function apagada(managerName: string): CareerStatus {
     spells: [],
     seasonsManaged: 0,
     titles: 0,
-    offers: []
+    offers: [],
+    offersWhileEmployed: false,
+    canResign: false,
+    canWait: false,
+    currentDate: 0
   };
 }

@@ -10,6 +10,7 @@ import {
 } from '../../../database/save-database';
 import {
   boardTable,
+  careerSpellsTable,
   gameStateTable,
   gamesTable,
   playersTable,
@@ -192,6 +193,24 @@ describe('lo que pasa, se cuenta', () => {
 
     expect(inbox.markRead(primero.id).messages.find((m) => m.id === primero.id)!.read).toBe(true);
     expect(inbox.markAllRead().unread).toBe(0);
+  });
+});
+
+describe('sin banquillo', () => {
+  it('las lesiones del club que dejaste no son noticia, pero el mundo sigue contando', () => {
+    // Partida de carrera con la etapa cerrada: el entrenador ya no dirige a nadie.
+    db.update(gameStateTable).set({ careerMode: true }).run();
+    inbox.get();
+    db.update(careerSpellsTable).set({ endSeason: 1, endReason: 'left' }).run();
+
+    const playerId = firstTeamPlayer();
+    db.update(playersTable)
+      .set({ injuryDaysLeft: 30, injuryName: 'Rotura fibrilar' })
+      .where(eq(playersTable.id, playerId))
+      .run();
+    advanceClock();
+
+    expect(inbox.get().messages.some((message) => message.category === 'injury')).toBe(false);
   });
 });
 

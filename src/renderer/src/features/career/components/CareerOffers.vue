@@ -1,22 +1,28 @@
 <script setup lang="ts">
 /**
- * Sin equipo: los clubes que te quieren.
+ * Los clubes que te quieren.
  *
- * Es la pantalla que convierte el despido en el principio de otra cosa. Cada
- * oferta dice lo que de verdad hace falta para decidir —en qué categoría juega,
- * qué tamaño de club es, cómo va este año y qué te van a pedir— porque coger un
- * banquillo en enero es heredar lo que lleve hecho el equipo.
+ * Sale en dos momentos que se leen distinto. Sin equipo, es la pantalla que
+ * convierte el despido en el principio de otra cosa, y trae la opción de
+ * esperar: cada mes se abren otros banquillos. Con equipo, sólo al acabar la
+ * temporada y sólo con clubes claramente más grandes — y firmar ahí es dejar el
+ * tuyo, así que se dice.
  */
 import type { CareerOffer } from '@shared/contracts/career.contract';
+import { formatMatchDate } from '@renderer/shared/format';
 import { AppBadge, AppButton, AppEmpty } from '@renderer/shared/ui';
 
 defineProps<{
   offers: readonly CareerOffer[];
   reputationLabel: string;
   busy: boolean;
+  /** Llegan teniendo equipo: aceptar es marcharse. */
+  employed: boolean;
+  canWait: boolean;
+  currentDate: number;
 }>();
 
-const emit = defineEmits<{ accept: [teamId: string] }>();
+const emit = defineEmits<{ accept: [teamId: string]; wait: [] }>();
 
 /** Un club grande no se lee igual que uno modesto: el tono lo dice. */
 function reputationTone(reputation: number): 'good' | 'warn' | 'neutral' {
@@ -27,14 +33,22 @@ function reputationTone(reputation: number): 'good' | 'warn' | 'neutral' {
 </script>
 
 <template>
-  <section class="rounded border border-ball-500 px-5 py-4">
+  <section
+    class="rounded border px-5 py-4"
+    :class="employed ? 'border-court-600' : 'border-ball-500'"
+  >
     <div class="flex flex-wrap items-baseline justify-between gap-2">
-      <h2 class="text-lg">Estás sin equipo</h2>
+      <h2 class="text-lg">{{ employed ? 'Te buscan' : 'Estás sin equipo' }}</h2>
       <span class="text-sm text-court-300">{{ reputationLabel }}</span>
     </div>
-    <p class="mt-1 text-sm text-court-300">
-      Te han destituido, pero la carrera sigue. Estos clubes preguntan por ti — el que elijas lo
-      coges como esté, con la temporada empezada.
+    <p v-if="employed" class="mt-1 text-sm text-court-300">
+      Con la temporada cerrada, clubes más grandes preguntan por ti. Firmar con uno es dejar tu
+      banquillo actual.
+    </p>
+    <p v-else class="mt-1 text-sm text-court-300">
+      {{ formatMatchDate(currentDate) }}. Estos clubes tienen el banquillo abierto este mes — el que
+      elijas lo coges como esté. Si esperas, el mundo sigue jugándose y el mes que viene se abren
+      otros.
     </p>
 
     <AppEmpty v-if="offers.length === 0" class="mt-4">
@@ -66,5 +80,12 @@ function reputationTone(reputation: number): 'good' | 'warn' | 'neutral' {
         </AppButton>
       </li>
     </ul>
+
+    <div v-if="canWait" class="mt-4 flex items-center justify-end gap-3">
+      <span v-if="busy" class="text-sm text-court-300">Pasa el mes…</span>
+      <AppButton variant="secondary" :disabled="busy" @click="emit('wait')">
+        Esperar un mes
+      </AppButton>
+    </div>
   </section>
 </template>

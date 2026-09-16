@@ -82,6 +82,14 @@ body {
 .data-table tbody tr:hover {
   background-color: var(--color-court-800);
 }
+/* Una cabecera numérica se alinea con sus cifras. Sin este selector, la regla de
+   `thead th` —más específica que `.numeric` suelto— la dejaba a la izquierda, y
+   en todas las tablas del juego los títulos de columna quedaban descuadrados
+   respecto a los números que tenían debajo. */
+.data-table th.numeric,
+.data-table td.numeric {
+  text-align: right;
+}
 
 .numeric {
   text-align: right;

@@ -127,3 +127,6 @@ build que se distribuye, justo la que nadie prueba. Se comprobó al montar el
 esqueleto y funciona.
 
 **`pnpm dev` no recompila.** Carga lo que hay en `out/`.
+
+Cómo se construye el instalador, se firma y se publican las actualizaciones está
+en [DISTRIBUCION.md](DISTRIBUCION.md).
