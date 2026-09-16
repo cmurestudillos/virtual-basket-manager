@@ -26,6 +26,7 @@ import type {
   LiveBench,
   OrderResult,
   PeriodScore,
+  ShotZone,
   SimulateGameInput
 } from './types';
 
@@ -109,7 +110,7 @@ const MINUTES_TARGET_BY_DEPTH = [
   0.8, 0.75, 0.72, 0.7, 0.68, 0.4, 0.35, 0.3, 0.18, 0.07, 0.03, 0.02
 ] as const;
 
-type ShotType = 'close' | 'midRange' | 'threePoint';
+type ShotType = ShotZone;
 
 interface PlayerState extends OnCourtPlayer {
   onCourt: boolean;
@@ -322,7 +323,11 @@ export class GameSimulation {
       clockSeconds: this.periodClock,
       type: 'periodStart',
       teamId: '',
-      playerId: null
+      playerId: null,
+      lineups: {
+        home: home.states.filter((state) => state.onCourt).map((state) => state.player.id),
+        away: away.states.filter((state) => state.onCourt).map((state) => state.player.id)
+      }
     });
   }
 
@@ -890,7 +895,9 @@ function tryBlock(
     defLineup.map((state) => effectiveAttribute(state, 'block'))
   );
   blocker.box.blocks += 1;
-  record(context, 'block', context.defense, blocker.player.id, shooter.player.id);
+  record(context, 'block', context.defense, blocker.player.id, shooter.player.id, undefined, {
+    shotType
+  });
   return blocker;
 }
 
@@ -918,7 +925,8 @@ function registerMake(
     offense,
     shooter.player.id,
     null,
-    points
+    points,
+    { shotType }
   );
 
   const candidates = offLineup.filter((state) => state.player.id !== shooter.player.id);
@@ -946,7 +954,10 @@ function registerMiss(context: PossessionContext, shooter: PlayerState, shotType
     context,
     shotType === 'threePoint' ? 'threePointMissed' : 'twoPointMissed',
     context.offense,
-    shooter.player.id
+    shooter.player.id,
+    null,
+    undefined,
+    { shotType }
   );
 }
 
@@ -1251,7 +1262,8 @@ function record(
   team: TeamState,
   playerId: string | null,
   secondaryPlayerId: string | null = null,
-  points?: number
+  points?: number,
+  extra: Pick<GameEvent, 'shotType'> = {}
 ): void {
   pushEvent(context.events, context.home, context.away, {
     period: context.period,
@@ -1260,7 +1272,8 @@ function record(
     teamId: team.team.id,
     playerId,
     secondaryPlayerId,
-    ...(points === undefined ? {} : { points })
+    ...(points === undefined ? {} : { points }),
+    ...extra
   });
 }
 

@@ -75,6 +75,17 @@ afterEach(() => {
   rmSync(directory, { recursive: true, force: true });
 });
 
+/** Nacionalidades con doce jugadores o más en el mundo: las que tienen selección. */
+function nationsWithSquad(): number {
+  const counts = new Map<string, number>();
+  for (const player of db.select().from(playersTable).all()) {
+    if (!player.isYouth) {
+      counts.set(player.nationality, (counts.get(player.nationality) ?? 0) + 1);
+    }
+  }
+  return [...counts.values()].filter((count) => count >= 12).length;
+}
+
 function startYear(): number {
   return season.getCurrent().startYear;
 }
@@ -99,7 +110,8 @@ function playClubGamesBefore(date: Date): void {
 describe('el curso de selecciones', () => {
   it('nace con la temporada: 21 selecciones, que no son clubes', () => {
     const teams = db.select().from(teamsTable).where(isNotNull(teamsTable.nationalOf)).all();
-    expect(teams).toHaveLength(21);
+    // Una selección por cada nacionalidad con doce jugadores o más.
+    expect(teams).toHaveLength(nationsWithSquad());
     expect(new MarketRepository(db).listTeams().some((team) => team.nationalOf)).toBe(false);
   });
 
@@ -107,7 +119,9 @@ describe('el curso de selecciones', () => {
     const overview = national.getOverview();
     const qualifiers = overview.qualifiers!;
 
-    expect(qualifiers.groups).toHaveLength(5);
+    // Todas menos el anfitrión, de cuatro en cuatro; las que no completan
+    // grupo, fuera.
+    expect(qualifiers.groups).toHaveLength(Math.floor((nationsWithSquad() - 1) / 4));
     for (const group of qualifiers.groups) {
       expect(group.standings).toHaveLength(4);
       expect(group.fixtures).toHaveLength(12);
@@ -132,7 +146,7 @@ describe('el curso de selecciones', () => {
     for (const row of callups) {
       byTeam.set(row.nationalTeamId, (byTeam.get(row.nationalTeamId) ?? 0) + 1);
     }
-    expect(byTeam.size).toBe(20);
+    expect(byTeam.size).toBe(Math.floor((nationsWithSquad() - 1) / 4) * 4);
     for (const count of byTeam.values()) {
       expect(count).toBeGreaterThanOrEqual(8);
       expect(count).toBeLessThanOrEqual(NATIONAL_SQUAD_SIZE);
@@ -229,9 +243,10 @@ describe('dirigir una selección', () => {
     playClubGamesBefore(friday);
     setDate(friday);
 
-    // El anfitrión del primer Mundial es Argentina, así que España juega la
+    // El anfitrión del primer Mundial es el primero por código, así que España
+    // juega la
     // clasificación desde noviembre.
-    expect(national.getOverview().qualifiers!.hostName).toBe('Argentina');
+    expect(national.getOverview().qualifiers!.hostName).not.toBe('España');
     const result = season.advanceDay();
 
     expect(result.status).toBe('userGame');

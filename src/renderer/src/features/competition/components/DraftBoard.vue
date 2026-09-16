@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import type { DraftView } from '@shared/contracts/draft.contract';
 import { POSITION_LABELS } from '@shared/domain/positions';
-import { formatHeight } from '@renderer/shared/format';
+import { formatHeight, formatMoney } from '@renderer/shared/format';
 import {
   AppAvatar,
   AppBadge,
@@ -81,6 +81,15 @@ const rounds = computed(() =>
             }}</span>
             <span v-if="view.userOnTheClock && view.rosterFull" class="ml-2 text-bad-400">
               Tu plantilla está llena: libera a alguien en el mercado o renuncia.
+            </span>
+          </p>
+          <p v-if="view.userPickCost" class="text-sm text-court-300">
+            Tu novato cobrará {{ formatMoney(view.userPickCost.rookieWageCents) }} · la nómina pasa
+            de {{ formatMoney(view.userPickCost.payrollCents) }} a
+            {{ formatMoney(view.userPickCost.payrollAfterCents) }} (impuesto desde
+            {{ formatMoney(view.userPickCost.taxLineCents) }})
+            <span v-if="view.userPickCost.projectedTaxCents > 0" class="text-bad-400">
+              · pagarías {{ formatMoney(view.userPickCost.projectedTaxCents) }} de impuesto
             </span>
           </p>
           <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>

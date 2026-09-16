@@ -293,7 +293,23 @@ export const DRAFT_NATIONALITIES = [
   'TUR',
   'SLO',
   'ITA',
-  'MNE'
+  'MNE',
+  'CAN',
+  'CAN',
+  'NGR',
+  'CMR',
+  'SSD',
+  'MLI',
+  'JPN',
+  'CHN',
+  'PHI',
+  'NZL',
+  'LAT',
+  'GEO',
+  'DOM',
+  'PUR',
+  'GBR',
+  'FIN'
 ];
 
 /** Un prospecto del draft, antes de convertirse en ficha. */

@@ -297,6 +297,15 @@ console.log('en vivo:', enMarcha.split('\n').join(' '));
 console.log('jugadas en vivo:', await page.locator('ol li').count());
 await page.screenshot({ path: `${SHOTS}/13b-en-vivo.png` });
 
+// La pista 2D, con el directo corriendo: diez fichas y el balón moviéndose.
+await page.getByRole('button', { name: 'Pista 2D' }).click();
+await page.waitForTimeout(2500);
+console.log(
+  'fichas en la pista 2D:',
+  await page.locator('svg[aria-label="Pista del partido"] g[transform]').count()
+);
+await page.screenshot({ path: `${SHOTS}/13e-pista-2d.png` });
+
 // Un cambio: se señala a uno de pista y se pulsa a uno del banquillo.
 const enPista = page.locator('button', { hasText: /\d+f/ }).first();
 await enPista.click();
@@ -353,6 +362,18 @@ async function playQuarter(watchLive) {
     console.log('retransmisión en marcha:', live.split('\n').slice(0, 5).join(' '));
     console.log('jugadas vistas:', await page.locator('ol li').count());
     await page.screenshot({ path: `${SHOTS}/14-retransmision.png` });
+    // Y la misma retransmisión en 3D, con las dos cámaras.
+    await page.getByRole('button', { name: 'Pista 3D' }).click();
+    await page.waitForTimeout(3000);
+    console.log(
+      'lienzo 3D:',
+      await page.locator('[aria-label="Pista del partido en 3D"] canvas').count()
+    );
+    await page.screenshot({ path: `${SHOTS}/14b-pista-3d.png` });
+    await page.getByRole('button', { name: 'Detrás del aro' }).click();
+    await page.waitForTimeout(2000);
+    await page.screenshot({ path: `${SHOTS}/14c-pista-3d-aro.png` });
+    await page.getByRole('button', { name: 'Tele' }).click();
   }
   await page.getByRole('button', { name: 'Saltar al final del cuarto' }).click();
   await page.waitForTimeout(800);
@@ -378,6 +399,16 @@ await page.waitForTimeout(400);
 console.log('sólo canastas:', await page.locator('ol li').count(), 'líneas');
 await page.screenshot({ path: `${SHOTS}/15b-canastas.png` });
 await page.getByRole('button', { name: 'Todo' }).click();
+
+// El partido ya jugado se puede volver a ver en la pista.
+await page.getByRole('button', { name: 'Pista 2D' }).click();
+await page.getByRole('button', { name: 'Ver repetición' }).click();
+await page.waitForTimeout(3000);
+const repeticion = await page.locator('section').first().innerText();
+console.log('repetición:', repeticion.split('\n').slice(0, 4).join(' '));
+await page.screenshot({ path: `${SHOTS}/15d-repeticion.png` });
+await page.getByRole('button', { name: 'Terminar repetición' }).click();
+await page.waitForTimeout(400);
 
 await page.getByRole('link', { name: 'Volver al club' }).click();
 await page.waitForTimeout(1200);

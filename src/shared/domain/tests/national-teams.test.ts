@@ -165,7 +165,8 @@ describe('sorteos', () => {
   });
 
   it('las que no completan grupo se quedan fuera', () => {
-    expect(drawQualifierGroups(ranked, createRng(1)).flat()).toHaveLength(20);
+    const pool = ranked.slice(0, 22);
+    expect(drawQualifierGroups(pool, createRng(1)).flat()).toHaveLength(20);
   });
 
   it('al Mundial van el anfitrión y los tres primeros de cada grupo', () => {

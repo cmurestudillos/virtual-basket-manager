@@ -688,6 +688,16 @@ export class MarketService {
       repository.endLoan(row.id, row.loanFromTeamId as string);
     }
 
+    // El tope se calcula una vez por club: con cientos de contratos que vencen,
+    // recalcular la nómina de toda la liga en cada uno sería lentísimo.
+    const caps = new Map<string, number | null>();
+    const capOf = (teamId: string): number | null => {
+      if (!caps.has(teamId)) {
+        caps.set(teamId, this.nbaCap(teamId));
+      }
+      return caps.get(teamId) ?? null;
+    };
+
     for (const row of repository.listExpiring(date)) {
       if (row.teamId === managedTeamId) {
         // Al usuario no se le renueva solo: si no lo ha hecho él, se va.
@@ -704,14 +714,60 @@ export class MarketService {
           : row.morale >= 85
             ? 0.9
             : 0.75;
-      if (rng.chance(stays)) {
+      // Y en la liga NBA, un club por encima del umbral del impuesto no renueva
+      // a quien cobra de más para lo que juega: es la primera forma de bajar.
+      const cap = row.teamId ? capOf(row.teamId) : null;
+      const taxedAndOverpaid =
+        cap !== null &&
+        repository.seasonWagesCents(row.teamId as string) > luxuryTaxLineCents(cap) &&
+        row.wageCents > marketWage(row, date);
+      if (!taxedAndOverpaid && rng.chance(stays)) {
         repository.renew(row.id, row.wageCents, contractEnd(date, rng.int(1, 3)), row.valueCents);
       } else {
         repository.release(row.id);
       }
     }
 
+    this.shedLuxuryTax(date);
     this.runAiMarket(date);
+  }
+
+  /**
+   * Los clubes de la IA de la liga NBA que siguen por encima del umbral del
+   * impuesto se deshacen de los contratos peor pagados para lo que rinden, sin
+   * bajar de la plantilla mínima. Es lo que hace cualquier gerente antes de
+   * pagar uno y medio por cada euro de más.
+   */
+  private shedLuxuryTax(date: Date): void {
+    const repository = new MarketRepository(this.resolveDb());
+    const managedTeamId = repository.managedTeamId();
+
+    for (const team of repository.listTeams()) {
+      if (team.id === managedTeamId) {
+        continue;
+      }
+      const cap = this.nbaCap(team.id);
+      if (cap === null) {
+        continue;
+      }
+      const line = luxuryTaxLineCents(cap);
+      const byOverpay = repository
+        .listRoster(team.id)
+        .filter((row) => !row.loanFromTeamId)
+        .map((row) => ({ row, overpay: row.wageCents - marketWage(row, date) }))
+        .filter((entry) => entry.overpay > 0)
+        .sort((a, b) => b.overpay - a.overpay);
+
+      for (const { row } of byOverpay) {
+        if (
+          repository.seasonWagesCents(team.id) <= line ||
+          repository.countRoster(team.id) <= MIN_ROSTER
+        ) {
+          break;
+        }
+        repository.release(row.id);
+      }
+    }
   }
 
   /** Los clubes de la IA cubren huecos con agentes libres. */
@@ -860,6 +916,19 @@ export class MarketService {
 }
 
 /** Los contratos acaban el 30 de junio, como en cualquier liga. */
+/** Lo que vale en el mercado la ficha de un jugador hoy, sin contar su ánimo. */
+function marketWage(row: PlayerRow, today: Date): number {
+  const summary = toPlayerSummary(row, today);
+  return wageDemandCents({
+    valueCents: marketValueCents({
+      overall: summary.overall,
+      potential: row.potential,
+      age: summary.age
+    }),
+    currentWageCents: 0
+  });
+}
+
 /** Lo que pide un jugador para renovar, con su ánimo encima. */
 function renewalDemand(row: PlayerRow): number {
   return Math.round(

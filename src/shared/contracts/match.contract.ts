@@ -1,5 +1,27 @@
 import type { PlayLine } from '@shared/domain/play-by-play';
+import type { GameEventType, ShotZone } from '@shared/engine/basketball/types';
 import type { Position } from '@shared/domain/positions';
+
+/**
+ * Una jugada tal y como la necesita la pista: quién, qué, desde dónde y cómo va
+ * el marcador. Es el registro del motor sin narrar, con los equipos ya
+ * traducidos a «local» y «visitante».
+ */
+export interface CourtEvent {
+  period: number;
+  clockSeconds: number;
+  type: GameEventType;
+  side: 'home' | 'away' | null;
+  playerId: string | null;
+  secondaryPlayerId: string | null;
+  /** Zona del tiro en los tiros de campo y tapones; nula en lo demás o en partidos antiguos. */
+  shotType: ShotZone | null;
+  points: number;
+  homeScore: number;
+  awayScore: number;
+  /** Los cinco de cada lado al empezar el cuarto; ausente en partidos de antes de la pista. */
+  lineups?: { home: string[]; away: string[] };
+}
 
 export interface BoxScoreLine {
   playerId: string;
@@ -77,6 +99,8 @@ export interface MatchState {
    * acta de un partido ajeno: de esos sólo se guarda el resultado.
    */
   playByPlay: PlayLine[] | null;
+  /** Las mismas jugadas sin narrar, para la pista 2D y 3D. `null` cuando no hay retransmisión. */
+  courtEvents: CourtEvent[] | null;
 }
 
 /** Informe del analista sobre el rival, para la previa. */
@@ -127,6 +151,8 @@ export interface LiveTick {
   awayScore: number;
   /** Las jugadas que ha dejado esta posesión, ya narradas. */
   lines: PlayLine[];
+  /** Y las mismas sin narrar, para la pista. */
+  events: CourtEvent[];
   /** Con esta posesión se acabó el cuarto. */
   periodEnded: boolean;
   /** Y con él, el partido: toca leer el acta guardada. */

@@ -247,13 +247,24 @@ de la carrera llegan de cualquiera de los países que se juegan, así que irse a
 extranjero ya es posible. Las partidas anteriores siguen jugando sólo el país de
 su club.
 
-**Selecciones y ventanas FIBA.** Veintiuna selecciones —las nacionalidades con
-doce jugadores o más— y un **Mundial cada verano**: el anfitrión, que rota, y los
-tres primeros de cinco grupos de clasificación a ida y vuelta, jugados en tres
+**Selecciones y ventanas FIBA.** Una selección por cada nacionalidad con doce
+jugadores o más —cincuenta y tres con el mundo actual— y un **Mundial cada
+verano**: el anfitrión, que rota, y los mejores de los grupos de clasificación a
+ida y vuelta (de cuatro, por bombos) hasta completar dieciséis, jugados en tres
 ventanas (noviembre, febrero y primeros de agosto). El Mundial son cuatro grupos
 de cuatro, cuartos, semifinales y final en agosto. No hay campeonatos
-continentales alternos: quince de las veintiuna son europeas y un torneo
-continental dejaría a Australia y a Senegal sin nada.
+continentales alternos: la mayoría son europeas y un torneo continental dejaría
+a Australia o a Nueva Zelanda sin nada.
+
+**Nacionalidades y nombres.** El mundo tiene cincuenta y cuatro nacionalidades,
+también de países sin liga propia —Nigeria, Senegal, Malí, Camerún, Japón,
+China, Filipinas, Irán, Canadá, México, Puerto Rico…—: la mitad de cada
+plantilla es del país del club y el resto se sortea con pesos (más americanos,
+serbios o franceses que filipinos). Cada uno se llama **como en su país**:
+jugadores del mundo, canteranos, prospectos del draft y técnicos salen de una
+lista de nombres por nacionalidad. Los nombres se sortean con su propio
+generador, así que añadir nombres a una lista no mueve ni un atributo del
+mundo. La nacionalidad del entrenador se cambia también desde Ajustes.
 
 Las ventanas van en viernes y lunes, así que no pisan ni la liga ni Europa, pero
 **el convocado se pierde el domingo con su club** y vuelve con el cansancio y las
@@ -296,7 +307,11 @@ media de la liga. Por debajo se firma lo que quepa; por encima, sólo contratos
 mínimos. Renovar a los tuyos no pasa por el tope —los derechos Bird—, así que se
 puede acabar pagando **impuesto de lujo**: uno y medio por cada euro por encima
 del umbral (un 22 % sobre el tope), cobrado al cerrar la temporada. No hay cupo de
-formación. La IA no se mete en impuesto por un agente libre.
+formación. La IA no se mete en impuesto por un agente libre y, en verano, el
+equipo que pasa del umbral **recorta**: no renueva a quien cobra más de lo que
+vale y corta a los más sobrepagados hasta bajar del umbral, sin quedarse por
+debajo del mínimo de plantilla. En el draft se ve lo que cobraría tu novato y
+cuánto impuesto dejaría la nómina con él.
 
 **Moral.** Vale para todos los jugadores del mundo. La mueven **los minutos**
 comparados con los que cree merecer por su lugar en la plantilla, **los
@@ -379,12 +394,41 @@ llevarse el resto simulado, o no dirigir nada. Y el consejo, la taquilla y las
 lesiones pasan por el mismo sitio en los dos casos, así que verlo de una manera
 o de otra deja lo mismo en la partida.
 
-### Lo que queda del bloque
+### Fase 3 — la pista (hecha)
 
-|     | Pieza    | Detalle                                                |     |
-| --- | -------- | ------------------------------------------------------ | --- |
-| ⬜  | Pista 2D | Vista cenital con los diez jugadores, estilo PC Basket | L   |
-| ⬜  | Pista 3D | Como IBM. Caro y lo último que aporta valor de manager | L   |
+|     | Pieza    | Detalle                                                       |     |
+| --- | -------- | ------------------------------------------------------------- | --- |
+| ✅  | Pista 2D | Vista cenital animada jugada a jugada, estilo PC Basket       | L   |
+| ✅  | Pista 3D | La misma animación en 3D, con cámara de tele y detrás del aro | L   |
+| ✅  | Repetir  | Volver a ver en la pista los partidos propios ya jugados      | M   |
+
+El partido se ve de tres maneras —**texto, pista 2D o pista 3D**— y se elige en
+el propio partido; la elección se recuerda. Vale para el directo, para la
+retransmisión cuarto a cuarto y para **las repeticiones**: un partido tuyo ya
+jugado se vuelve a ver entero, con pausa, velocidad y salto a cualquier cuarto.
+
+El motor no sabe de coordenadas y la pista no decide nada. El motor apunta ahora
+en cada tiro **desde qué zona** se lanzó (cerca, media distancia o triple) y al
+empezar cada cuarto **quiénes son los diez de pista**; con eso y con los cambios,
+un director de escena coloca a cada uno: el ataque en sus puestos de base a
+pívot, cada defensor entre su par y el aro, el tirador en su zona, el pase antes
+de la canasta asistida, la fila de tiros libres, el rebote bajo el aro, el robo
+que da la vuelta al ataque y los diez al banquillo en los tiempos muertos. Lo
+que parece variedad —el ángulo de cada tiro, dónde cae el rebote— sale del
+número de jugada y no de un dado, así que **la misma repetición se ve siempre
+igual**. La 2D y la 3D dibujan la misma escena: sólo cambia el dibujo.
+
+La pista va al paso del reloj de la retransmisión: si la pantalla se queda atrás
+—velocidad rápida, un salto al final del cuarto— pone al día de golpe las
+jugadas viejas y sólo anima las últimas, así que nunca cuenta tarde lo que el
+marcador ya ha cantado. Cada club juega siempre con la misma camiseta (el
+visitante va de blanco si coinciden) y cada jugador con el mismo dorsal.
+
+Apuntar zona y quintetos **cambia la huella del motor** (ahora
+`bb5d5b2b…`) pero ni una tirada: quitando esos dos campos sale la huella de
+antes. Los partidos guardados antes de la pista se siguen viendo: los quintetos
+se deducen de las jugadas y la zona de cada tiro se estima. La 3D es
+**three.js** en local, en un trozo aparte que sólo se carga al abrirla.
 
 ## Bloque 6 — Alrededor
 
@@ -396,7 +440,7 @@ o de otra deja lo mismo en la partida.
 | ✅  | Historial y palmarés    | Temporadas, títulos, récords                           | M   |
 | ✅  | Prensa y notificaciones | Bandeja de avisos, ruedas de prensa                    | M   |
 | ✅  | Editor de datos         | Editar equipos y plantillas dentro del juego           | M   |
-| ✅  | Ajustes                 | Resolución y reglamento; el idioma, al final           | S   |
+| ✅  | Ajustes                 | Resolución y reglamento; sólo en español               | S   |
 | ✅  | Firma del instalador    | Lista para firmar; falta comprar el certificado        | S   |
 | ✅  | Actualizaciones         | Auto-update contra GitHub Releases, sin publicar aún   | M   |
 
@@ -526,9 +570,8 @@ temporada mezclaría estadísticas de dos reglamentos. Cada ajuste valida su
 valor en el proceso principal: una resolución o un reglamento inventados no
 llegan a la ventana ni a la partida.
 
-El **idioma** no está: la aplicación es sólo en español, y la traducción al
-inglés va la última del proyecto. Es una L —i18n de cientos de textos, más la
-narración, la prensa y los avisos que genera el juego—, no la S de esta tabla.
+El **idioma** no está: la aplicación es sólo en español, y así se queda. La
+traducción al inglés se descartó (decisión del usuario, 2026-09-16).
 
 ### Avatares
 
@@ -610,9 +653,8 @@ que dice su palmarés.
 2. **¿Datos reales o inventados?** El dataset actual es inventado a propósito
    para no arrastrar el problema de marcas que apareció en el proyecto de
    fútbol. Cambiar de idea más adelante es caro.
-3. **¿Hasta dónde llega el partido en vivo?** Resuelta a medias: el partido se
-   dirige en vivo —pausa, cambios, tiempo muerto y pizarra sobre la marcha— y
-   queda decidir si se llega a pintar la pista en 2D, que es lo que de verdad
-   dispara el esfuerzo. El valor de manager ya está entregado sin ella.
+3. **¿Hasta dónde llega el partido en vivo?** Resuelta: el partido se dirige en
+   vivo —pausa, cambios, tiempo muerto y pizarra sobre la marcha— y se ve en
+   texto, en pista 2D o en 3D, también en las repeticiones.
 4. **¿Un país o el mundo?** IBM abarcaba medio mundo; PC Basket, una liga bien
    hecha. Las dos son opciones defendibles y llevan a proyectos muy distintos.

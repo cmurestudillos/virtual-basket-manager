@@ -18,6 +18,7 @@ export type {
   LivePlayer,
   OrderResult,
   PeriodScore,
+  ShotZone,
   SimulateGameInput,
   TeamGameResult
 } from './types';

@@ -1,4 +1,4 @@
-import type { GameEvent, GameEventType } from '@shared/engine/basketball';
+import type { GameEvent, GameEventType, ShotZone } from '@shared/engine/basketball';
 
 /**
  * El registro de jugadas, compactado para guardarlo.
@@ -39,8 +39,17 @@ const TYPES: readonly GameEventType[] = [
   'timeout'
 ];
 
-/** `[cuarto, reloj, tipo, lado, jugador, segundo jugador, puntos]`; -1 es «nadie». */
-type PackedEvent = [number, number, number, number, number, number, number];
+/**
+ * `[cuarto, reloj, tipo, lado, jugador, segundo jugador, puntos, zona?, quintetos?]`;
+ * -1 es «nadie». Los dos últimos llegaron con la pista (Bloque 5): las
+ * retransmisiones de antes no los traen y se siguen leyendo igual.
+ */
+type PackedEvent =
+  | [number, number, number, number, number, number, number]
+  | [number, number, number, number, number, number, number, number]
+  | [number, number, number, number, number, number, number, number, [number[], number[]]];
+
+const ZONES: readonly ShotZone[] = ['close', 'midRange', 'threePoint'];
 
 interface PackedPlayByPlay {
   v: number;
@@ -69,15 +78,22 @@ export function encodePlayByPlay(events: readonly GameEvent[], teams: TeamIds): 
     return index;
   };
 
-  const packed = events.map((event): PackedEvent => [
-    event.period,
-    event.clockSeconds,
-    TYPES.indexOf(event.type),
-    event.teamId === teams.homeTeamId ? 0 : event.teamId === teams.awayTeamId ? 1 : -1,
-    indexOf(event.playerId),
-    indexOf(event.secondaryPlayerId),
-    event.points ?? 0
-  ]);
+  const packed = events.map((event): PackedEvent => {
+    const base: [number, number, number, number, number, number, number] = [
+      event.period,
+      event.clockSeconds,
+      TYPES.indexOf(event.type),
+      event.teamId === teams.homeTeamId ? 0 : event.teamId === teams.awayTeamId ? 1 : -1,
+      indexOf(event.playerId),
+      indexOf(event.secondaryPlayerId),
+      event.points ?? 0
+    ];
+    const zone = event.shotType ? ZONES.indexOf(event.shotType) : -1;
+    if (event.lineups) {
+      return [...base, zone, [event.lineups.home.map(indexOf), event.lineups.away.map(indexOf)]];
+    }
+    return zone >= 0 ? [...base, zone] : base;
+  });
 
   const payload: PackedPlayByPlay = { v: FORMAT_VERSION, players, events: packed };
   return JSON.stringify(payload);
@@ -106,7 +122,10 @@ export function decodePlayByPlay(stored: string | null, teams: TeamIds): GameEve
   let homeScore = 0;
   let awayScore = 0;
 
-  return payload.events.map(([period, clockSeconds, type, side, player, secondary, points]) => {
+  return payload.events.map((packed) => {
+    const [period, clockSeconds, type, side, player, secondary, points] = packed;
+    const zone = packed[7];
+    const lineups = packed[8];
     if (side === 0) homeScore += points;
     if (side === 1) awayScore += points;
 
@@ -124,6 +143,15 @@ export function decodePlayByPlay(stored: string | null, teams: TeamIds): GameEve
     }
     if (points > 0) {
       event.points = points;
+    }
+    if (zone !== undefined && zone >= 0 && ZONES[zone]) {
+      event.shotType = ZONES[zone];
+    }
+    if (lineups) {
+      event.lineups = {
+        home: lineups[0].map(playerAt).filter((id): id is string => id !== null),
+        away: lineups[1].map(playerAt).filter((id): id is string => id !== null)
+      };
     }
     return event;
   });

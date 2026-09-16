@@ -47,6 +47,17 @@ export interface DraftView {
   userInLeague: boolean;
   /** Con la plantilla llena no se puede elegir: hay que liberar sitio o renunciar. */
   rosterFull: boolean;
+  /**
+   * Lo que cuesta la elección que tiene el usuario en el reloj: la ficha del
+   * novato y cómo deja la nómina frente al tope y al impuesto de lujo.
+   */
+  userPickCost: {
+    rookieWageCents: number;
+    payrollCents: number;
+    payrollAfterCents: number;
+    taxLineCents: number;
+    projectedTaxCents: number;
+  } | null;
   picks: DraftPickView[];
   prospects: DraftProspectView[];
 }

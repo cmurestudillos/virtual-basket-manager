@@ -1,5 +1,5 @@
 import { computed, onUnmounted, ref, type Ref } from 'vue';
-import type { LiveBenchPlayer, LiveTick } from '@shared/contracts/match.contract';
+import type { CourtEvent, LiveBenchPlayer, LiveTick } from '@shared/contracts/match.contract';
 import type { PlayLine } from '@shared/domain/play-by-play';
 import { PLAYBACK_RATE, type PlaybackSpeed } from './usePlayback';
 
@@ -31,6 +31,8 @@ export interface LiveMatch {
   homeScore: Ref<number>;
   awayScore: Ref<number>;
   lines: Ref<PlayLine[]>;
+  /** Las mismas jugadas sin narrar, para la pista. */
+  events: Ref<CourtEvent[]>;
   bench: Ref<LiveBenchPlayer[]>;
   timeoutsLeft: Ref<number>;
   rivalTimeoutsLeft: Ref<number>;
@@ -69,6 +71,7 @@ export function useLiveMatch(
   const homeScore = ref(0);
   const awayScore = ref(0);
   const lines = ref<PlayLine[]>([]);
+  const events = ref<CourtEvent[]>([]);
   const bench = ref<LiveBenchPlayer[]>([]);
   const timeoutsLeft = ref(0);
   const rivalTimeoutsLeft = ref(0);
@@ -102,6 +105,9 @@ export function useLiveMatch(
     awayScore.value = tick.awayScore;
     if (tick.lines.length > 0) {
       lines.value = [...lines.value, ...tick.lines];
+    }
+    if (tick.events.length > 0) {
+      events.value = [...events.value, ...tick.events];
     }
     if (tick.bench) {
       bench.value = tick.bench;
@@ -264,6 +270,7 @@ export function useLiveMatch(
     homeScore,
     awayScore,
     lines,
+    events,
     bench,
     timeoutsLeft,
     rivalTimeoutsLeft,

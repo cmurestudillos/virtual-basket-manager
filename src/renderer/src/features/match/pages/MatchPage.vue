@@ -1,10 +1,16 @@
 <script setup lang="ts">
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import type { BoxScoreLine, LiveTacticsPatch, MatchState } from '@shared/contracts/match.contract';
 import type { TeamTacticsView } from '@shared/contracts/tactics.contract';
 import { percentage } from '@shared/domain/box-score';
-import { formatGameClock, periodName } from '@shared/domain/play-by-play';
+import {
+  matchKits,
+  shirtNumbers,
+  shortPlayerName,
+  type CourtRosterPlayer
+} from '@shared/domain/court';
+import { formatGameClock, periodName, visibleLineCount } from '@shared/domain/play-by-play';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { formatMatchDate, formatPlayedMinutes } from '@renderer/shared/format';
 import {
@@ -17,6 +23,7 @@ import {
 } from '@renderer/shared/ui';
 import LiveBench from '../components/LiveBench.vue';
 import LiveTacticsPanel from '../components/LiveTacticsPanel.vue';
+import MatchCourt from '../components/MatchCourt.vue';
 import PlayByPlayFeed from '../components/PlayByPlayFeed.vue';
 import { usePlayback } from '../composables/usePlayback';
 import { useLiveMatch } from '../composables/useLiveMatch';
@@ -56,6 +63,77 @@ const SPEEDS = [
   { id: 'normal', label: 'Normal' },
   { id: 'fast', label: 'Rápida' }
 ];
+
+// ---------------------------------------------------------------------------
+// La pista
+// ---------------------------------------------------------------------------
+
+type CourtView = 'text' | '2d' | '3d';
+const VIEW_KEY = 'match.view';
+const VIEWS = [
+  { id: 'text', label: 'Texto' },
+  { id: '2d', label: 'Pista 2D' },
+  { id: '3d', label: 'Pista 3D' }
+];
+
+function readView(): CourtView {
+  try {
+    const stored = localStorage.getItem(VIEW_KEY);
+    return stored === '2d' || stored === '3d' ? stored : 'text';
+  } catch {
+    return 'text';
+  }
+}
+
+/** Cómo se ve el partido: se recuerda para el siguiente. */
+const courtView = ref<CourtView>(readView());
+watch(courtView, (value) => {
+  try {
+    localStorage.setItem(VIEW_KEY, value);
+  } catch {
+    // Sin almacenamiento, la vista se olvida al salir.
+  }
+});
+
+/** Las jugadas que conoce la pista: las del directo o las guardadas del partido. */
+const courtEvents = computed(() =>
+  live.active.value ? live.events.value : (state.value?.courtEvents ?? [])
+);
+
+/** Cuántas se han visto ya: las mismas que la retransmisión escrita, por reloj. */
+const courtVisible = computed(() => {
+  const events = courtEvents.value;
+  if (live.active.value) {
+    return visibleLineCount(events, live.period.value, live.clockSeconds.value);
+  }
+  if (running.value && playback.period.value !== null) {
+    return visibleLineCount(events, playback.period.value, playback.clockSeconds.value);
+  }
+  return events.length;
+});
+
+/** Los convocados de los dos equipos, con su dorsal. */
+const courtRoster = computed<CourtRosterPlayer[]>(() => {
+  const current = state.value;
+  if (!current) return [];
+  return (['home', 'away'] as const).flatMap((side) => {
+    const lines = current[side].boxScores;
+    const numbers = shirtNumbers(lines.map((line) => line.playerId));
+    return lines.map((line) => ({
+      playerId: line.playerId,
+      side,
+      position: line.position,
+      number: numbers.get(line.playerId) ?? 0,
+      shortName: shortPlayerName(line.playerName)
+    }));
+  });
+});
+
+const kits = computed(() =>
+  matchKits(state.value?.home.teamId ?? '', state.value?.away.teamId ?? '')
+);
+
+const showCourt = computed(() => courtView.value !== 'text' && courtEvents.value.length > 0);
 
 /** Sólo se puede jugar el partido si el usuario está en él. */
 const playable = computed(() => state.value?.managedSide !== null && !state.value?.finished);
@@ -149,6 +227,16 @@ async function advance(): Promise<void> {
 }
 
 function onPlaybackFinished(): void {
+  if (replaying.value) {
+    // La repetición encadena los cuartos: al acabar uno, empieza el siguiente.
+    if (replayPeriod.value < (state.value?.periods.length ?? 0)) {
+      replayPeriod.value += 1;
+      playback.play(state.value?.playByPlay ?? [], replayPeriod.value);
+    } else {
+      replaying.value = false;
+    }
+    return;
+  }
   previous.value = null;
   if (state.value?.finished) {
     // El partido ya cuenta para la clasificación: la cabecera y el próximo
@@ -156,6 +244,34 @@ function onPlaybackFinished(): void {
     // retransmisión para que la cabecera no cante el resultado antes de verlo.
     void seasonStore.refresh();
   }
+}
+
+// ---------------------------------------------------------------------------
+// Repeticiones
+// ---------------------------------------------------------------------------
+
+/** Se está volviendo a ver un partido ya jugado. */
+const replaying = ref(false);
+const replayPeriod = ref(1);
+
+const replayPeriods = computed(() =>
+  (state.value?.periods ?? []).map((entry) => ({
+    id: String(entry.period),
+    label: entry.period > (state.value?.regulationPeriods ?? 4) ? 'PR' : `${entry.period}º`
+  }))
+);
+
+function startReplay(fromPeriod = 1): void {
+  const lines = state.value?.playByPlay;
+  if (!lines || lines.length === 0) return;
+  replaying.value = true;
+  replayPeriod.value = fromPeriod;
+  playback.play(lines, fromPeriod);
+}
+
+function stopReplay(): void {
+  replaying.value = false;
+  playback.skip();
 }
 
 // ---------------------------------------------------------------------------
@@ -374,6 +490,25 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
           </template>
         </template>
 
+        <!-- Repetición de un partido ya jugado. -->
+        <template v-else-if="replaying">
+          <AppButton
+            variant="primary"
+            size="lg"
+            @click="playback.paused.value ? playback.resume() : playback.pause()"
+          >
+            {{ playback.paused.value ? 'Reanudar' : 'Pausa' }}
+          </AppButton>
+          <AppButton variant="secondary" @click="playback.skip">Siguiente cuarto</AppButton>
+          <AppButton variant="ghost" @click="stopReplay">Terminar repetición</AppButton>
+          <AppSegmented
+            :model-value="String(replayPeriod)"
+            :options="replayPeriods"
+            aria-label="Ir al cuarto"
+            @update:model-value="(id: string) => startReplay(Number(id))"
+          />
+        </template>
+
         <AppButton v-else-if="running" variant="secondary" size="lg" @click="playback.skip">
           Saltar al final del cuarto
         </AppButton>
@@ -388,7 +523,17 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
           </AppButton>
         </template>
 
-        <p v-else-if="state.finished" class="text-sm text-court-300">Partido finalizado</p>
+        <template v-else-if="state.finished">
+          <AppButton
+            v-if="state.playByPlay && state.playByPlay.length > 0"
+            variant="secondary"
+            size="lg"
+            @click="startReplay()"
+          >
+            Ver repetición
+          </AppButton>
+          <p v-else class="text-sm text-court-300">Partido finalizado</p>
+        </template>
         <p v-else class="text-sm text-court-300">Partido de otros equipos</p>
 
         <!-- La velocidad se elige antes o durante: vale para todos los cuartos. -->
@@ -398,12 +543,31 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
           :options="SPEEDS"
           aria-label="Velocidad de la retransmisión"
         />
+        <!-- Texto, pista 2D o 3D: se elige cuando hay jugadas que dibujar. -->
+        <AppSegmented
+          v-if="state.courtEvents !== null || inLive"
+          v-model="courtView"
+          :options="VIEWS"
+          aria-label="Cómo ver el partido"
+        />
       </div>
     </section>
 
     <!-- Dirigiendo: el banquillo y la pizarra al lado de la retransmisión. -->
     <section v-if="inLive && live.bench.value.length > 0" class="grid grid-cols-[2fr_1fr] gap-4">
-      <PlayByPlayFeed :lines="visibleLines" :managed-side="state.managedSide" />
+      <div class="flex min-w-0 flex-col gap-4">
+        <MatchCourt
+          v-if="showCourt && courtView !== 'text'"
+          :view="courtView"
+          :events="courtEvents"
+          :visible-count="courtVisible"
+          :roster="courtRoster"
+          :kits="kits"
+          :regulation-periods="state.regulationPeriods"
+          :speed="playback.speed.value"
+        />
+        <PlayByPlayFeed :lines="visibleLines" :managed-side="state.managedSide" />
+      </div>
       <div class="flex flex-col gap-4">
         <LiveBench
           :on-court="live.onCourt.value"
@@ -426,11 +590,19 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
       </div>
     </section>
 
-    <PlayByPlayFeed
-      v-else-if="state.playByPlay && state.playedPeriods > 0"
-      :lines="visibleLines"
-      :managed-side="state.managedSide"
-    />
+    <template v-else-if="state.playByPlay && state.playedPeriods > 0">
+      <MatchCourt
+        v-if="showCourt && courtView !== 'text'"
+        :view="courtView"
+        :events="courtEvents"
+        :visible-count="courtVisible"
+        :roster="courtRoster"
+        :kits="kits"
+        :regulation-periods="state.regulationPeriods"
+        :speed="playback.speed.value"
+      />
+      <PlayByPlayFeed :lines="visibleLines" :managed-side="state.managedSide" />
+    </template>
     <AppPanel v-else-if="state.finished" title="Retransmisión">
       <AppEmpty>
         De los partidos entre otros equipos sólo se guarda el acta: la retransmisión se queda para

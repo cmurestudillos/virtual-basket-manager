@@ -1,5 +1,8 @@
 import { computed, onUnmounted, ref, watch, type Ref } from 'vue';
-import { visibleLineCount, type PlayLine } from '@shared/domain/play-by-play';
+import { visibleLineCount } from '@shared/domain/play-by-play';
+
+/** Lo único que el reloj necesita de cada jugada: cuándo pasó. */
+type Timed = { period: number; clockSeconds: number };
 
 /**
  * El reloj de la retransmisión.
@@ -45,6 +48,8 @@ export interface Playback {
   speed: Ref<PlaybackSpeed>;
   /** Hay un cuarto corriendo. */
   running: Ref<boolean>;
+  /** El reloj está parado a mitad de cuarto. */
+  paused: Ref<boolean>;
   /** Cuarto que se está viendo, o `null` si no corre ninguno. */
   period: Ref<number | null>;
   /** Segundos restantes del cuarto en el reloj de la retransmisión. */
@@ -52,16 +57,19 @@ export interface Playback {
   /** Líneas ya vistas, contadas desde el principio del partido. */
   visibleCount: Ref<number>;
   /** Hace correr el cuarto `period` de estas líneas. */
-  play: (lines: readonly PlayLine[], period: number) => void;
+  play: (lines: readonly Timed[], period: number) => void;
   /** Destapa lo que queda del cuarto de golpe. */
   skip: () => void;
+  pause: () => void;
+  resume: () => void;
 }
 
 export function usePlayback(onFinished: () => void): Playback {
   const running = ref(false);
+  const paused = ref(false);
   const period = ref<number | null>(null);
   const clockSeconds = ref(0);
-  const lines = ref<readonly PlayLine[]>([]);
+  const lines = ref<readonly Timed[]>([]);
   const visibleCount = computed(() =>
     period.value === null
       ? lines.value.length
@@ -80,11 +88,12 @@ export function usePlayback(onFinished: () => void): Playback {
   function finish(): void {
     stopTimer();
     running.value = false;
+    paused.value = false;
     period.value = null;
     onFinished();
   }
 
-  function play(all: readonly PlayLine[], playedPeriod: number): void {
+  function play(all: readonly Timed[], playedPeriod: number): void {
     stopTimer();
     lines.value = all;
     const start = all.find((line) => line.period === playedPeriod);
@@ -97,7 +106,12 @@ export function usePlayback(onFinished: () => void): Playback {
     // La primera línea del cuarto es su inicio, con el reloj entero.
     clockSeconds.value = start.clockSeconds;
     running.value = true;
+    paused.value = false;
+    startTimer();
+  }
 
+  function startTimer(): void {
+    stopTimer();
     timer = setInterval(() => {
       clockSeconds.value = Math.max(
         0,
@@ -109,6 +123,20 @@ export function usePlayback(onFinished: () => void): Playback {
     }, TICK_MS);
   }
 
+  function pause(): void {
+    if (running.value && !paused.value) {
+      stopTimer();
+      paused.value = true;
+    }
+  }
+
+  function resume(): void {
+    if (running.value && paused.value) {
+      paused.value = false;
+      startTimer();
+    }
+  }
+
   function skip(): void {
     if (running.value) {
       finish();
@@ -117,5 +145,5 @@ export function usePlayback(onFinished: () => void): Playback {
 
   onUnmounted(stopTimer);
 
-  return { speed, running, period, clockSeconds, visibleCount, play, skip };
+  return { speed, running, paused, period, clockSeconds, visibleCount, play, skip, pause, resume };
 }

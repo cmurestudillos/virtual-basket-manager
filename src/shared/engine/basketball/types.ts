@@ -81,9 +81,20 @@ export interface GameEvent {
   secondaryPlayerId?: string | null;
   /** Puntos que suma la jugada, si suma. */
   points?: number;
+  /**
+   * Desde dónde se tiró, en los tiros de campo y en los tapones. No sale del
+   * azar: es el tipo de tiro que el motor ya había decidido, apuntado para
+   * poder dibujarlo en la pista.
+   */
+  shotType?: ShotZone;
+  /** Los cinco de cada equipo al empezar el cuarto, en su inicio. */
+  lineups?: { home: string[]; away: string[] };
   homeScore: number;
   awayScore: number;
 }
+
+/** Zona de un tiro de campo. */
+export type ShotZone = 'close' | 'midRange' | 'threePoint';
 
 export interface PeriodScore {
   period: number;
