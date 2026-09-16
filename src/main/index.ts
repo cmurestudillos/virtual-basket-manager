@@ -2,6 +2,7 @@ import { app, BrowserWindow } from 'electron';
 import { electronApp, optimizer } from '@electron-toolkit/utils';
 import { createMainWindow } from './app/createMainWindow';
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
+import { getUpdatesService } from './features/updates/updates.ipc-handler';
 
 void app.whenReady().then(() => {
   electronApp.setAppUserModelId('com.virtualbasketmanager.desktop');
@@ -14,6 +15,12 @@ void app.whenReady().then(() => {
 
   registerIpcHandlers();
   createMainWindow();
+
+  // Una comprobación al arrancar, con la ventana ya abierta y sin prisa: que no
+  // haya conexión no puede retrasar la entrada al juego ni romperla.
+  setTimeout(() => {
+    void getUpdatesService().check();
+  }, 5000);
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {

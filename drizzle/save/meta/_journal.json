@@ -78,6 +78,20 @@
       "when": 1789541553303,
       "tag": "0010_bent_warhawk",
       "breakpoints": true
+    },
+    {
+      "idx": 11,
+      "version": "6",
+      "when": 1789544418334,
+      "tag": "0011_empty_doctor_doom",
+      "breakpoints": true
+    },
+    {
+      "idx": 12,
+      "version": "6",
+      "when": 1789546650937,
+      "tag": "0012_worthless_lilandra",
+      "breakpoints": true
     }
   ]
 }

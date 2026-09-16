@@ -37,6 +37,16 @@ mkdirSync(SHOTS, { recursive: true });
 console.log('sembrando una partida con la temporada terminada…');
 execSync('pnpm seed:finished', { cwd: PROJECT, stdio: 'inherit' });
 
+// Y una tercera en modo carrera con el entrenador ya destituido: la pantalla de
+// ofertas no se alcanza jugando, hacen falta media temporada de derrotas.
+console.log('sembrando una partida de carrera sin equipo…');
+execSync('pnpm seed:career', { cwd: PROJECT, stdio: 'inherit' });
+
+// Y una cuarta con una rueda de prensa esperando: sólo las dan las palizas, las
+// rachas y los playoffs, y el partido del recorrido puede no dar ninguna.
+console.log('sembrando una partida con rueda de prensa pendiente…');
+execSync('pnpm seed:press', { cwd: PROJECT, stdio: 'inherit' });
+
 const app = await electron.launch({
   args: ['.'],
   cwd: PROJECT,
@@ -63,6 +73,33 @@ await page.screenshot({ path: `${SHOTS}/01b-guia-de-estilo.png`, fullPage: false
 await page.goto(`${appUrl}#/`);
 await page.waitForTimeout(800);
 
+// --- Editor del mundo -------------------------------------------------------
+
+// Se renombra el cuarto club de la Liga Nacional —el mismo que elige después
+// «Nueva partida», que también ordena por reputación— para comprobar lo único
+// que de verdad importa del editor: que la partida nueva nace del mundo editado.
+await page.getByRole('link', { name: 'Editor del mundo' }).click();
+await page.waitForTimeout(1500);
+await page.locator('nav ul li button').nth(3).click();
+await page.waitForTimeout(1000);
+await page.locator('#team-name').fill('Club Editado del Arnés');
+await page.getByRole('button', { name: 'Guardar club' }).click();
+await page.waitForTimeout(1000);
+console.log('editor:', await page.locator('[role="status"]').first().innerText());
+console.log(
+  'cabecera del editor:',
+  (await page.locator('header').first().innerText()).replace(/\n/g, ' · ')
+);
+await page.screenshot({ path: `${SHOTS}/01c-editor.png` });
+
+// Y un jugador: un triple de 99 y de vuelta al menú.
+await page.locator('#attr-threePoint').fill('99');
+await page.getByRole('button', { name: 'Guardar jugador' }).click();
+await page.waitForTimeout(1000);
+console.log('jugador editado:', await page.locator('[role="status"]').first().innerText());
+await page.getByRole('link', { name: 'Volver' }).click();
+await page.waitForTimeout(800);
+
 await page.getByText('Nueva partida').click();
 await page.waitForTimeout(1200);
 console.log('equipos en el catálogo:', await page.locator('tbody tr').count());
@@ -76,11 +113,33 @@ await page.waitForTimeout(800);
 console.log('equipos tras filtrar:', await page.locator('tbody tr').count());
 await page.locator('tbody tr').nth(3).click();
 await page.locator('aside input').first().fill('Carlos');
+// Modo carrera: mientras no te echen se juega igual, y deja ver su pestaña.
+await page.getByText('Modo carrera').click();
 await page.screenshot({ path: `${SHOTS}/02-nueva-partida.png` });
 
 await page.getByText('Empezar').click();
 await page.waitForTimeout(3000);
 console.log('cabecera:', (await page.locator('header').first().innerText()).replace(/\n/g, ' · '));
+const cabeceraPartida = await page.locator('header').first().innerText();
+console.log(
+  'la partida nace del mundo editado:',
+  cabeceraPartida.includes('Club Editado del Arnés')
+);
+
+// --- Ajustes, desde dentro de la partida ------------------------------------
+
+await page.getByRole('link', { name: 'Ajustes' }).click();
+await page.waitForTimeout(1200);
+await page.locator('#ruleset-fiba').click();
+await page.waitForTimeout(600);
+console.log('ajustes:', await page.locator('[role="status"]').first().innerText());
+// La misma resolución que ya tiene: ejercita el cambio sin mover las capturas.
+await page.locator('#resolution-1600x900').click();
+await page.waitForTimeout(600);
+console.log('créditos:', await page.locator('main li, section li').count());
+await page.screenshot({ path: `${SHOTS}/03b-ajustes.png` });
+await page.getByRole('button', { name: 'Volver' }).click();
+await page.waitForTimeout(1200);
 await page.screenshot({ path: `${SHOTS}/03-club.png` });
 
 await page.getByRole('link', { name: 'Plantilla' }).click();
@@ -313,6 +372,25 @@ await page.waitForTimeout(1200);
 await page.getByRole('button', { name: 'Avanzar día' }).click();
 await page.waitForTimeout(3000);
 
+// La bandeja, tras el primer partido: lo que haya pasado desde el principio.
+// El número exacto depende del partido; lo que se comprueba es que abre, que
+// se lee y que el contador del menú baja al marcarlo todo.
+await page.getByRole('link', { name: /^Bandeja/ }).click();
+await page.waitForTimeout(1500);
+console.log('avisos en la bandeja:', await page.locator('main li').count());
+const cabeceraBandeja = await page.locator('main header').first().innerText();
+console.log('bandeja:', cabeceraBandeja.replace(/\n/g, ' · '));
+await page.screenshot({ path: `${SHOTS}/15c-bandeja.png` });
+const marcarTodo = page.getByRole('button', { name: 'Marcar todo como leído' });
+if ((await marcarTodo.count()) > 0) {
+  await marcarTodo.click();
+  await page.waitForTimeout(800);
+}
+console.log(
+  'tras marcar todo:',
+  (await page.locator('main header').first().innerText()).replace(/\n/g, ' · ')
+);
+
 // El partido tiene que haberse notado en las piernas de la plantilla.
 await page.getByRole('link', { name: 'Plantilla' }).click();
 await page.waitForTimeout(1200);
@@ -428,6 +506,9 @@ const mejorMarca = await page.locator('main li').first().innerText();
 console.log('mejor marca:', mejorMarca.split('\n').join(' · '));
 await page.screenshot({ path: `${SHOTS}/23d-records.png` });
 
+// La pestaña «Carrera» no se comprueba aquí: esta partida es de modo mánager y
+// allí no existe. Sale al final, con la partida de carrera.
+
 // Con la temporada entera jugada hay desgaste y enfermería de verdad.
 await page.getByRole('link', { name: 'Entrenamiento' }).click();
 await page.waitForTimeout(1500);
@@ -442,6 +523,121 @@ await page.waitForTimeout(2500);
 const cabecera = await page.locator('header').first().innerText();
 console.log('cabecera tras el salto:', cabecera.replace(/\n/g, ' · '));
 await page.screenshot({ path: `${SHOTS}/24-temporada-siguiente.png` });
+
+// --- Modo carrera: sin equipo y a buscar banquillo ------------------------
+
+// La tercera partida, la que llega con el entrenador ya destituido. Es la única
+// forma de ver la pantalla que convierte el despido en el principio de otra
+// cosa sin encadenar media temporada de derrotas.
+await page.getByRole('link', { name: 'Salir al menú' }).click();
+await page.waitForTimeout(1000);
+await page.getByRole('link', { name: 'Cargar partida' }).click();
+await page.waitForTimeout(1200);
+await page
+  .locator('li', { hasText: 'Carrera sin equipo' })
+  .getByRole('button', { name: 'Cargar' })
+  .click();
+await page.waitForTimeout(2500);
+
+const paro = await page.locator('main section').first().innerText();
+console.log('sin equipo:', paro.split('\n').slice(0, 3).join(' · '));
+// Una oferta, un botón de firmar: contar `li` sueltos recogería los de otras
+// secciones del club y diría más ofertas de las que hay.
+console.log('ofertas sobre la mesa:', await page.getByRole('button', { name: 'Firmar' }).count());
+const primera = await page.locator('main section li').first().innerText();
+console.log('primera oferta:', primera.split('\n').join(' · '));
+await page.screenshot({ path: `${SHOTS}/25-sin-equipo.png` });
+
+// Antes de firmar, se espera un mes: el reloj corre sin banquillo y se abren
+// otros banquillos. La fecha de la cabecera tiene que haber cambiado de mes.
+const fechaAntes = await page.locator('header').first().innerText();
+await page.getByRole('button', { name: 'Esperar un mes' }).click();
+// Un mes de partidos se simula entero: se espera a que desaparezca el aviso.
+await page.getByText('Pasa el mes…').waitFor({ state: 'detached', timeout: 180_000 });
+await page.waitForTimeout(1500);
+const fechaDespues = await page.locator('header').first().innerText();
+console.log(
+  'espera en el paro:',
+  fechaAntes.split('\n').pop(),
+  '->',
+  fechaDespues.split('\n').pop()
+);
+console.log('ofertas tras esperar:', await page.getByRole('button', { name: 'Firmar' }).count());
+await page.screenshot({ path: `${SHOTS}/25b-tras-esperar.png` });
+
+// Y se firma por uno: a partir de aquí la partida es la de otro club.
+await page.getByRole('button', { name: 'Firmar' }).first().click();
+await page.waitForTimeout(2500);
+const nuevoClub = await page.locator('header').first().innerText();
+console.log('tras firmar:', nuevoClub.replace(/\n/g, ' · '));
+await page.screenshot({ path: `${SHOTS}/26-club-nuevo.png` });
+
+// La hoja de servicios tiene que contar ya las dos etapas.
+await page.getByRole('link', { name: 'Historial' }).click();
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Carrera' }).click();
+await page.waitForTimeout(1200);
+console.log('etapas en la hoja de servicios:', await page.locator('main li').count());
+const etapas = await page.locator('main li').first().innerText();
+console.log('etapa en curso:', etapas.split('\n').join(' · '));
+await page.screenshot({ path: `${SHOTS}/27-hoja-de-servicios.png` });
+
+// Y el reloj vuelve a correr: dirigir otra vez es poder jugar otra vez.
+await page.getByRole('link', { name: 'Club' }).click();
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Avanzar día' }).click();
+await page.waitForTimeout(2500);
+const siguiendo = await page.locator('header').first().innerText();
+console.log('la partida sigue:', siguiendo.replace(/\n/g, ' · '));
+await page.screenshot({ path: `${SHOTS}/28-carrera-en-marcha.png` });
+
+// Y se dimite: dos pasos desde la hoja de servicios, y de vuelta al paro.
+await page.getByRole('link', { name: 'Historial' }).click();
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Carrera' }).click();
+await page.waitForTimeout(1000);
+await page.getByRole('button', { name: 'Dimitir' }).click();
+await page.waitForTimeout(400);
+await page.getByRole('button', { name: 'Confirmar dimisión' }).click();
+await page.waitForTimeout(2500);
+const trasDimitir = await page.locator('main section').first().innerText();
+console.log('tras dimitir:', trasDimitir.split('\n').slice(0, 2).join(' · '));
+await page.screenshot({ path: `${SHOTS}/28b-dimision.png` });
+
+// --- Prensa: una rueda de prensa esperando --------------------------------
+
+await page.getByRole('link', { name: 'Salir al menú' }).click();
+await page.waitForTimeout(1000);
+await page.getByRole('link', { name: 'Cargar partida' }).click();
+await page.waitForTimeout(1200);
+await page
+  .locator('li', { hasText: 'Rueda de prensa pendiente' })
+  .getByRole('button', { name: 'Cargar' })
+  .click();
+await page.waitForTimeout(2500);
+
+// El contador del menú tiene que avisar antes de entrar.
+const enlaceBandeja = await page.getByRole('link', { name: /^Bandeja/ }).innerText();
+console.log('menú con aviso:', enlaceBandeja.replace(/\n/g, ' '));
+
+await page.getByRole('link', { name: /^Bandeja/ }).click();
+await page.waitForTimeout(1500);
+await page.locator('main li button', { hasText: 'Rueda de prensa' }).first().click();
+await page.waitForTimeout(1200);
+const pregunta = await page.locator('main section p').first().innerText();
+console.log('pregunta de la prensa:', pregunta);
+console.log(
+  'respuestas posibles:',
+  await page.getByRole('button', { name: /^(Humilde|Seguro|Combativo)/ }).count()
+);
+await page.screenshot({ path: `${SHOTS}/29-rueda-de-prensa.png` });
+
+// Se contesta, y la reacción llega en palabras.
+await page.getByRole('button', { name: /^Combativo/ }).click();
+await page.waitForTimeout(1500);
+const reaccion = await page.locator('main section').first().innerText();
+console.log('tras contestar:', reaccion.replace(/\n/g, ' · '));
+await page.screenshot({ path: `${SHOTS}/30-prensa-contestada.png` });
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);

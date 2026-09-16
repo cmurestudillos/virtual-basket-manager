@@ -67,7 +67,29 @@ export const IPC_CHANNELS = {
   matchTimeout: 'match:timeout',
   matchLiveTactics: 'match:liveTactics',
   matchAutoRotation: 'match:autoRotation',
-  historyGet: 'history:get'
+  historyGet: 'history:get',
+  careerGetStatus: 'career:getStatus',
+  careerAccept: 'career:accept',
+  careerResign: 'career:resign',
+  careerWait: 'career:wait',
+  updatesGet: 'updates:get',
+  updatesCheck: 'updates:check',
+  updatesInstall: 'updates:install',
+  /** Del proceso principal a la ventana: el estado de la actualización ha cambiado. */
+  updatesChanged: 'updates:changed',
+  editorOverview: 'editor:overview',
+  editorTeam: 'editor:team',
+  editorUpdateTeam: 'editor:updateTeam',
+  editorUpdatePlayer: 'editor:updatePlayer',
+  editorMovePlayer: 'editor:movePlayer',
+  editorResetTeam: 'editor:resetTeam',
+  editorResetAll: 'editor:resetAll',
+  inboxGet: 'inbox:get',
+  inboxUnreadCount: 'inbox:unreadCount',
+  inboxMarkRead: 'inbox:markRead',
+  inboxMarkAllRead: 'inbox:markAllRead',
+  inboxGetPress: 'inbox:getPress',
+  inboxAnswerPress: 'inbox:answerPress'
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

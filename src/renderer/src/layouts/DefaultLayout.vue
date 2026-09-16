@@ -1,14 +1,19 @@
 <script setup lang="ts">
-import { onMounted } from 'vue';
-import { useRouter } from 'vue-router';
+import { AppAvatar } from '@renderer/shared/ui';
+import { onMounted, watch } from 'vue';
+import { useRoute, useRouter } from 'vue-router';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatGameDate } from '@renderer/shared/format';
+import { useInboxStore } from '@renderer/features/inbox/inbox.store';
 
 const store = useGameStateStore();
+const inbox = useInboxStore();
 const router = useRouter();
+const route = useRoute();
 
 const sections = [
   { name: 'dashboard', label: 'Club' },
+  { name: 'inbox', label: 'Bandeja' },
   { name: 'squad', label: 'Plantilla' },
   { name: 'lineup', label: 'Alineación' },
   { name: 'training', label: 'Entrenamiento' },
@@ -26,8 +31,22 @@ onMounted(async () => {
   // enlace directo) devuelve al menú en vez de pintar una cabecera vacía.
   if (!store.state) {
     await router.replace({ name: 'main-menu' });
+    return;
   }
+  await inbox.refresh();
 });
+
+// El contador se pone al día cuando puede haber pasado algo: al moverse el reloj
+// —una lesión, un fichaje— o al cambiar de pantalla, que es cuando se vuelve de
+// jugar un partido y puede haber rueda de prensa esperando.
+watch(
+  () => store.state?.currentDate,
+  () => void inbox.refresh()
+);
+watch(
+  () => route.fullPath,
+  () => void inbox.refresh()
+);
 </script>
 
 <template>
@@ -35,11 +54,14 @@ onMounted(async () => {
     <header
       class="col-span-2 flex items-center justify-between border-b border-court-700 bg-court-900 px-5"
     >
-      <div class="flex items-baseline gap-3">
+      <div class="flex items-center gap-3">
         <span class="text-lg font-semibold text-ball-500">{{
           store.state?.teamName ?? 'Sin equipo'
         }}</span>
-        <span class="text-sm text-court-300">{{ store.state?.managerName }}</span>
+        <span v-if="store.state" class="inline-flex items-center gap-2 text-sm text-court-300">
+          <AppAvatar kind="coach" :seed="store.state.managerName" :size="24" />
+          {{ store.state.managerName }}
+        </span>
       </div>
       <div class="flex items-center gap-4 text-sm text-court-300">
         <span v-if="store.state">Temporada {{ store.state.seasonNumber }}</span>
@@ -55,12 +77,26 @@ onMounted(async () => {
         class="rounded px-3 py-2 text-sm text-court-300 hover:bg-court-800 hover:text-court-100"
         active-class="bg-court-800 text-ball-400"
       >
-        {{ section.label }}
+        <span class="flex items-center justify-between">
+          {{ section.label }}
+          <span
+            v-if="section.name === 'inbox' && inbox.unread > 0"
+            class="rounded-full bg-ball-500 px-1.5 text-xs font-semibold text-court-950"
+          >
+            {{ inbox.unread }}
+          </span>
+        </span>
       </RouterLink>
 
       <RouterLink
-        :to="{ name: 'main-menu' }"
+        :to="{ name: 'settings' }"
         class="mt-auto rounded px-3 py-2 text-sm text-court-300 hover:bg-court-800"
+      >
+        Ajustes
+      </RouterLink>
+      <RouterLink
+        :to="{ name: 'main-menu' }"
+        class="rounded px-3 py-2 text-sm text-court-300 hover:bg-court-800"
       >
         Salir al menú
       </RouterLink>

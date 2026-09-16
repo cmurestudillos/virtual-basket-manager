@@ -10,7 +10,7 @@ import {
 } from '@shared/domain/training';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import StaffPanel from '@renderer/features/staff/components/StaffPanel.vue';
-import { AppButton, AppTabs, AppPageHeader, AppSectionTitle } from '@renderer/shared/ui';
+import { AppAvatar, AppButton, AppPageHeader, AppSectionTitle, AppTabs } from '@renderer/shared/ui';
 
 const store = useGameStateStore();
 
@@ -189,8 +189,9 @@ function conditionColor(condition: number): string {
               <td>
                 <RouterLink
                   :to="{ name: 'player', params: { playerId: player.playerId } }"
-                  class="hover:text-ball-400"
+                  class="inline-flex items-center gap-2 hover:text-ball-400"
                 >
+                  <AppAvatar kind="player" :seed="player.playerId" />
                   {{ player.playerName }}
                 </RouterLink>
               </td>

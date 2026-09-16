@@ -8,11 +8,13 @@ import type {
 } from '@shared/contracts/season.contract';
 import type { TeamSummary } from '@shared/contracts/teams.contract';
 import type { BoardView } from '@shared/contracts/club.contract';
+import type { CareerStatus } from '@shared/contracts/career.contract';
 import { DANGER_CONFIDENCE, SEASON_VERDICT_LABELS } from '@shared/domain/board';
 import { AppButton, AppPageHeader, AppSectionTitle, AppStat } from '@renderer/shared/ui';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { formatMatchDate, formatMoney } from '@renderer/shared/format';
+import CareerOffers from '@renderer/features/career/components/CareerOffers.vue';
 
 const router = useRouter();
 const gameState = useGameStateStore();
@@ -23,6 +25,15 @@ const standings = ref<StandingEntry[]>([]);
 const recent = ref<FixtureEntry[]>([]);
 const playoffs = ref<PlayoffBracket | null>(null);
 const board = ref<BoardView | null>(null);
+/**
+ * La carrera, si la partida se juega en ese modo. Es lo que convierte el
+ * despido en «busca otro banquillo» en vez de en el final de la partida.
+ */
+const career = ref<CareerStatus | null>(null);
+const signing = ref(false);
+
+/** Sin equipo y con clubes preguntando: no hay nada más que hacer hasta firmar. */
+const unemployed = computed(() => career.value?.careerMode === true && career.value.unemployed);
 
 const myPosition = computed(() => standings.value.find((row) => row.isManaged));
 const stage = computed(() => seasonStore.season?.stage ?? 'regular');
@@ -78,7 +89,52 @@ async function reload(): Promise<void> {
   // El cuadro sólo existe cuando acaba la liga regular; antes no hay nada que pedir.
   playoffs.value = stage.value === 'regular' ? null : await window.api.season.getPlayoffs();
   board.value = await window.api.club.getBoard();
+  career.value = await window.api.career.getStatus();
 }
+
+/** Coge el banquillo ofrecido y vuelve a cargar el club, que ya es otro. */
+async function acceptOffer(teamId: string): Promise<void> {
+  if (signing.value) {
+    return;
+  }
+  signing.value = true;
+  try {
+    career.value = await window.api.career.accept(teamId);
+    await gameState.refresh();
+    await seasonStore.refresh();
+    await reload();
+  } finally {
+    signing.value = false;
+  }
+}
+
+/**
+ * Un mes en el paro. El reloj corre sin banquillo —la IA juega todo— y a la
+ * vuelta hay otros clubes con el suyo abierto.
+ */
+async function waitAMonth(): Promise<void> {
+  if (signing.value) {
+    return;
+  }
+  signing.value = true;
+  try {
+    career.value = await window.api.career.wait();
+    await gameState.refresh();
+    await seasonStore.refresh();
+    await reload();
+  } finally {
+    signing.value = false;
+  }
+}
+
+/** Ofertas teniendo equipo: sólo al cerrar la temporada, y sólo si alguien tienta. */
+const employedOffers = computed(
+  () =>
+    career.value?.careerMode === true &&
+    !career.value.unemployed &&
+    career.value.offersWhileEmployed &&
+    career.value.offers.length > 0
+);
 
 async function advance(mode: 'day' | 'nextGame'): Promise<void> {
   const gameId = await seasonStore.advance(mode);
@@ -159,9 +215,22 @@ function fixtureRound(fixture: FixtureEntry): string {
       </AppStat>
     </div>
 
+    <!-- Sin equipo, lo primero es elegir banquillo; con él, quién te busca en verano. -->
+    <CareerOffers
+      v-if="career && (unemployed || employedOffers)"
+      :offers="career.offers"
+      :reputation-label="career.reputationLabel"
+      :busy="signing"
+      :employed="!unemployed"
+      :can-wait="career.canWait"
+      :current-date="career.currentDate"
+      @accept="acceptOffer"
+      @wait="waitAMonth"
+    />
+
     <!-- El consejo -->
     <section
-      v-if="board"
+      v-if="board && !unemployed"
       class="rounded border px-5 py-4"
       :class="board.dismissed ? 'border-bad-500' : 'border-court-700'"
     >
@@ -190,7 +259,7 @@ function fixtureRound(fixture: FixtureEntry): string {
       </div>
     </section>
 
-    <section v-if="!board?.dismissed" class="rounded border border-court-700 p-5">
+    <section v-if="!board?.dismissed && !unemployed" class="rounded border border-court-700 p-5">
       <AppSectionTitle>
         {{ stage === 'finished' ? 'Temporada terminada' : 'Próximo partido' }}
       </AppSectionTitle>

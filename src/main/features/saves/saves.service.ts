@@ -11,6 +11,8 @@ import { setActiveSaveFilePath } from '../../database/resolve-save-database';
 import { deleteSaveFile, prepareSaveFilePath, toSaveFileName } from '../../database/save-file';
 import { gameStateTable, teamsTable } from '../../database/schema/save';
 import type { SaveRow } from '../../database/schema/app';
+import { DEFAULT_RULESET_MODE, rulesetFor, type RulesetMode } from '@shared/domain/ruleset-mode';
+import { applyWorldEdits, type WorldEdit } from '../world-editor/apply-world-edits';
 import { loadDataset } from './dataset';
 import { seedSave } from './save-seeder';
 import type { SavesRepository } from './saves.repository';
@@ -41,7 +43,15 @@ export class SavesService {
   constructor(
     private readonly repository: SavesRepository,
     private readonly savesDirectory: string,
-    private readonly seedDirectory: string
+    private readonly seedDirectory: string,
+    /**
+     * Las ediciones del mundo base, si las hay. Se piden al crear cada partida
+     * —no al construir el servicio— para que lo último que se editó entre ya en
+     * la siguiente partida sin reiniciar la aplicación.
+     */
+    private readonly worldEdits: () => readonly WorldEdit[] = () => [],
+    /** El reglamento de Ajustes, leído al crear cada partida. */
+    private readonly rulesetMode: () => RulesetMode = () => DEFAULT_RULESET_MODE
   ) {}
 
   list(): SaveSummary[] {
@@ -50,7 +60,17 @@ export class SavesService {
 
   create(request: CreateSaveRequest): SaveSummary {
     const validated = createSaveRequestSchema.parse(request);
-    const dataset = loadDataset(this.seedDirectory);
+    // El mundo con las ediciones del usuario encima: lo que se ve en el editor
+    // es lo que recibe la partida.
+    const edited = applyWorldEdits(loadDataset(this.seedDirectory), this.worldEdits());
+    const mode = this.rulesetMode();
+    const dataset = {
+      ...edited,
+      competitions: edited.competitions.map((competition) => ({
+        ...competition,
+        rulesetId: rulesetFor(mode, competition.rulesetId)
+      }))
+    };
 
     if (!dataset.teams.some((team) => team.id === validated.teamId)) {
       throw new UnknownTeamError(validated.teamId);
@@ -66,7 +86,8 @@ export class SavesService {
     seedSave(db, dataset, {
       managedTeamId: validated.teamId,
       managerName: validated.managerName,
-      dismissalEnabled: validated.dismissalEnabled
+      dismissalEnabled: validated.dismissalEnabled,
+      careerMode: validated.careerMode
     });
 
     const now = new Date();

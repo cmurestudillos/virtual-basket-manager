@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vitest';
-import { SettingsService } from '../settings.service';
+import { InvalidSettingValueError, SettingsService } from '../settings.service';
 import type { SettingsRepository } from '../settings.repository';
 
 function buildRepository(): SettingsRepository {
@@ -43,5 +43,20 @@ describe('SettingsService', () => {
 
     expect(() => service.set('resolution', '')).toThrow();
     expect(repository.upsert).not.toHaveBeenCalled();
+  });
+
+  it('cada clave sólo admite sus valores', () => {
+    const repository = buildRepository();
+    const service = new SettingsService(repository);
+
+    // Una resolución inventada no puede llegar a la ventana…
+    expect(() => service.set('resolution', '640x480')).toThrow(InvalidSettingValueError);
+    // …ni un reglamento que no existe a la próxima partida.
+    expect(() => service.set('ruleset', 'ncaa')).toThrow(InvalidSettingValueError);
+    expect(repository.upsert).not.toHaveBeenCalled();
+
+    service.set('resolution', '1920x1080');
+    service.set('ruleset', 'real');
+    expect(repository.upsert).toHaveBeenCalledTimes(2);
   });
 });

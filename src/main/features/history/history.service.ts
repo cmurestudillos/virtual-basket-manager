@@ -13,6 +13,7 @@ import { computeStandings } from '@shared/domain/standings';
 import type { SaveDatabase } from '../../database/save-database';
 import {
   gamePlayerStatsTable,
+  type CareerSpellRow,
   type CompetitionRow,
   type SeasonRow
 } from '../../database/schema/save';
@@ -47,6 +48,10 @@ export class HistoryService {
 
     const competitions = repository.competitions();
     const names = repository.teamNames();
+    // Qué club dirigía cada año. En una carrera no es siempre el mismo, y sin
+    // esto el palmarés se quedaría con los títulos del club nuevo, los ganara
+    // quien los ganara.
+    const spells = repository.spells();
 
     // Las temporadas se agrupan por curso: en un mismo año el club juega su
     // liga, quizá la Copa y quizá Europa, y todo eso es una sola fila.
@@ -67,7 +72,7 @@ export class HistoryService {
         names,
         seasonNumber,
         group,
-        teamId,
+        teamManagedIn(spells, seasonNumber, teamId),
         trophies
       );
       if (entry) {
@@ -105,9 +110,13 @@ export class HistoryService {
     names: Map<string, string>,
     seasonNumber: number,
     group: readonly SeasonRow[],
-    teamId: string,
+    teamId: string | null,
     trophies: Map<string, WonTrophy>
   ): HistorySeasonEntry | null {
+    if (!teamId) {
+      // Un año sin banquillo: en carrera pasa, y no es una temporada dirigida.
+      return null;
+    }
     let league: { season: SeasonRow; competition: CompetitionRow } | null = null;
     const others: HistoryCompetitionResult[] = [];
 
@@ -259,6 +268,26 @@ export class HistoryService {
     }
     return records;
   }
+}
+
+/**
+ * Qué club dirigía el entrenador en una temporada.
+ *
+ * Sin etapas guardadas —una partida anterior al modo carrera— manda el club de
+ * hoy, que en aquellas partidas era el único que se dirigía nunca.
+ */
+function teamManagedIn(
+  spells: readonly CareerSpellRow[],
+  seasonNumber: number,
+  fallback: string
+): string | null {
+  if (spells.length === 0) {
+    return fallback;
+  }
+  const spell = spells.find(
+    (row) => seasonNumber >= row.startSeason && seasonNumber <= (row.endSeason ?? Infinity)
+  );
+  return spell?.teamId ?? null;
 }
 
 /** «2025-26», que es como se nombra una temporada. */

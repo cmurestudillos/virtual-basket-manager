@@ -3,7 +3,7 @@ import { onMounted, ref, watch } from 'vue';
 import type { LeaderBoard, PlayerSeasonStats } from '@shared/contracts/stats.contract';
 import { LEADER_CATEGORY_LABELS, type LeaderCategory } from '@shared/domain/season-stats';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
-import { AppTabs, AppPageHeader } from '@renderer/shared/ui';
+import { AppAvatar, AppPageHeader, AppTabs } from '@renderer/shared/ui';
 
 const store = useGameStateStore();
 
@@ -80,8 +80,9 @@ function average(value: number): string {
               <td>
                 <RouterLink
                   :to="{ name: 'player', params: { playerId: row.playerId } }"
-                  class="hover:text-ball-400"
+                  class="inline-flex items-center gap-2 hover:text-ball-400"
                 >
+                  <AppAvatar kind="player" :seed="row.playerId" />
                   {{ row.playerName }}
                 </RouterLink>
               </td>
@@ -144,8 +145,9 @@ function average(value: number): string {
               <td>
                 <RouterLink
                   :to="{ name: 'player', params: { playerId: entry.player.playerId } }"
-                  class="hover:text-ball-400"
+                  class="inline-flex items-center gap-2 hover:text-ball-400"
                 >
+                  <AppAvatar kind="player" :seed="entry.player.playerId" />
                   {{ entry.player.playerName }}
                 </RouterLink>
               </td>

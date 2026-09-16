@@ -36,15 +36,21 @@
     "db:generate": "pnpm run db:generate:app && pnpm run db:generate:save",
     "seed:generate": "tsx scripts/seed-data/generate-dataset.mts",
     "seed:finished": "tsx --tsconfig tsconfig.node.json scripts/seed-finished-season.mts",
+    "seed:career": "tsx --tsconfig tsconfig.node.json scripts/seed-dismissed-career.mts",
+    "seed:press": "tsx --tsconfig tsconfig.node.json scripts/seed-press-conference.mts",
     "verify:app": "node scripts/verify-app.mjs",
     "verify:engine": "tsx --tsconfig tsconfig.node.json scripts/engine-fingerprint.mts",
-    "build:win": "electron-vite build && electron-builder --win"
+    "build:win": "electron-vite build && electron-builder --win --publish never",
+    "release:win": "electron-vite build && electron-builder --win --publish never -c.win.forceCodeSigning=true"
   },
   "dependencies": {
+    "@dicebear/collection": "^9.4.2",
+    "@dicebear/core": "^9.4.3",
     "@electron-toolkit/preload": "^3.0.2",
     "@electron-toolkit/utils": "^4.0.0",
     "better-sqlite3": "13.0.2",
     "drizzle-orm": "^0.45.2",
+    "electron-updater": "^6.8.9",
     "pinia": "^4.0.2",
     "vue": "^3.5.40",
     "vue-router": "^5.2.0",

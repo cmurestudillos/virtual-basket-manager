@@ -23,6 +23,18 @@ import type {
   StandingEntry
 } from '@shared/contracts/season.contract';
 import type { HistoryApi, HistoryView } from '@shared/contracts/history.contract';
+import type { CareerApi, CareerStatus } from '@shared/contracts/career.contract';
+import type { InboxApi, InboxView, PressConference } from '@shared/contracts/inbox.contract';
+import type { UpdatesApi, UpdatesView } from '@shared/contracts/updates.contract';
+import type {
+  EditorOverview,
+  EditorResult,
+  EditorTeam,
+  PlayerPatch,
+  TeamPatch,
+  WorldEditorApi
+} from '@shared/contracts/world-editor.contract';
+import type { PressTone } from '@shared/domain/press';
 import type {
   LiveOrderResult,
   LiveTacticsPatch,
@@ -242,6 +254,58 @@ const match: MatchApi = {
     ipcRenderer.invoke(IPC_CHANNELS.matchAutoRotation, gameId, enabled) as Promise<LiveOrderResult>
 };
 
+const career: CareerApi = {
+  getStatus: () => ipcRenderer.invoke(IPC_CHANNELS.careerGetStatus) as Promise<CareerStatus>,
+  accept: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.careerAccept, teamId) as Promise<CareerStatus>,
+  resign: () => ipcRenderer.invoke(IPC_CHANNELS.careerResign) as Promise<CareerStatus>,
+  wait: () => ipcRenderer.invoke(IPC_CHANNELS.careerWait) as Promise<CareerStatus>
+};
+
+const inbox: InboxApi = {
+  get: () => ipcRenderer.invoke(IPC_CHANNELS.inboxGet) as Promise<InboxView>,
+  unreadCount: () => ipcRenderer.invoke(IPC_CHANNELS.inboxUnreadCount) as Promise<number>,
+  markRead: (id: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.inboxMarkRead, id) as Promise<InboxView>,
+  markAllRead: () => ipcRenderer.invoke(IPC_CHANNELS.inboxMarkAllRead) as Promise<InboxView>,
+  getPress: (id: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.inboxGetPress, id) as Promise<PressConference | null>,
+  answerPress: (id: string, tone: PressTone) =>
+    ipcRenderer.invoke(IPC_CHANNELS.inboxAnswerPress, id, tone) as Promise<PressConference>
+};
+
+const editor: WorldEditorApi = {
+  overview: () => ipcRenderer.invoke(IPC_CHANNELS.editorOverview) as Promise<EditorOverview>,
+  team: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.editorTeam, teamId) as Promise<EditorTeam | null>,
+  updateTeam: (teamId: string, patch: TeamPatch) =>
+    ipcRenderer.invoke(IPC_CHANNELS.editorUpdateTeam, teamId, patch) as Promise<
+      EditorResult<EditorTeam>
+    >,
+  updatePlayer: (playerId: string, patch: PlayerPatch) =>
+    ipcRenderer.invoke(IPC_CHANNELS.editorUpdatePlayer, playerId, patch) as Promise<
+      EditorResult<EditorTeam>
+    >,
+  movePlayer: (playerId: string, toTeamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.editorMovePlayer, playerId, toTeamId) as Promise<
+      EditorResult<EditorTeam>
+    >,
+  resetTeam: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.editorResetTeam, teamId) as Promise<EditorResult<EditorTeam>>,
+  resetAll: () => ipcRenderer.invoke(IPC_CHANNELS.editorResetAll) as Promise<EditorOverview>
+};
+
+const updates: UpdatesApi = {
+  get: () => ipcRenderer.invoke(IPC_CHANNELS.updatesGet) as Promise<UpdatesView>,
+  check: () => ipcRenderer.invoke(IPC_CHANNELS.updatesCheck) as Promise<UpdatesView>,
+  install: () => ipcRenderer.invoke(IPC_CHANNELS.updatesInstall) as Promise<void>,
+  onChange: (listener: (view: UpdatesView) => void) => {
+    const handler = (_event: Electron.IpcRendererEvent, view: UpdatesView): void => listener(view);
+    ipcRenderer.on(IPC_CHANNELS.updatesChanged, handler);
+    return () => ipcRenderer.removeListener(IPC_CHANNELS.updatesChanged, handler);
+  }
+};
+
 const history: HistoryApi = {
   get: () => ipcRenderer.invoke(IPC_CHANNELS.historyGet) as Promise<HistoryView>
 };
@@ -262,7 +326,11 @@ export const api = {
   youth,
   market,
   match,
-  history
+  history,
+  career,
+  inbox,
+  editor,
+  updates
 };
 
 contextBridge.exposeInMainWorld('api', api);

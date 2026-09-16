@@ -1,10 +1,23 @@
 import type { CatalogLeague, CatalogTeam, TeamSummary } from '@shared/contracts/teams.contract';
 import { requireActiveSaveDatabase } from '../../database/resolve-save-database';
 import { loadDataset } from '../saves/dataset';
+import { applyWorldEdits, type WorldEdit } from '../world-editor/apply-world-edits';
 import { TeamsRepository } from './teams.repository';
 
 export class TeamsService {
-  constructor(private readonly seedDirectory: string) {}
+  constructor(
+    private readonly seedDirectory: string,
+    /**
+     * Las ediciones del mundo base. El catálogo de «Nueva partida» tiene que
+     * enseñar el mundo editado: si no, se elige un club con un nombre y la
+     * partida nace con otro.
+     */
+    private readonly worldEdits: () => readonly WorldEdit[] = () => []
+  ) {}
+
+  private world() {
+    return applyWorldEdits(loadDataset(this.seedDirectory), this.worldEdits());
+  }
 
   list(): TeamSummary[] {
     return new TeamsRepository(requireActiveSaveDatabase()).list();
@@ -20,7 +33,7 @@ export class TeamsService {
    * es justo la pantalla en la que el usuario decide a quién va a dirigir.
    */
   listCatalog(): CatalogTeam[] {
-    const dataset = loadDataset(this.seedDirectory);
+    const dataset = this.world();
     const competitions = new Map(dataset.competitions.map((c) => [c.id, c.name]));
 
     return dataset.teams
@@ -43,7 +56,7 @@ export class TeamsService {
    * partida, se entra clasificándose.
    */
   listLeagues(): CatalogLeague[] {
-    const dataset = loadDataset(this.seedDirectory);
+    const dataset = this.world();
     const sizes = new Map<string, number>();
     for (const team of dataset.teams) {
       sizes.set(team.competitionId, (sizes.get(team.competitionId) ?? 0) + 1);

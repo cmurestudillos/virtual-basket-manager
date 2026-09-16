@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import type { StaffMember, TeamStaff } from '@shared/contracts/staff.contract';
 import { formatMoney } from '@renderer/shared/format';
-import { AppButton, AppSectionTitle } from '@renderer/shared/ui';
+import { AppAvatar, AppButton, AppSectionTitle } from '@renderer/shared/ui';
 
 const props = defineProps<{ teamId: string }>();
 
@@ -69,7 +69,11 @@ function fire(member: StaffMember): void {
           <tbody>
             <tr v-for="member in staff.members" :key="member.id">
               <td class="text-ball-400">{{ member.roleLabel }}</td>
-              <td>{{ member.name }}</td>
+              <td>
+                <span class="inline-flex items-center gap-2">
+                  <AppAvatar kind="staff" :seed="member.id" />{{ member.name }}
+                </span>
+              </td>
               <td class="text-court-300">{{ member.levelLabel }} ({{ member.level }})</td>
               <td class="text-court-300">{{ member.effect }}</td>
               <td class="numeric">{{ formatMoney(member.wageCents) }}</td>
@@ -119,7 +123,11 @@ function fire(member: StaffMember): void {
             </tr>
             <tr v-for="member in candidates" :key="member.id">
               <td class="text-court-300">{{ member.roleLabel }}</td>
-              <td>{{ member.name }}</td>
+              <td>
+                <span class="inline-flex items-center gap-2">
+                  <AppAvatar kind="staff" :seed="member.id" />{{ member.name }}
+                </span>
+              </td>
               <td>{{ member.levelLabel }} ({{ member.level }})</td>
               <td class="text-court-300">{{ member.effect }}</td>
               <td class="numeric">{{ formatMoney(member.wageCents) }}</td>

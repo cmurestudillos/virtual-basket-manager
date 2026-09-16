@@ -15,7 +15,7 @@
 import { computed, ref } from 'vue';
 import type { LiveBenchPlayer } from '@shared/contracts/match.contract';
 import { formatPlayedMinutes } from '@renderer/shared/format';
-import { AppButton, AppPanel } from '@renderer/shared/ui';
+import { AppAvatar, AppButton, AppPanel } from '@renderer/shared/ui';
 import { TONE_TEXT, toneForLevel } from '@renderer/shared/ui/tones';
 
 const props = defineProps<{
@@ -94,6 +94,7 @@ function foulsTone(player: LiveBenchPlayer): string {
           @click="pickOutgoing(player)"
         >
           <span class="w-7 shrink-0 text-ball-400">{{ player.playedPosition }}</span>
+          <AppAvatar kind="player" :seed="player.playerId" :size="22" />
           <span class="flex-1 truncate">{{ player.playerName }}</span>
           <span class="figure w-10 text-right text-xs text-court-300">
             {{ formatPlayedMinutes(player.secondsPlayed) }}
@@ -125,6 +126,7 @@ function foulsTone(player: LiveBenchPlayer): string {
           @click="pickIncoming(player)"
         >
           <span class="w-7 shrink-0 text-court-300">{{ player.position }}</span>
+          <AppAvatar kind="player" :seed="player.playerId" :size="22" />
           <span class="flex-1 truncate">{{ player.playerName }}</span>
           <span v-if="player.fouledOut" class="text-xs text-bad-400">eliminado</span>
           <template v-else>

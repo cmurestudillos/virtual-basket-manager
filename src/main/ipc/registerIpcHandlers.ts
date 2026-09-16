@@ -14,6 +14,10 @@ import { registerYouthIpcHandlers } from '../features/youth/youth.ipc-handler';
 import { registerMarketIpcHandlers } from '../features/market/market.ipc-handler';
 import { registerMatchIpcHandlers } from '../features/match/match.ipc-handler';
 import { registerHistoryIpcHandlers } from '../features/history/history.ipc-handler';
+import { registerCareerIpcHandlers } from '../features/career/career.ipc-handler';
+import { registerInboxIpcHandlers } from '../features/inbox/inbox.ipc-handler';
+import { registerWorldEditorIpcHandlers } from '../features/world-editor/world-editor.ipc-handler';
+import { registerUpdatesIpcHandlers } from '../features/updates/updates.ipc-handler';
 
 /**
  * Único punto donde se cablean los handlers IPC de cada feature. Una línea por
@@ -36,4 +40,8 @@ export function registerIpcHandlers(): void {
   registerMarketIpcHandlers();
   registerMatchIpcHandlers();
   registerHistoryIpcHandlers();
+  registerCareerIpcHandlers();
+  registerInboxIpcHandlers();
+  registerWorldEditorIpcHandlers();
+  registerUpdatesIpcHandlers();
 }

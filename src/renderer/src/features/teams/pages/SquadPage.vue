@@ -6,7 +6,7 @@ import { injuryLabel } from '@shared/domain/injuries';
 import { POSITION_LABELS } from '@shared/domain/positions';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
-import { AppPageHeader } from '@renderer/shared/ui';
+import { AppAvatar, AppPageHeader } from '@renderer/shared/ui';
 
 const store = useGameStateStore();
 const players = ref<PlayerSummary[]>([]);
@@ -56,8 +56,9 @@ onMounted(async () => {
             <td>
               <RouterLink
                 :to="{ name: 'player', params: { playerId: player.id } }"
-                class="hover:text-ball-400"
+                class="inline-flex items-center gap-2 hover:text-ball-400"
               >
+                <AppAvatar kind="player" :seed="player.id" />
                 {{ player.firstName }} {{ player.lastName }}
               </RouterLink>
             </td>

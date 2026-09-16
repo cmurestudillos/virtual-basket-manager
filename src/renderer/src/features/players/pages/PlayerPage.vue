@@ -7,7 +7,7 @@ import { conditionLabel } from '@shared/domain/conditioning';
 import { injuryLabel } from '@shared/domain/injuries';
 import { POSITION_LABELS } from '@shared/domain/positions';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
-import { AppPageHeader, AppStat } from '@renderer/shared/ui';
+import { AppAvatar, AppPageHeader, AppStat } from '@renderer/shared/ui';
 
 const route = useRoute();
 const player = ref<PlayerSummary | null>(null);
@@ -47,7 +47,15 @@ function barColor(value: number): string {
 <template>
   <div v-if="player" class="flex flex-col gap-6">
     <header class="flex items-baseline gap-4">
-      <AppPageHeader :title="`${player.firstName} ${player.lastName}`" />
+      <div class="flex items-center gap-4">
+        <AppAvatar
+          kind="player"
+          :seed="player.id"
+          :name="`${player.firstName} ${player.lastName}`"
+          :size="72"
+        />
+        <AppPageHeader :title="`${player.firstName} ${player.lastName}`" />
+      </div>
       <span class="text-ball-400">
         {{ POSITION_LABELS[player.position] }}
         <template v-if="player.secondaryPosition">

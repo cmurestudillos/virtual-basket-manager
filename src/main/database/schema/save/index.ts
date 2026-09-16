@@ -11,3 +11,5 @@ export * from './staff.schema';
 export * from './finance.schema';
 export * from './board.schema';
 export * from './game-state.schema';
+export * from './career.schema';
+export * from './inbox.schema';

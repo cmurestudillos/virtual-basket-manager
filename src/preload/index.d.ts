@@ -14,6 +14,10 @@ import type { StaffApi } from '@shared/contracts/staff.contract';
 import type { YouthApi } from '@shared/contracts/youth.contract';
 import type { MarketApi } from '@shared/contracts/market.contract';
 import type { HistoryApi } from '@shared/contracts/history.contract';
+import type { CareerApi } from '@shared/contracts/career.contract';
+import type { InboxApi } from '@shared/contracts/inbox.contract';
+import type { WorldEditorApi } from '@shared/contracts/world-editor.contract';
+import type { UpdatesApi } from '@shared/contracts/updates.contract';
 
 export interface VbmApi {
   settings: SettingsApi;
@@ -32,6 +36,10 @@ export interface VbmApi {
   market: MarketApi;
   match: MatchApi;
   history: HistoryApi;
+  career: CareerApi;
+  inbox: InboxApi;
+  editor: WorldEditorApi;
+  updates: UpdatesApi;
 }
 
 declare global {

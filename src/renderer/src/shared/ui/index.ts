@@ -5,6 +5,7 @@
  * vistazo lo que ya existe, que es la mitad de para qué sirve tener un kit.
  */
 
+export { default as AppAvatar } from './AppAvatar.vue';
 export { default as AppBadge } from './AppBadge.vue';
 export { default as AppButton } from './AppButton.vue';
 export { default as AppEmpty } from './AppEmpty.vue';
@@ -20,3 +21,4 @@ export { default as AppSectionTitle } from './AppSectionTitle.vue';
 export { default as AppStat } from './AppStat.vue';
 export { default as AppTabs, type TabOption } from './AppTabs.vue';
 export * from './tones';
+export { AVATAR_CREDITS, avatarUri, type AvatarCredit, type AvatarKind } from './avatars';

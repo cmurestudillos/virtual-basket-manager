@@ -108,6 +108,11 @@ cambia, pero limitarse a mirarlo no.
 - `pnpm typecheck` — `tsc` y `vue-tsc` contra los dos tsconfig.
 - `pnpm verify:engine` — huella del motor, para saber si un cambio en
   `simulate-game.ts` ha alterado los partidos o no.
+- `pnpm seed:finished`, `pnpm seed:career` y `pnpm seed:press` — dejan en
+  `.dev-data` una partida con la temporada terminada, otra en modo carrera con
+  el entrenador ya destituido y otra con una rueda de prensa esperando. Las usa el arnés: hay pantallas —el campeón, las ofertas de
+  banquillo— a las que sólo se llega tras media temporada, y ningún arnés puede
+  jugarla en cada pasada.
 - `pnpm build && pnpm verify:app` — arranca Electron de verdad, recorre el flujo
   completo y deja capturas en `.dev-data/shots`.
 
@@ -122,3 +127,6 @@ build que se distribuye, justo la que nadie prueba. Se comprobó al montar el
 esqueleto y funciona.
 
 **`pnpm dev` no recompila.** Carga lo que hay en `out/`.
+
+Cómo se construye el instalador, se firma y se publican las actualizaciones está
+en [DISTRIBUCION.md](DISTRIBUCION.md).

@@ -4,7 +4,7 @@ import type { YouthAcademy, YouthPlayer } from '@shared/contracts/youth.contract
 import { POSITION_LABELS } from '@shared/domain/positions';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
-import { AppButton, AppPageHeader, AppStat } from '@renderer/shared/ui';
+import { AppAvatar, AppButton, AppPageHeader, AppStat } from '@renderer/shared/ui';
 
 const store = useGameStateStore();
 
@@ -136,7 +136,11 @@ function headroom(player: YouthPlayer): number {
             </td>
           </tr>
           <tr v-for="player in academy.players" :key="player.playerId">
-            <td>{{ player.playerName }}</td>
+            <td>
+              <span class="inline-flex items-center gap-2">
+                <AppAvatar kind="player" :seed="player.playerId" />{{ player.playerName }}
+              </span>
+            </td>
             <td>
               <span class="text-ball-400">{{ player.position }}</span>
               <span class="ml-1 text-xs text-court-600">
