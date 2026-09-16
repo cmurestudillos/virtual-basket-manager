@@ -26,7 +26,12 @@ export const gameStateTable = sqliteTable('game_state', {
    * quedarte sin equipo. Se elige al crear la partida, como el despido, porque
    * es qué clase de partida quieres jugar y no un ajuste que se toque a mitad.
    */
-  careerMode: integer('career_mode', { mode: 'boolean' }).notNull().default(false)
+  careerMode: integer('career_mode', { mode: 'boolean' }).notNull().default(false),
+  /**
+   * La última foto del club que vio la bandeja, en JSON. Los avisos salen de
+   * compararla con la de ahora; nula hasta la primera vez que se mira.
+   */
+  inboxSnapshot: text('inbox_snapshot')
 });
 
 export type GameStateRow = typeof gameStateTable.$inferSelect;

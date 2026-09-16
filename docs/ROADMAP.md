@@ -307,9 +307,10 @@ o de otra deja lo mismo en la partida.
 |     | Pieza                   | Detalle                                                 |     |
 | --- | ----------------------- | ------------------------------------------------------- | --- |
 | ✅  | Modos de juego          | Mánager (un club) y carrera (te fichan otros)           | L   |
+| ⬜  | Dimitir y año sabático  | Irse por su pie, escuchar ofertas con equipo y esperar  | M   |
 | ✅  | Dificultad              | Incluye poder jugar sin despido                         | S   |
 | ✅  | Historial y palmarés    | Temporadas, títulos, récords                            | M   |
-| ⬜  | Prensa y notificaciones | Bandeja de avisos, ruedas de prensa                     | M   |
+| ✅  | Prensa y notificaciones | Bandeja de avisos, ruedas de prensa                     | M   |
 | ⬜  | Editor de datos         | Editar equipos y plantillas dentro del juego            | M   |
 | ⬜  | Ajustes                 | Resolución, reglamento, idioma                          | S   |
 | ⬜  | Firma del instalador    | El instalador ya se genera con icono; falta certificado | S   |
@@ -343,10 +344,21 @@ del modo. Salen sólo de las ligas que se están jugando —las del país— por
 razón de fondo: son las únicas que tienen calendario ese año, así que fichar por
 un club griego en enero te dejaría en una liga que esa temporada no existe.
 
-**Lo que esta fase deja fuera, a propósito:** no se puede dimitir ni escuchar
-ofertas teniendo equipo, y no hay año sabático — con el banquillo libre eliges
-entre lo que hay. Poder esperar en el paro exige simular el mundo sin usuario,
-que es una pieza entera y no hace falta para que la carrera funcione.
+**Lo que esta fase deja fuera, y queda pendiente:** no se puede **dimitir**, ni
+escuchar ofertas teniendo equipo, ni **esperar en el paro** — con el banquillo
+libre eliges entre lo que hay.
+
+Las dos cosas van juntas y son la misma pieza pendiente. Dimitir sólo tiene
+sentido si los clubes valoran cambiar de entrenador teniendo uno, que hoy no
+hacen: las ofertas salen de que estés libre. Y esperar exige algo que la partida
+todavía no sabe hacer, **simular el mundo sin usuario**: hoy el reloj se para en
+seco cuando no hay equipo que dirigir, porque avanzar el día pasa por el partido
+del club del usuario. Rechazar todas las ofertas dejaría la partida sin salida,
+y por eso ahora mismo no se puede.
+
+Con esas dos, la carrera pasa de «te echan y recolocas» a poder construirla:
+irse a tiempo de un club que se hunde, esperar a que se abra el banquillo bueno
+en junio, o aguantar un año fuera si nadie de tu nivel llama.
 
 La **dificultad** incluye poder jugar **sin despido**, y no es sólo una
 comodidad: el consejo es la mecánica más punitiva del juego y quien quiera
@@ -356,6 +368,49 @@ objetivos y sigue perdiendo la paciencia, porque de la confianza salen cosas que
 no son el despido—: lo único que pasa es que a cero nadie te echa. Fue un ajuste
 de la partida y no del dominio, como estaba previsto: `BoardService` decide en un
 solo sitio si estás destituido, y ese sitio es el único que hubo que tocar.
+
+### Prensa y notificaciones
+
+La partida simula muchísimo que el jugador nunca veía —lesiones, fichajes, la
+paciencia del consejo, quién gana cada competición— y la **bandeja** es lo que lo
+saca a la luz. Cada aviso lleva a la pantalla donde se decide: la lesión a la
+ficha del jugador, los contratos que acaban al mercado.
+
+Los avisos **no los emite nadie**. Salen de comparar la última foto del club con
+la de ahora, y la foto se saca al leer la bandeja; es el mismo truco con el que
+la carrera se entera del despido, y por la misma razón: ni la temporada, ni el
+consejo, ni el mercado tienen que saber que existe una bandeja, y todas las
+reglas de qué es noticia viven juntas en `shared/domain/inbox.ts`. El precio es
+que lo que empieza y acaba entre dos vistazos no se ve —una contusión de tres
+días dentro de un «ir a la jornada»—, que es aceptable porque esa lesión no le
+quitó un partido a nadie. Lo que sí se evita es el ruido: la cuenta atrás de una
+baja no es noticia, la confianza sólo avisa al cruzar la raya de peligro y
+fichar por otro club es un aviso, no doce idas y doce llegadas.
+
+Y **no se avisa de lo que hace el propio usuario**. La primera versión contaba
+«llega al club» del jugador que acababas de fichar, y lo destapó la captura del
+arnés. La foto no sabe quién causó un cambio, pero hay una regla que lo resuelve:
+en este juego nada mueve la plantilla sin que corra el reloj salvo el usuario —la
+IA ficha, las cesiones vuelven y los contratos vencen al avanzar días—. Si entre
+dos fotos no ha pasado el tiempo, los cambios de plantilla son suyos y se absorben
+en silencio. Las lesiones quedan fuera de la regla, porque un partido lesiona sin
+mover el calendario.
+
+Las **ruedas de prensa** no llegan en cada partido, sólo en los que dan que
+hablar: una racha, una paliza, unos playoffs, un consejo al borde del despido. Y
+lo que contestas mueve dos cosas que **ya pesaban**: el ambiente de la grada, que
+llena el pabellón y renueva abonos, y la paciencia del consejo. No se inventó una
+moral de vestuario para esto. Ninguna respuesta gana en las dos cosas a la vez
+—lo comprueba un test—: echar balones fuera enciende a la grada y enfría al
+consejo, asumir la culpa hace lo contrario. Los efectos no se enseñan antes de
+contestar, porque con los números delante nadie contesta, calcula; después
+llega la reacción en palabras. Sólo vale la última rueda: en cuanto llega otra,
+la que quedó sin contestar caduca.
+
+Hay una columna `players.morale` que **no hace nada**: se inicializa a 70 y
+ningún código la mueve ni el motor la lee. Se dejó sin tocar a propósito — mover
+un número que no cambia nada sería engañar al jugador. Darle efecto en el motor
+sería una pieza aparte.
 
 ### Historial y palmarés
 

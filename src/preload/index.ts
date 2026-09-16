@@ -24,6 +24,8 @@ import type {
 } from '@shared/contracts/season.contract';
 import type { HistoryApi, HistoryView } from '@shared/contracts/history.contract';
 import type { CareerApi, CareerStatus } from '@shared/contracts/career.contract';
+import type { InboxApi, InboxView, PressConference } from '@shared/contracts/inbox.contract';
+import type { PressTone } from '@shared/domain/press';
 import type {
   LiveOrderResult,
   LiveTacticsPatch,
@@ -249,6 +251,18 @@ const career: CareerApi = {
     ipcRenderer.invoke(IPC_CHANNELS.careerAccept, teamId) as Promise<CareerStatus>
 };
 
+const inbox: InboxApi = {
+  get: () => ipcRenderer.invoke(IPC_CHANNELS.inboxGet) as Promise<InboxView>,
+  unreadCount: () => ipcRenderer.invoke(IPC_CHANNELS.inboxUnreadCount) as Promise<number>,
+  markRead: (id: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.inboxMarkRead, id) as Promise<InboxView>,
+  markAllRead: () => ipcRenderer.invoke(IPC_CHANNELS.inboxMarkAllRead) as Promise<InboxView>,
+  getPress: (id: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.inboxGetPress, id) as Promise<PressConference | null>,
+  answerPress: (id: string, tone: PressTone) =>
+    ipcRenderer.invoke(IPC_CHANNELS.inboxAnswerPress, id, tone) as Promise<PressConference>
+};
+
 const history: HistoryApi = {
   get: () => ipcRenderer.invoke(IPC_CHANNELS.historyGet) as Promise<HistoryView>
 };
@@ -270,7 +284,8 @@ export const api = {
   market,
   match,
   history,
-  career
+  career,
+  inbox
 };
 
 contextBridge.exposeInMainWorld('api', api);

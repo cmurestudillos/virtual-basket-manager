@@ -69,7 +69,13 @@ export const IPC_CHANNELS = {
   matchAutoRotation: 'match:autoRotation',
   historyGet: 'history:get',
   careerGetStatus: 'career:getStatus',
-  careerAccept: 'career:accept'
+  careerAccept: 'career:accept',
+  inboxGet: 'inbox:get',
+  inboxUnreadCount: 'inbox:unreadCount',
+  inboxMarkRead: 'inbox:markRead',
+  inboxMarkAllRead: 'inbox:markAllRead',
+  inboxGetPress: 'inbox:getPress',
+  inboxAnswerPress: 'inbox:answerPress'
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

@@ -2,6 +2,7 @@ import type { BoardView } from '@shared/contracts/club.contract';
 import {
   BOARD_OBJECTIVE_LABELS,
   DISMISSAL_CONFIDENCE,
+  MAX_CONFIDENCE,
   START_CONFIDENCE,
   confidenceAfterDivisionChange,
   confidenceAfterGame,
@@ -208,6 +209,21 @@ export class BoardService {
     this.update((row) => ({
       ...row,
       confidence: confidenceAfterDivisionChange(row.confidence, direction)
+    }));
+  }
+
+  /**
+   * Mueve la confianza por algo que no es un resultado: lo que dijiste en una
+   * rueda de prensa, por ejemplo.
+   *
+   * Pasa por el mismo sitio que todo lo demás, así que respeta el despido: si
+   * la paciencia estaba en uno y la respuesta la deja en cero, te echan. Quien
+   * se juega el puesto delante de un micrófono se lo juega de verdad.
+   */
+  adjustConfidence(delta: number): void {
+    this.update((row) => ({
+      ...row,
+      confidence: Math.max(0, Math.min(MAX_CONFIDENCE, row.confidence + delta))
     }));
   }
 

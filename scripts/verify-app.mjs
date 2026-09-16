@@ -42,6 +42,11 @@ execSync('pnpm seed:finished', { cwd: PROJECT, stdio: 'inherit' });
 console.log('sembrando una partida de carrera sin equipo…');
 execSync('pnpm seed:career', { cwd: PROJECT, stdio: 'inherit' });
 
+// Y una cuarta con una rueda de prensa esperando: sólo las dan las palizas, las
+// rachas y los playoffs, y el partido del recorrido puede no dar ninguna.
+console.log('sembrando una partida con rueda de prensa pendiente…');
+execSync('pnpm seed:press', { cwd: PROJECT, stdio: 'inherit' });
+
 const app = await electron.launch({
   args: ['.'],
   cwd: PROJECT,
@@ -320,6 +325,25 @@ await page.waitForTimeout(1200);
 await page.getByRole('button', { name: 'Avanzar día' }).click();
 await page.waitForTimeout(3000);
 
+// La bandeja, tras el primer partido: lo que haya pasado desde el principio.
+// El número exacto depende del partido; lo que se comprueba es que abre, que
+// se lee y que el contador del menú baja al marcarlo todo.
+await page.getByRole('link', { name: /^Bandeja/ }).click();
+await page.waitForTimeout(1500);
+console.log('avisos en la bandeja:', await page.locator('main li').count());
+const cabeceraBandeja = await page.locator('main header').first().innerText();
+console.log('bandeja:', cabeceraBandeja.replace(/\n/g, ' · '));
+await page.screenshot({ path: `${SHOTS}/15c-bandeja.png` });
+const marcarTodo = page.getByRole('button', { name: 'Marcar todo como leído' });
+if ((await marcarTodo.count()) > 0) {
+  await marcarTodo.click();
+  await page.waitForTimeout(800);
+}
+console.log(
+  'tras marcar todo:',
+  (await page.locator('main header').first().innerText()).replace(/\n/g, ' · ')
+);
+
 // El partido tiene que haberse notado en las piernas de la plantilla.
 await page.getByRole('link', { name: 'Plantilla' }).click();
 await page.waitForTimeout(1200);
@@ -502,6 +526,41 @@ await page.waitForTimeout(2500);
 const siguiendo = await page.locator('header').first().innerText();
 console.log('la partida sigue:', siguiendo.replace(/\n/g, ' · '));
 await page.screenshot({ path: `${SHOTS}/28-carrera-en-marcha.png` });
+
+// --- Prensa: una rueda de prensa esperando --------------------------------
+
+await page.getByRole('link', { name: 'Salir al menú' }).click();
+await page.waitForTimeout(1000);
+await page.getByRole('link', { name: 'Cargar partida' }).click();
+await page.waitForTimeout(1200);
+await page
+  .locator('li', { hasText: 'Rueda de prensa pendiente' })
+  .getByRole('button', { name: 'Cargar' })
+  .click();
+await page.waitForTimeout(2500);
+
+// El contador del menú tiene que avisar antes de entrar.
+const enlaceBandeja = await page.getByRole('link', { name: /^Bandeja/ }).innerText();
+console.log('menú con aviso:', enlaceBandeja.replace(/\n/g, ' '));
+
+await page.getByRole('link', { name: /^Bandeja/ }).click();
+await page.waitForTimeout(1500);
+await page.locator('main li button', { hasText: 'Rueda de prensa' }).first().click();
+await page.waitForTimeout(1200);
+const pregunta = await page.locator('main section p').first().innerText();
+console.log('pregunta de la prensa:', pregunta);
+console.log(
+  'respuestas posibles:',
+  await page.getByRole('button', { name: /^(Humilde|Seguro|Combativo)/ }).count()
+);
+await page.screenshot({ path: `${SHOTS}/29-rueda-de-prensa.png` });
+
+// Se contesta, y la reacción llega en palabras.
+await page.getByRole('button', { name: /^Combativo/ }).click();
+await page.waitForTimeout(1500);
+const reaccion = await page.locator('main section').first().innerText();
+console.log('tras contestar:', reaccion.replace(/\n/g, ' · '));
+await page.screenshot({ path: `${SHOTS}/30-prensa-contestada.png` });
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);
