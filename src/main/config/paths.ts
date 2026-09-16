@@ -1,6 +1,7 @@
 import { app } from 'electron';
 import { is } from '@electron-toolkit/utils';
 import { join } from 'node:path';
+import { currentEdition } from './edition';
 
 /**
  * Ruta del SQLite de aplicación (ajustes globales + registro de partidas;
@@ -52,9 +53,16 @@ export function getSaveMigrationsFolder(): string {
 /**
  * Dataset con el que se siembra una partida nueva (competiciones, equipos y
  * plantillas). Mismo reparto desarrollo/empaquetado que las migraciones.
+ *
+ * Empaquetado se lee siempre `seed-data`: qué dataset hay dentro lo decide el
+ * build (el ficticio en el público, el real en el privado). En desarrollo el
+ * repositorio tiene los dos —el real, sin versionar, en `resources/real-data`—
+ * y se elige con la edición (`TM_DATASET=real`, ver `edition.ts`).
  */
 export function getSeedDataDirectory(): string {
-  return is.dev
-    ? join(process.cwd(), 'resources', 'seed-data')
-    : join(process.resourcesPath, 'seed-data');
+  if (!is.dev) {
+    return join(process.resourcesPath, 'seed-data');
+  }
+  const folder = currentEdition() === 'private' ? 'real-data' : 'seed-data';
+  return join(process.cwd(), 'resources', folder);
 }

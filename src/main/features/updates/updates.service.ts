@@ -3,6 +3,7 @@ import { join } from 'node:path';
 import { app, BrowserWindow } from 'electron';
 import electronUpdater, { type AppUpdater } from 'electron-updater';
 import type { UpdateState, UpdatesView } from '@shared/contracts/updates.contract';
+import { currentEdition } from '../../config/edition';
 import { IPC_CHANNELS } from '@shared/ipc-channels';
 
 /**
@@ -25,6 +26,16 @@ export class UpdatesService {
   private updater: AppUpdater | null = null;
 
   constructor() {
+    // La edición privada no se publica: si buscara actualizaciones encontraría
+    // las de la pública, y «actualizarse» le quitaría el dataset real.
+    if (currentEdition() === 'private') {
+      this.state = {
+        status: 'unsupported',
+        reason: 'La edición privada no se actualiza sola: se reconstruye a mano.'
+      };
+      return;
+    }
+
     const localFeed = process.env.VBM_UPDATE_FEED;
     if (!app.isPackaged && !localFeed) {
       this.state = {

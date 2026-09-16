@@ -1,0 +1,48 @@
+# Build PRIVADO con el dataset REAL (ligas, clubes y jugadores de verdad). No se
+# distribuye: es sólo para el PC del autor, que tiene el dataset real en
+# `resources/real-data` (fuera del repositorio; ver docs/DATASET-REAL.md).
+#
+#   pnpm build:win:private
+#
+# Es una copia completa de `electron-builder.yml` —electron-builder no encadena
+# ficheros de configuración— con estas diferencias, todas a propósito:
+#
+# - `seed-data` sale de `resources/real-data` en vez del ficticio.
+# - `appId`, `productName` y el `name` del `package.json` empaquetado llevan
+#   marca de privado. El `name` es lo que decide la carpeta de datos de
+#   Electron (`%APPDATA%`): sin cambiarlo, la privada y la pública verían las
+#   mismas partidas, que es justo lo que le pasó al proyecto de fútbol.
+# - `tripleManagerEdition: private` es la marca que lee `src/main/config/edition.ts`.
+# - Sin `publish` y sin firma obligatoria: nunca se sube a ninguna parte, y la
+#   aplicación no busca actualizaciones (se reconstruye a mano).
+# - El instalador sale a `release-private/`, ignorada en git.
+extends: null
+appId: com.triplemanager.desktop.private
+productName: Triple Manager (privado)
+extraMetadata:
+  name: triple-manager-privado
+  productName: Triple Manager (privado)
+  tripleManagerEdition: private
+npmRebuild: false
+directories:
+  buildResources: build
+  output: release-private
+files:
+  - out/**/*
+  - '!**/.dev-data/**'
+extraResources:
+  - from: drizzle
+    to: drizzle
+  - from: resources/real-data
+    to: seed-data
+win:
+  icon: assets/iconos/icono_512.png
+  target:
+    - target: nsis
+      arch:
+        - x64
+publish: null
+nsis:
+  artifactName: Triple-Manager-Privado-Setup-${version}.${ext}
+  oneClick: false
+  allowToChangeInstallationDirectory: true

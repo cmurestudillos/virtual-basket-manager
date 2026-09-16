@@ -42,7 +42,12 @@
     "verify:app": "node scripts/verify-app.mjs",
     "verify:engine": "tsx --tsconfig tsconfig.node.json scripts/engine-fingerprint.mts",
     "build:win": "electron-vite build && electron-builder --win --publish never",
-    "release:win": "electron-vite build && electron-builder --win --publish never -c.win.forceCodeSigning=true"
+    "release:win": "electron-vite build && electron-builder --win --publish never -c.win.forceCodeSigning=true",
+    "build:win:private": "node scripts/real-data/check-real-dataset.mjs && electron-vite build && electron-builder --win --publish never --config electron-builder.private.yml",
+    "dev:real": "node scripts/real-data/dev-real.mjs",
+    "dataset:backup": "node scripts/real-data/backup-real-dataset.mjs backup",
+    "dataset:verify": "node scripts/real-data/backup-real-dataset.mjs verify",
+    "dataset:restore": "node scripts/real-data/backup-real-dataset.mjs restore"
   },
   "dependencies": {
     "@dicebear/collection": "^9.4.2",

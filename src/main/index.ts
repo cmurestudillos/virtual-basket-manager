@@ -1,11 +1,14 @@
 import { app, BrowserWindow } from 'electron';
 import { electronApp, optimizer } from '@electron-toolkit/utils';
 import { createMainWindow } from './app/createMainWindow';
+import { appUserModelId, currentEdition } from './config/edition';
 import { registerIpcHandlers } from './ipc/registerIpcHandlers';
 import { getUpdatesService } from './features/updates/updates.ipc-handler';
 
 void app.whenReady().then(() => {
-  electronApp.setAppUserModelId('com.virtualbasketmanager.desktop');
+  // Tiene que coincidir con el `appId` del instalador de cada edición: si no,
+  // Windows agrupa mal la ventana y las notificaciones no llevan su nombre.
+  electronApp.setAppUserModelId(appUserModelId(currentEdition()));
 
   // Comodidad de desarrollo: F12 abre devtools, se desactivan los atajos de
   // recarga, etc.

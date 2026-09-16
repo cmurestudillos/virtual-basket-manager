@@ -4,4 +4,7 @@ dist
 coverage
 drizzle
 .dev-data
+release
+release-private
+resources/real-data
 pnpm-lock.yaml
