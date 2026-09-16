@@ -67,7 +67,9 @@ export const IPC_CHANNELS = {
   matchTimeout: 'match:timeout',
   matchLiveTactics: 'match:liveTactics',
   matchAutoRotation: 'match:autoRotation',
-  historyGet: 'history:get'
+  historyGet: 'history:get',
+  careerGetStatus: 'career:getStatus',
+  careerAccept: 'career:accept'
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

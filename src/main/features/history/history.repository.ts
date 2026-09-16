@@ -1,6 +1,7 @@
 import { and, asc, desc, eq, inArray, isNotNull, isNull, or, sql } from 'drizzle-orm';
 import type { SaveDatabase } from '../../database/save-database';
 import {
+  careerSpellsTable,
   competitionsTable,
   gamePlayerStatsTable,
   gamesTable,
@@ -8,6 +9,7 @@ import {
   playersTable,
   seasonsTable,
   teamsTable,
+  type CareerSpellRow,
   type CompetitionRow,
   type GameRow,
   type SeasonRow
@@ -37,6 +39,22 @@ export class HistoryRepository {
 
   managedTeamId(): string | null {
     return this.db.select().from(gameStateTable).get()?.managedTeamId ?? null;
+  }
+
+  /**
+   * Las etapas del entrenador, para saber a quién dirigía cada año.
+   *
+   * En una partida de un solo club sobra, pero en carrera es lo que impide que
+   * el palmarés se apunte los títulos que ganó su antecesor en el club nuevo.
+   * Vacío en partidas creadas antes del modo carrera: entonces manda el club
+   * actual, que es justo lo que pasaba en ellas.
+   */
+  spells(): CareerSpellRow[] {
+    return this.db
+      .select()
+      .from(careerSpellsTable)
+      .orderBy(asc(careerSpellsTable.startSeason))
+      .all();
   }
 
   teamName(teamId: string): string {

@@ -10,22 +10,44 @@
  */
 import { computed, onMounted, ref } from 'vue';
 import type { HistoryView } from '@shared/contracts/history.contract';
+import type { CareerStatus } from '@shared/contracts/career.contract';
 import { AppBadge, AppEmpty, AppPageHeader, AppPanel, AppTabs } from '@renderer/shared/ui';
 
-type Tab = 'seasons' | 'trophies' | 'records';
+type Tab = 'seasons' | 'trophies' | 'records' | 'career';
 
 const tab = ref<Tab>('seasons');
 const view = ref<HistoryView | null>(null);
+/** La hoja de servicios del entrenador. Sólo existe en partidas de carrera. */
+const career = ref<CareerStatus | null>(null);
 
-const TABS = [
+const TABS = computed(() => [
   { id: 'seasons', label: 'Temporadas' },
   { id: 'trophies', label: 'Palmarés' },
-  { id: 'records', label: 'Récords' }
-];
+  { id: 'records', label: 'Récords' },
+  ...(career.value?.careerMode ? [{ id: 'career', label: 'Carrera' }] : [])
+]);
 
 onMounted(async () => {
   view.value = await window.api.history.get();
+  career.value = await window.api.career.getStatus();
 });
+
+/** «Temporadas 1-3» o «Temporada 4 · en curso». */
+function spellYears(spell: CareerStatus['spells'][number]): string {
+  if (spell.endSeason === null) {
+    return `Temporada ${spell.startSeason} · en curso`;
+  }
+  if (spell.endSeason === spell.startSeason) {
+    return `Temporada ${spell.startSeason}`;
+  }
+  return `Temporadas ${spell.startSeason}-${spell.endSeason}`;
+}
+
+function spellEnd(spell: CareerStatus['spells'][number]): string {
+  if (spell.endReason === 'dismissed') return 'destituido';
+  if (spell.endReason === 'left') return 'se marchó';
+  return '';
+}
 
 const subtitle = computed(() => {
   const current = view.value;
@@ -123,6 +145,51 @@ function positionTone(position: number | null, teams: number): 'good' | 'warn' |
             <span class="ml-2 text-xs text-court-300">{{ trophy.years.join(', ') }}</span>
           </span>
           <span class="figure text-lg font-semibold">{{ trophy.seasons.length }}</span>
+        </li>
+      </ul>
+    </AppPanel>
+
+    <!-- La hoja de servicios del entrenador -->
+    <AppPanel
+      v-else-if="tab === 'career'"
+      :title="career?.managerName ?? 'Carrera'"
+      :hint="career?.reputationLabel ?? ''"
+    >
+      <div v-if="career" class="mb-4 flex flex-wrap gap-6 text-sm">
+        <span>
+          <span class="text-court-300">Reputación</span>
+          <span class="figure ml-2 text-lg">{{ career.reputation }}</span>
+        </span>
+        <span>
+          <span class="text-court-300">Temporadas dirigidas</span>
+          <span class="figure ml-2 text-lg">{{ career.seasonsManaged }}</span>
+        </span>
+        <span>
+          <span class="text-court-300">Títulos</span>
+          <span class="figure ml-2 text-lg">{{ career.titles }}</span>
+        </span>
+      </div>
+
+      <AppEmpty v-if="!career || career.spells.length === 0">
+        Todavía no has dirigido a nadie.
+      </AppEmpty>
+      <ul v-else class="flex flex-col gap-2">
+        <li
+          v-for="spell in [...career.spells].reverse()"
+          :key="`${spell.teamId}-${spell.startSeason}`"
+          class="flex items-baseline justify-between rounded border px-3 py-2"
+          :class="spell.endSeason === null ? 'border-ball-500' : 'border-court-700'"
+        >
+          <span>
+            <span>{{ spell.teamName }}</span>
+            <span class="ml-2 text-xs text-court-300">
+              {{ spellYears(spell) }}
+              <span v-if="spellEnd(spell)">· {{ spellEnd(spell) }}</span>
+            </span>
+          </span>
+          <span v-if="spell.titles > 0" class="text-sm text-ball-400">
+            {{ spell.titles }} {{ spell.titles === 1 ? 'título' : 'títulos' }}
+          </span>
         </li>
       </ul>
     </AppPanel>

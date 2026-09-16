@@ -306,7 +306,7 @@ o de otra deja lo mismo en la partida.
 
 |     | Pieza                   | Detalle                                                 |     |
 | --- | ----------------------- | ------------------------------------------------------- | --- |
-| ⬜  | Modos de juego          | Mánager (un club) y carrera (te fichan otros)           | L   |
+| ✅  | Modos de juego          | Mánager (un club) y carrera (te fichan otros)           | L   |
 | ✅  | Dificultad              | Incluye poder jugar sin despido                         | S   |
 | ✅  | Historial y palmarés    | Temporadas, títulos, récords                            | M   |
 | ⬜  | Prensa y notificaciones | Bandeja de avisos, ruedas de prensa                     | M   |
@@ -317,10 +317,36 @@ o de otra deja lo mismo en la partida.
 
 ### Modos de juego y dificultad
 
-**Mánager** es lo que hay hoy: diriges un club y la partida se acaba si te
-echan. **Carrera** es la otra mitad —te quedas sin equipo y otro club te
-contrata según lo que hayas hecho—, y necesita que el consejo, el palmarés y la
-reputación del entrenador ya existan, que es justo lo que hay montado.
+**Mánager** es dirigir un club: la partida se acaba si te echan. **Carrera** es
+la otra mitad —te quedas sin equipo y otro club te contrata según lo que hayas
+hecho—, y entró en cuanto estuvo el palmarés, que era lo que le faltaba. El modo
+se elige al crear la partida, junto al despido, porque no es un ajuste: es de
+qué va la partida.
+
+Lo que vale un entrenador **no se guarda en ninguna columna**: se calcula del
+historial cada vez, y salen tres cosas en este orden — los títulos, el
+rendimiento contra lo que daba de sí cada club y el tamaño de los clubes
+dirigidos. El rendimiento pesa más que el escudo a propósito: si mandara el
+tamaño del club, fracasar en un grande valdría más que triunfar en un modesto,
+que es justo lo contrario de lo que se quiere medir. Los despidos restan poco: a
+todo el mundo le echan alguna vez.
+
+Lo único que sí se guarda son las **etapas** —qué club dirigiste y entre qué
+temporadas—, porque eso no se deduce de nada: la partida sólo sabe a quién
+diriges hoy, y sin esas filas el palmarés se apuntaría los títulos que ganó tu
+antecesor en el club nuevo. El historial las respeta desde el primer día.
+
+Cuando el consejo te destituye llegan **las ofertas**, y llegan en ese momento y
+no en verano: los clubes destituyen y contratan en enero, y coger un banquillo a
+mitad de temporada es heredar lo que lleve hecho el equipo, que es media gracia
+del modo. Salen sólo de las ligas que se están jugando —las del país— por una
+razón de fondo: son las únicas que tienen calendario ese año, así que fichar por
+un club griego en enero te dejaría en una liga que esa temporada no existe.
+
+**Lo que esta fase deja fuera, a propósito:** no se puede dimitir ni escuchar
+ofertas teniendo equipo, y no hay año sabático — con el banquillo libre eliges
+entre lo que hay. Poder esperar en el paro exige simular el mundo sin usuario,
+que es una pieza entera y no hace falta para que la carrera funcione.
 
 La **dificultad** incluye poder jugar **sin despido**, y no es sólo una
 comodidad: el consejo es la mecánica más punitiva del juego y quien quiera

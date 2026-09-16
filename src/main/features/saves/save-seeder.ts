@@ -12,6 +12,7 @@ import {
 } from '@shared/domain/attendance';
 import type { SaveDatabase } from '../../database/client';
 import {
+  careerSpellsTable,
   competitionsTable,
   gameStateTable,
   playersTable,
@@ -52,7 +53,12 @@ function freeAgentNationalities(dataset: Dataset, managedTeamId: string): string
 export function seedSave(
   db: SaveDatabase,
   dataset: Dataset,
-  options: { managedTeamId: string; managerName: string; dismissalEnabled?: boolean }
+  options: {
+    managedTeamId: string;
+    managerName: string;
+    dismissalEnabled?: boolean;
+    careerMode?: boolean;
+  }
 ): void {
   // Todo en una transacción: una partida a medio sembrar es peor que ninguna.
   db.transaction((tx) => {
@@ -223,7 +229,21 @@ export function seedSave(
         // 1 de septiembre del año en que arranca la temporada: pretemporada.
         currentDate: new Date(Date.UTC(dataset.seasonStartYear, 8, 1)),
         seasonNumber: 1,
-        dismissalEnabled: options.dismissalEnabled ?? true
+        dismissalEnabled: options.dismissalEnabled ?? true,
+        careerMode: options.careerMode ?? false
+      })
+      .run();
+
+    // La primera etapa del entrenador se abre siempre, se juegue en carrera o
+    // no: es lo que permite que el historial sepa qué club dirigía cada año
+    // aunque la partida cambie de modo de lectura más adelante.
+    tx.insert(careerSpellsTable)
+      .values({
+        id: randomUUID(),
+        teamId: options.managedTeamId,
+        startSeason: 1,
+        endSeason: null,
+        endReason: null
       })
       .run();
   });

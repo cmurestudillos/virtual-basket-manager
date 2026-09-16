@@ -66,7 +66,8 @@ export class SavesService {
     seedSave(db, dataset, {
       managedTeamId: validated.teamId,
       managerName: validated.managerName,
-      dismissalEnabled: validated.dismissalEnabled
+      dismissalEnabled: validated.dismissalEnabled,
+      careerMode: validated.careerMode
     });
 
     const now = new Date();

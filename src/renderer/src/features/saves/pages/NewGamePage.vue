@@ -23,6 +23,12 @@ const managerName = ref('');
  * o la que se juega para construir un club a diez años vista.
  */
 const dismissalEnabled = ref(true);
+/**
+ * Modo carrera: el despido deja de acabar la partida y pasa a ser quedarse sin
+ * equipo. Es la otra mitad del juego —dirigir un club frente a hacer carrera—
+ * y por eso se elige aquí y no en un ajuste: cambia de qué va la partida.
+ */
+const careerMode = ref(false);
 const saveName = ref('');
 const creating = ref(false);
 const error = ref<string | null>(null);
@@ -87,7 +93,8 @@ async function create(): Promise<void> {
       name: saveName.value.trim() || (selectedTeam.value?.name ?? 'Partida'),
       teamId: selectedTeamId.value,
       managerName: managerName.value.trim(),
-      dismissalEnabled: dismissalEnabled.value
+      dismissalEnabled: dismissalEnabled.value,
+      careerMode: careerMode.value
     });
     await store.refresh();
     await router.push({ name: 'dashboard' });
@@ -208,11 +215,25 @@ async function create(): Promise<void> {
         </label>
 
         <label class="flex cursor-pointer items-start gap-2 text-sm">
+          <input v-model="careerMode" type="checkbox" class="mt-1" />
+          <span>
+            <span>Modo carrera</span>
+            <span class="block text-xs text-court-300">
+              Si te destituyen no se acaba la partida: buscas otro banquillo y sigues.
+            </span>
+          </span>
+        </label>
+
+        <label class="flex cursor-pointer items-start gap-2 text-sm">
           <input v-model="dismissalEnabled" type="checkbox" class="mt-1" />
           <span>
             <span>El consejo puede despedirte</span>
             <span class="block text-xs text-court-300">
-              Desactívalo para que la partida no se acabe aunque el consejo pierda la paciencia.
+              {{
+                careerMode
+                  ? 'Sin despido tampoco hay carrera que hacer: nadie te echa de tu club.'
+                  : 'Desactívalo para que la partida no se acabe aunque el consejo pierda la paciencia.'
+              }}
             </span>
           </span>
         </label>

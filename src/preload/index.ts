@@ -23,6 +23,7 @@ import type {
   StandingEntry
 } from '@shared/contracts/season.contract';
 import type { HistoryApi, HistoryView } from '@shared/contracts/history.contract';
+import type { CareerApi, CareerStatus } from '@shared/contracts/career.contract';
 import type {
   LiveOrderResult,
   LiveTacticsPatch,
@@ -242,6 +243,12 @@ const match: MatchApi = {
     ipcRenderer.invoke(IPC_CHANNELS.matchAutoRotation, gameId, enabled) as Promise<LiveOrderResult>
 };
 
+const career: CareerApi = {
+  getStatus: () => ipcRenderer.invoke(IPC_CHANNELS.careerGetStatus) as Promise<CareerStatus>,
+  accept: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.careerAccept, teamId) as Promise<CareerStatus>
+};
+
 const history: HistoryApi = {
   get: () => ipcRenderer.invoke(IPC_CHANNELS.historyGet) as Promise<HistoryView>
 };
@@ -262,7 +269,8 @@ export const api = {
   youth,
   market,
   match,
-  history
+  history,
+  career
 };
 
 contextBridge.exposeInMainWorld('api', api);

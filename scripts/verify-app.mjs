@@ -37,6 +37,11 @@ mkdirSync(SHOTS, { recursive: true });
 console.log('sembrando una partida con la temporada terminada…');
 execSync('pnpm seed:finished', { cwd: PROJECT, stdio: 'inherit' });
 
+// Y una tercera en modo carrera con el entrenador ya destituido: la pantalla de
+// ofertas no se alcanza jugando, hacen falta media temporada de derrotas.
+console.log('sembrando una partida de carrera sin equipo…');
+execSync('pnpm seed:career', { cwd: PROJECT, stdio: 'inherit' });
+
 const app = await electron.launch({
   args: ['.'],
   cwd: PROJECT,
@@ -76,6 +81,8 @@ await page.waitForTimeout(800);
 console.log('equipos tras filtrar:', await page.locator('tbody tr').count());
 await page.locator('tbody tr').nth(3).click();
 await page.locator('aside input').first().fill('Carlos');
+// Modo carrera: mientras no te echen se juega igual, y deja ver su pestaña.
+await page.getByText('Modo carrera').click();
 await page.screenshot({ path: `${SHOTS}/02-nueva-partida.png` });
 
 await page.getByText('Empezar').click();
@@ -428,6 +435,9 @@ const mejorMarca = await page.locator('main li').first().innerText();
 console.log('mejor marca:', mejorMarca.split('\n').join(' · '));
 await page.screenshot({ path: `${SHOTS}/23d-records.png` });
 
+// La pestaña «Carrera» no se comprueba aquí: esta partida es de modo mánager y
+// allí no existe. Sale al final, con la partida de carrera.
+
 // Con la temporada entera jugada hay desgaste y enfermería de verdad.
 await page.getByRole('link', { name: 'Entrenamiento' }).click();
 await page.waitForTimeout(1500);
@@ -442,6 +452,56 @@ await page.waitForTimeout(2500);
 const cabecera = await page.locator('header').first().innerText();
 console.log('cabecera tras el salto:', cabecera.replace(/\n/g, ' · '));
 await page.screenshot({ path: `${SHOTS}/24-temporada-siguiente.png` });
+
+// --- Modo carrera: sin equipo y a buscar banquillo ------------------------
+
+// La tercera partida, la que llega con el entrenador ya destituido. Es la única
+// forma de ver la pantalla que convierte el despido en el principio de otra
+// cosa sin encadenar media temporada de derrotas.
+await page.getByRole('link', { name: 'Salir al menú' }).click();
+await page.waitForTimeout(1000);
+await page.getByRole('link', { name: 'Cargar partida' }).click();
+await page.waitForTimeout(1200);
+await page
+  .locator('li', { hasText: 'Carrera sin equipo' })
+  .getByRole('button', { name: 'Cargar' })
+  .click();
+await page.waitForTimeout(2500);
+
+const paro = await page.locator('main section').first().innerText();
+console.log('sin equipo:', paro.split('\n').slice(0, 3).join(' · '));
+// Una oferta, un botón de firmar: contar `li` sueltos recogería los de otras
+// secciones del club y diría más ofertas de las que hay.
+console.log('ofertas sobre la mesa:', await page.getByRole('button', { name: 'Firmar' }).count());
+const primera = await page.locator('main section li').first().innerText();
+console.log('primera oferta:', primera.split('\n').join(' · '));
+await page.screenshot({ path: `${SHOTS}/25-sin-equipo.png` });
+
+// Y se firma por uno: a partir de aquí la partida es la de otro club.
+await page.getByRole('button', { name: 'Firmar' }).first().click();
+await page.waitForTimeout(2500);
+const nuevoClub = await page.locator('header').first().innerText();
+console.log('tras firmar:', nuevoClub.replace(/\n/g, ' · '));
+await page.screenshot({ path: `${SHOTS}/26-club-nuevo.png` });
+
+// La hoja de servicios tiene que contar ya las dos etapas.
+await page.getByRole('link', { name: 'Historial' }).click();
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Carrera' }).click();
+await page.waitForTimeout(1200);
+console.log('etapas en la hoja de servicios:', await page.locator('main li').count());
+const etapas = await page.locator('main li').first().innerText();
+console.log('etapa en curso:', etapas.split('\n').join(' · '));
+await page.screenshot({ path: `${SHOTS}/27-hoja-de-servicios.png` });
+
+// Y el reloj vuelve a correr: dirigir otra vez es poder jugar otra vez.
+await page.getByRole('link', { name: 'Club' }).click();
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Avanzar día' }).click();
+await page.waitForTimeout(2500);
+const siguiendo = await page.locator('header').first().innerText();
+console.log('la partida sigue:', siguiendo.replace(/\n/g, ' · '));
+await page.screenshot({ path: `${SHOTS}/28-carrera-en-marcha.png` });
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);
