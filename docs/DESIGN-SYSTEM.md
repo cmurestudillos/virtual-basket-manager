@@ -119,8 +119,31 @@ cuatro resuelven algo que el kit no resolvía:
   Alto». Un 1-10 pelado no dice nada; lo que decide un entrenador no es
   «siete», es «más agresivo que lo normal».
 
-Lo que **no** se copió es el aspecto: IBM va de cromo morado con paneles
-blancos y marcas reales. Nuestra piel es la que ya tenía el proyecto.
+Lo que **no** se copió entonces es el aspecto: IBM va de cromo morado con
+paneles blancos y marcas reales. Nuestra piel es la que ya tenía el proyecto…
+salvo en el partido.
+
+### La piel de la retransmisión
+
+El 2026-09-16 el usuario pidió que la pantalla del partido se pareciera a la de
+IBM **también en los colores**. Así que el partido, su previa y la jornada
+llevan una segunda piel, la de una retransmisión de tele:
+
+- **`tv-*`**, en `main.css`: `tv-950` a `tv-600` son el morado y el añil de los
+  rótulos; `tv-paper` y `tv-cell`, las tablas claras; `tv-ink` y `tv-muted`, el
+  texto sobre ellas; `tv-blue` el botón que toca pulsar y `tv-blue-dim` el que
+  no; `tv-amber` las cifras del marcador; `tv-green` y `tv-red` lo que cambia
+  el partido; `tv-magenta` y `tv-orange`, las franjas del fondo.
+- **Sólo se usa en `features/match`.** Si aparece en otra pantalla es un error:
+  el resto del juego sigue siendo la pista de noche.
+- Las piezas de esta piel no están en el kit sino en la feature, con el prefijo
+  `Broadcast`: `BroadcastPanel` (rótulo añil y tabla clara), `BroadcastButton`
+  (azul con galón de «seguir»), `BroadcastBackdrop` (el fondo morado con
+  franjas, todo CSS) y `BroadcastDrawer` (el cajón lateral del banquillo). Son
+  del partido y nada más: meterlas en el kit invitaría a usarlas fuera.
+- Los tonos del kit (`good`, `warn`, `bad`) siguen significando lo mismo; en
+  la piel clara se pintan con sus equivalentes `tv-*` para que se lean sobre
+  blanco.
 
 ## Reglas
 

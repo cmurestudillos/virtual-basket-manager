@@ -1,27 +1,29 @@
 <script setup lang="ts">
 /**
- * La retransmisión escrita: la última jugada arriba, como en un directo.
+ * La retransmisión escrita entera: la pestaña «Texto», con la última jugada
+ * arriba como en un directo.
  *
- * La barra de la izquierda dice de quién es cada jugada, y sólo la tuya va en
- * naranja: en un partido de quinientas líneas es lo que permite seguir a tu
- * equipo sin leer los nombres.
+ * La barra de la izquierda lleva el color de la camiseta de quien hace la
+ * jugada: en un partido de quinientas líneas es lo que permite seguir a un
+ * equipo sin leer los nombres. Lo tuyo va además en negrita.
  */
 import { computed, ref } from 'vue';
+import type { Kit } from '@shared/domain/court';
 import {
   formatGameClock,
   isHighlight,
   type PlayLine,
   type PlaySide
 } from '@shared/domain/play-by-play';
-import { AppEmpty, AppPanel, AppSegmented } from '@renderer/shared/ui';
-import { TONE_FILL, TONE_TEXT } from '@renderer/shared/ui/tones';
+import BroadcastPanel from './BroadcastPanel.vue';
 
 const props = defineProps<{
   lines: readonly PlayLine[];
   managedSide: PlaySide | null;
+  kits: Record<PlaySide, Kit>;
 }>();
 
-const filter = ref('all');
+const filter = ref<'all' | 'highlights'>('all');
 const FILTERS = [
   { id: 'all', label: 'Todo' },
   { id: 'highlights', label: 'Canastas' }
@@ -31,51 +33,62 @@ const shown = computed(() => {
   const lines = filter.value === 'all' ? props.lines : props.lines.filter(isHighlight);
   return [...lines].reverse();
 });
-
-function markerClass(line: PlayLine): string {
-  if (line.side === null) return 'bg-transparent';
-  return line.side === props.managedSide ? TONE_FILL.accent : TONE_FILL.neutral;
-}
-
-function textClass(line: PlayLine): string {
-  // El naranja marca lo tuyo: el parcial del rival se destaca, pero no en naranja.
-  if (line.kind === 'run') {
-    return `${line.side === props.managedSide ? TONE_TEXT.accent : 'text-court-100'} font-semibold`;
-  }
-  if (line.kind === 'score') return 'text-court-100';
-  return TONE_TEXT.neutral;
-}
 </script>
 
 <template>
-  <AppPanel title="Retransmisión" :hint="`${lines.length} jugadas`" flush>
-    <template #actions>
-      <AppSegmented v-model="filter" :options="FILTERS" />
+  <BroadcastPanel flush>
+    <template #header>
+      <span class="flex w-full items-center justify-between">
+        <span>Retransmisión · {{ lines.length }} jugadas</span>
+        <span class="flex gap-1 normal-case">
+          <button
+            v-for="option in FILTERS"
+            :key="option.id"
+            type="button"
+            class="px-3 py-0.5 text-xs font-semibold"
+            :class="filter === option.id ? 'bg-tv-blue text-white' : 'bg-tv-700 text-white/75'"
+            :aria-pressed="filter === option.id"
+            @click="filter = option.id"
+          >
+            {{ option.label }}
+          </button>
+        </span>
+      </span>
     </template>
 
-    <AppEmpty v-if="shown.length === 0" class="p-4">
+    <p v-if="shown.length === 0" class="p-6 text-center text-sm text-tv-muted">
       Todavía no ha pasado nada en la pista.
-    </AppEmpty>
-
-    <ol v-else class="max-h-96 overflow-y-auto text-sm" aria-live="polite">
+    </p>
+    <ol v-else class="max-h-[60vh] overflow-y-auto text-sm" aria-live="polite">
       <template v-for="(line, index) in shown" :key="`${shown.length - index}`">
         <li
           v-if="line.kind === 'period'"
-          class="bg-court-900 px-4 py-1.5 text-center text-xs uppercase tracking-wide text-court-300"
+          class="bg-tv-800 px-4 py-1.5 text-center text-xs font-semibold uppercase tracking-wide text-white"
         >
           {{ line.text }}
         </li>
-        <li v-else class="flex items-stretch gap-3 px-4 py-1">
-          <span class="w-11 shrink-0 text-court-600 tabular-nums">
+        <li v-else class="flex items-stretch gap-3 border-t border-tv-cell px-4 py-1">
+          <span class="figure w-11 shrink-0 text-tv-muted">
             {{ formatGameClock(line.clockSeconds) }}
           </span>
-          <span class="w-1 shrink-0 rounded" :class="markerClass(line)" />
-          <span class="flex-1" :class="textClass(line)">{{ line.text }}</span>
-          <span v-if="line.points > 0" class="shrink-0 font-semibold tabular-nums text-court-100">
+          <span
+            class="w-1 shrink-0 rounded"
+            :style="{ backgroundColor: line.side ? kits[line.side].shirt : 'transparent' }"
+          />
+          <span
+            class="flex-1"
+            :class="[
+              line.side === managedSide && line.side !== null ? 'font-semibold' : '',
+              line.kind === 'run' ? 'text-tv-green font-semibold' : ''
+            ]"
+          >
+            {{ line.text }}
+          </span>
+          <span v-if="line.points > 0" class="figure shrink-0 font-semibold">
             {{ line.homeScore }}-{{ line.awayScore }}
           </span>
         </li>
       </template>
     </ol>
-  </AppPanel>
+  </BroadcastPanel>
 </template>

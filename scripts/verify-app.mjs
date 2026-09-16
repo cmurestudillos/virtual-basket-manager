@@ -281,24 +281,51 @@ console.log('próximo partido:', await page.locator('section').first().innerText
 
 // El calendario se para solo en el partido del usuario.
 await page.getByRole('button', { name: 'Ir a la jornada' }).click();
-await page.waitForTimeout(2500);
+await page.waitForTimeout(3500);
 console.log('url tras avanzar:', page.url());
+
+/**
+ * La previa, sobre el pabellón en 3D: los dos cincos, los jugadores de
+ * referencia y las medias. Se pasa con «Continuar», pantalla a pantalla.
+ */
+console.log(
+  'pabellón 3D de la previa:',
+  await page.locator('[aria-label="Pabellón del partido en 3D"] canvas').count()
+);
+console.log(
+  'titulares en la previa:',
+  await page.locator('[aria-label="Cinco inicial"] li').count()
+);
 await page.screenshot({ path: `${SHOTS}/13-previa.png` });
+await page.getByRole('button', { name: 'Continuar' }).click();
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${SHOTS}/13-previa-referencias.png` });
+await page.getByRole('button', { name: 'Continuar' }).click();
+await page.waitForTimeout(1200);
+await page.screenshot({ path: `${SHOTS}/13-previa-medias.png` });
+await page.getByRole('button', { name: 'Continuar' }).click();
+await page.waitForTimeout(1200);
+console.log(
+  'cabecera del partido:',
+  (await page.locator('header').first().innerText()).split('\n').join(' ')
+);
+await page.screenshot({ path: `${SHOTS}/13a-partido-sin-empezar.png` });
 
 /**
  * El primer cuarto se **dirige en vivo**: es el único modo en el que el partido
  * se juega mientras se mira, así que es donde se comprueba que el banquillo
  * responde —cambio, tiempo muerto y pizarra— y que el reloj corre de verdad.
  */
-await page.getByRole('button', { name: 'Dirigir en vivo' }).click();
-await page.waitForTimeout(4000);
-const enMarcha = await page.locator('section').first().innerText();
+await page.getByRole('button', { name: 'Resumen' }).click();
+await page.getByRole('button', { name: 'Jugar', exact: true }).click();
+await page.waitForTimeout(5000);
+const enMarcha = await page.locator('header').first().innerText();
 console.log('en vivo:', enMarcha.split('\n').join(' '));
-console.log('jugadas en vivo:', await page.locator('ol li').count());
+console.log('comentarios en vivo:', await page.locator('ol li').count());
 await page.screenshot({ path: `${SHOTS}/13b-en-vivo.png` });
 
 // La pista 2D, con el directo corriendo: diez fichas y el balón moviéndose.
-await page.getByRole('button', { name: 'Pista 2D' }).click();
+await page.getByRole('button', { name: 'Vista 2D' }).click();
 await page.waitForTimeout(2500);
 console.log(
   'fichas en la pista 2D:',
@@ -306,84 +333,88 @@ console.log(
 );
 await page.screenshot({ path: `${SHOTS}/13e-pista-2d.png` });
 
-// Un cambio: se señala a uno de pista y se pulsa a uno del banquillo.
-const enPista = page.locator('button', { hasText: /\d+f/ }).first();
-await enPista.click();
+// Un cambio: se abre el cajón, se señala a uno de pista y se pulsa a uno del banquillo.
+await page.getByRole('button', { name: 'Sustituciones' }).click();
+await page.waitForTimeout(500);
+const cajon = page.getByRole('dialog', { name: 'Sustituciones' });
+await cajon.locator('button', { hasText: /\d+f/ }).first().click();
 await page.waitForTimeout(300);
-const banquillo = page.locator('button', { hasText: /Entra por|\d+f/ });
-await banquillo.nth(5).click();
+await cajon.locator('button', { hasText: /\d+f/ }).nth(5).click();
 await page.waitForTimeout(600);
+await page.screenshot({ path: `${SHOTS}/13c-sustituciones.png` });
+await page.getByRole('button', { name: 'Cerrar' }).click();
+await page.getByRole('button', { name: 'Resumen' }).click();
+await page.waitForTimeout(400);
 console.log('tras el cambio:', await page.locator('ol li').first().innerText());
 
 // Tiempo muerto y cambio de defensa, las otras dos decisiones del directo.
 await page.getByRole('button', { name: /^Tiempo muerto/ }).click();
 await page.waitForTimeout(600);
-await page.locator('select').first().selectOption({ index: 1 });
+await page.getByRole('button', { name: 'Tácticas' }).click();
+await page.waitForTimeout(400);
+await page
+  .getByRole('dialog', { name: 'Tácticas' })
+  .locator('select')
+  .first()
+  .selectOption({ index: 1 });
 await page.waitForTimeout(600);
-await page.screenshot({ path: `${SHOTS}/13c-banquillo-en-vivo.png` });
+await page.screenshot({ path: `${SHOTS}/13c-tacticas.png` });
+await page.getByRole('button', { name: 'Cerrar' }).click();
 
 // La pausa tiene que parar el reloj de verdad.
 await page.getByRole('button', { name: 'Pausa' }).click();
-const relojPausado = await page.locator('section').first().innerText();
+const relojPausado = await page.getByLabel('Reloj').innerText();
 await page.waitForTimeout(1500);
-const relojDespues = await page.locator('section').first().innerText();
-console.log('pausa efectiva:', relojPausado === relojDespues);
+const relojDespues = await page.getByLabel('Reloj').innerText();
+console.log('pausa efectiva:', relojPausado === relojDespues, relojPausado);
 await page.getByRole('button', { name: 'Reanudar' }).click();
 
-await page.getByRole('button', { name: 'Saltar al final del cuarto' }).click();
+await page.getByRole('button', { name: 'Saltar cuarto' }).click();
 await page.waitForTimeout(1500);
-const finCuarto = await page.locator('section').first().innerText();
-console.log('fin del 1er cuarto en vivo:', finCuarto.split('\n').slice(0, 5).join(' '));
+const finCuarto = await page.locator('header').first().innerText();
+console.log('fin del 1er cuarto en vivo:', finCuarto.split('\n').join(' '));
 await page.screenshot({ path: `${SHOTS}/13d-fin-cuarto-vivo.png` });
 
 // Y el resto del partido, simulado: los dos modos conviven en el mismo partido.
-// «Simular el resto» juega el cuarto siguiente y lo deja retransmitiéndose, así
-// que hay que saltarlo antes de volver a buscar el botón de jugar.
-await page.getByRole('button', { name: 'Simular el resto' }).click();
+// «Pasar cuarto» deja de dirigir, juega el cuarto siguiente y lo deja
+// retransmitiéndose, así que hay que saltarlo antes de volver a pasar.
+await page.getByRole('button', { name: 'Pasar cuarto' }).click();
 await page.waitForTimeout(1500);
-await page.getByRole('button', { name: 'Saltar al final del cuarto' }).click();
+await page.getByRole('button', { name: 'Saltar cuarto' }).click();
 await page.waitForTimeout(800);
-const trasSimular = await page.locator('section').first().innerText();
-console.log('tras simular el resto:', trasSimular.split('\n').slice(0, 4).join(' '));
+const trasSimular = await page.locator('header').first().innerText();
+console.log('tras pasar el cuarto:', trasSimular.split('\n').join(' '));
 
 /**
  * Cada cuarto se retransmite con el reloj corriendo. El primero se deja correr
  * un rato para ver la retransmisión en marcha —reloj, marcador parcial y
- * jugadas entrando—; el resto se salta al final, que es lo que hace quien sólo
- * quiere el resultado.
+ * comentarios entrando—; el resto se salta al final, que es lo que hace quien
+ * sólo quiere el resultado.
  */
 async function playQuarter(watchLive) {
-  const button = page.locator('button', { hasText: /^Jugar/ }).first();
+  const button = page.getByRole('button', { name: 'Pasar cuarto' });
   if ((await button.count()) === 0) return false;
   await button.click();
   if (watchLive) {
     await page.waitForTimeout(6000);
-    const live = await page.locator('section').first().innerText();
-    console.log('retransmisión en marcha:', live.split('\n').slice(0, 5).join(' '));
-    console.log('jugadas vistas:', await page.locator('ol li').count());
+    const live = await page.locator('header').first().innerText();
+    console.log('retransmisión en marcha:', live.split('\n').join(' '));
+    console.log('comentarios vistos:', await page.locator('ol li').count());
     await page.screenshot({ path: `${SHOTS}/14-retransmision.png` });
-    // Y la misma retransmisión en 3D, con las dos cámaras.
-    await page.getByRole('button', { name: 'Pista 3D' }).click();
-    await page.waitForTimeout(3000);
-    console.log(
-      'lienzo 3D:',
-      await page.locator('[aria-label="Pista del partido en 3D"] canvas').count()
-    );
-    await page.screenshot({ path: `${SHOTS}/14b-pista-3d.png` });
-    await page.getByRole('button', { name: 'Detrás del aro' }).click();
-    await page.waitForTimeout(2000);
-    await page.screenshot({ path: `${SHOTS}/14c-pista-3d-aro.png` });
-    await page.getByRole('button', { name: 'Tele' }).click();
+    await page.getByRole('button', { name: 'Estadísticas' }).click();
+    await page.waitForTimeout(600);
+    await page.screenshot({ path: `${SHOTS}/14b-estadisticas.png` });
+    await page.getByRole('button', { name: 'Resumen' }).click();
   }
-  await page.getByRole('button', { name: 'Saltar al final del cuarto' }).click();
+  await page.getByRole('button', { name: 'Saltar cuarto' }).click();
   await page.waitForTimeout(800);
   return true;
 }
 
 for (let quarter = 3; quarter <= 4; quarter += 1) {
   if (!(await playQuarter(quarter === 3))) break;
-  const scoreboard = await page.locator('section').first().innerText();
-  console.log(`tras el cuarto ${quarter}:`, scoreboard.split('\n').slice(0, 5).join(' '));
+  const scoreboard = await page.locator('header').first().innerText();
+  console.log(`tras el cuarto ${quarter}:`, scoreboard.split('\n').join(' '));
   await page.screenshot({ path: `${SHOTS}/14-cuarto-${quarter}.png` });
 }
 
@@ -391,8 +422,13 @@ for (let quarter = 3; quarter <= 4; quarter += 1) {
 for (let extra = 0; extra < 4; extra += 1) {
   if (!(await playQuarter(false))) break;
 }
-await page.screenshot({ path: `${SHOTS}/15-acta.png` });
+await page.screenshot({ path: `${SHOTS}/15-final.png` });
+await page.getByRole('button', { name: 'Estadísticas' }).click();
+await page.waitForTimeout(500);
 console.log('actas en pantalla:', await page.locator('table').count());
+await page.screenshot({ path: `${SHOTS}/15-acta.png` });
+await page.getByRole('button', { name: 'Texto' }).click();
+await page.waitForTimeout(500);
 console.log('retransmisión completa:', await page.locator('ol li').count(), 'líneas');
 await page.getByRole('button', { name: 'Canastas' }).click();
 await page.waitForTimeout(400);
@@ -401,19 +437,31 @@ await page.screenshot({ path: `${SHOTS}/15b-canastas.png` });
 await page.getByRole('button', { name: 'Todo' }).click();
 
 // El partido ya jugado se puede volver a ver en la pista.
-await page.getByRole('button', { name: 'Pista 2D' }).click();
+await page.getByRole('button', { name: 'Vista 2D' }).click();
 await page.getByRole('button', { name: 'Ver repetición' }).click();
 await page.waitForTimeout(3000);
-const repeticion = await page.locator('section').first().innerText();
-console.log('repetición:', repeticion.split('\n').slice(0, 4).join(' '));
+const repeticion = await page.locator('header').first().innerText();
+console.log('repetición:', repeticion.split('\n').join(' '));
 await page.screenshot({ path: `${SHOTS}/15d-repeticion.png` });
 await page.getByRole('button', { name: 'Terminar repetición' }).click();
 await page.waitForTimeout(400);
+await page.getByRole('button', { name: 'Resumen' }).click();
 
-await page.getByRole('link', { name: 'Volver al club' }).click();
-await page.waitForTimeout(1200);
-await page.getByRole('button', { name: 'Avanzar día' }).click();
-await page.waitForTimeout(3000);
+// «Continuar» juega el resto del día y enseña la jornada con su MVP.
+await page.getByRole('button', { name: 'Continuar' }).click();
+await page.waitForTimeout(4000);
+console.log(
+  'partidos de la jornada:',
+  await page.locator('[aria-label="Resultados de la jornada"] li').count()
+);
+console.log(
+  'MVP de la jornada:',
+  (await page.locator('[aria-label="MVP de la jornada"]').innerText()).split('\n').join(' · ')
+);
+await page.screenshot({ path: `${SHOTS}/15e-jornada.png` });
+await page.getByRole('button', { name: 'Continuar' }).click();
+await page.waitForTimeout(2000);
+console.log('tras la jornada:', page.url());
 
 // La bandeja, tras el primer partido: lo que haya pasado desde el principio.
 // El número exacto depende del partido; lo que se comprueba es que abre, que

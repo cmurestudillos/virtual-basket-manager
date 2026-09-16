@@ -50,7 +50,7 @@ const ballRadius = computed(() => 0.2 + Math.min(4, ball.value.z) * 0.035);
 </script>
 
 <template>
-  <div class="relative overflow-hidden rounded border border-court-700 bg-court-900">
+  <div class="relative overflow-hidden bg-tv-950">
     <svg
       :viewBox="`-1.2 -2.2 ${COURT_LENGTH + 2.4} ${COURT_WIDTH + 3.4}`"
       class="mx-auto block h-auto max-h-[62vh] w-full"
@@ -63,7 +63,7 @@ const ballRadius = computed(() => 0.2 + Math.min(4, ball.value.z) * 0.035);
         y="-2.2"
         :width="COURT_LENGTH + 2.4"
         :height="COURT_WIDTH + 3.4"
-        fill="#1b2533"
+        fill="#120a2e"
       />
       <rect x="0" y="0" :width="COURT_LENGTH" :height="COURT_WIDTH" fill="#c8955a" />
       <g fill="#b07c45">
@@ -163,7 +163,7 @@ const ballRadius = computed(() => 0.2 + Math.min(4, ball.value.z) * 0.035);
 
     <p
       v-if="scene.caption.value"
-      class="pointer-events-none absolute bottom-2 left-1/2 max-w-[90%] -translate-x-1/2 truncate rounded bg-court-950/80 px-3 py-1 text-sm text-court-100"
+      class="pointer-events-none absolute bottom-2 left-1/2 max-w-[90%] -translate-x-1/2 truncate bg-tv-800/90 px-3 py-1 text-sm font-semibold text-white"
     >
       {{ scene.caption.value }}
     </p>

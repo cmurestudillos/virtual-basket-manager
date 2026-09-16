@@ -49,7 +49,9 @@ import type {
   LiveTacticsPatch,
   LiveTick,
   MatchApi,
-  MatchState
+  MatchPreview,
+  MatchState,
+  RoundResults
 } from '@shared/contracts/match.contract';
 import type {
   RotationApi,
@@ -272,7 +274,11 @@ const match: MatchApi = {
   setLiveTactics: (gameId: string, patch: LiveTacticsPatch) =>
     ipcRenderer.invoke(IPC_CHANNELS.matchLiveTactics, gameId, patch) as Promise<LiveOrderResult>,
   setAutoRotation: (gameId: string, enabled: boolean) =>
-    ipcRenderer.invoke(IPC_CHANNELS.matchAutoRotation, gameId, enabled) as Promise<LiveOrderResult>
+    ipcRenderer.invoke(IPC_CHANNELS.matchAutoRotation, gameId, enabled) as Promise<LiveOrderResult>,
+  preview: (gameId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.matchPreview, gameId) as Promise<MatchPreview>,
+  roundResults: (gameId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.matchRoundResults, gameId) as Promise<RoundResults>
 };
 
 const career: CareerApi = {

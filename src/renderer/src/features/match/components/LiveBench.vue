@@ -14,9 +14,10 @@
  */
 import { computed, ref } from 'vue';
 import type { LiveBenchPlayer } from '@shared/contracts/match.contract';
+import { POSITION_ABBREVIATIONS } from '@shared/domain/positions';
 import { formatPlayedMinutes } from '@renderer/shared/format';
-import { AppAvatar, AppButton, AppFlag, AppPanel } from '@renderer/shared/ui';
-import { TONE_TEXT, toneForLevel } from '@renderer/shared/ui/tones';
+import { AppAvatar, AppFlag, toneForLevel } from '@renderer/shared/ui';
+import BroadcastButton from './BroadcastButton.vue';
 
 const props = defineProps<{
   onCourt: readonly LiveBenchPlayer[];
@@ -50,101 +51,118 @@ function pickIncoming(player: LiveBenchPlayer): void {
   outgoing.value = null;
 }
 
+/** Los tonos del kit, traducidos a la piel clara de la retransmisión. */
+const TV_TONE = {
+  good: 'text-tv-green',
+  warn: 'text-amber-600',
+  bad: 'text-tv-red',
+  neutral: 'text-tv-muted',
+  accent: 'text-tv-blue'
+} as const;
+
 function legsTone(player: LiveBenchPlayer): string {
-  return TONE_TEXT[toneForLevel(player.freshness)];
+  return TV_TONE[toneForLevel(player.freshness)];
 }
 
 /** Las faltas sólo cantan cuando empiezan a pesar. */
 function foulsTone(player: LiveBenchPlayer): string {
-  if (player.fouledOut) return TONE_TEXT.bad;
-  if (player.fouls >= 4) return TONE_TEXT.warn;
-  return 'text-court-300';
+  if (player.fouledOut) return TV_TONE.bad;
+  if (player.fouls >= 4) return TV_TONE.warn;
+  return TV_TONE.neutral;
 }
 </script>
 
 <template>
-  <AppPanel title="Banquillo" :hint="autoRotation ? 'rotación automática' : 'la llevas tú'">
-    <template #actions>
-      <AppButton
-        size="sm"
-        :variant="autoRotation ? 'secondary' : 'ghost'"
+  <div class="flex flex-col gap-3 text-tv-ink">
+    <div class="flex items-center justify-between gap-3">
+      <p class="text-sm text-tv-muted">
+        {{ autoRotation ? 'Los cambios los hace el motor.' : 'Los cambios los haces tú.' }}
+      </p>
+      <BroadcastButton
+        :variant="autoRotation ? 'primary' : 'muted'"
         :disabled="disabled"
         @click="emit('autoRotation', !autoRotation)"
       >
         {{ autoRotation ? 'Coger el mando' : 'Devolver al motor' }}
-      </AppButton>
-    </template>
+      </BroadcastButton>
+    </div>
 
-    <p v-if="refusal" class="mb-3 rounded border border-warn-500 px-3 py-2 text-xs text-warn-400">
+    <p v-if="refusal" class="border-l-4 border-tv-red bg-white px-3 py-2 text-xs text-tv-red">
       {{ refusal }}
     </p>
 
-    <p class="mb-2 text-xs uppercase tracking-wide text-court-300">En pista</p>
+    <p class="bg-tv-800 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
+      En pista
+    </p>
     <ul class="flex flex-col gap-1">
       <li v-for="player in onCourt" :key="player.playerId">
         <button
           type="button"
-          class="flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-sm transition"
+          class="flex w-full items-center gap-2 border-l-4 px-2 py-1.5 text-left text-sm transition"
           :class="
             outgoing === player.playerId
-              ? 'border-ball-500 bg-court-800'
-              : 'border-court-700 hover:border-court-600'
+              ? 'border-tv-blue bg-white'
+              : 'border-transparent bg-tv-cell hover:bg-white'
           "
           :disabled="disabled"
           @click="pickOutgoing(player)"
         >
-          <span class="w-7 shrink-0 text-ball-400">{{ player.playedPosition }}</span>
+          <span class="w-7 shrink-0 font-bold text-tv-blue">{{
+            POSITION_ABBREVIATIONS[player.playedPosition]
+          }}</span>
           <AppAvatar kind="player" :seed="player.playerId" :size="22" />
           <AppFlag :code="player.nationality" />
           <span class="flex-1 truncate">{{ player.playerName }}</span>
-          <span class="figure w-10 text-right text-xs text-court-300">
+          <span class="figure w-10 text-right text-xs text-tv-muted">
             {{ formatPlayedMinutes(player.secondsPlayed) }}
           </span>
           <span class="figure w-8 text-right text-xs font-semibold">{{ player.points }}</span>
           <span class="figure w-8 text-right text-xs" :class="foulsTone(player)">
             {{ player.fouls }}f
           </span>
-          <span class="figure w-8 text-right text-xs" :class="legsTone(player)">
+          <span class="figure w-8 text-right text-xs font-semibold" :class="legsTone(player)">
             {{ player.freshness }}
           </span>
         </button>
       </li>
     </ul>
 
-    <p class="mb-2 mt-4 text-xs uppercase tracking-wide text-court-300">
+    <p class="bg-tv-800 px-3 py-1 text-xs font-semibold uppercase tracking-wide text-white">
       {{ selected ? `Entra por ${selected.playerName}` : 'Banquillo' }}
     </p>
     <ul class="flex flex-col gap-1">
       <li v-for="player in benched" :key="player.playerId">
         <button
           type="button"
-          class="flex w-full items-center gap-2 rounded border px-2 py-1.5 text-left text-sm transition"
+          class="flex w-full items-center gap-2 border-l-4 border-transparent bg-tv-cell px-2 py-1.5 text-left text-sm transition"
           :class="[
-            player.fouledOut ? 'border-court-800 text-court-600' : 'border-court-700',
-            selected && !player.fouledOut ? 'hover:border-ball-500' : ''
+            player.fouledOut ? 'opacity-50' : '',
+            selected && !player.fouledOut ? 'hover:border-tv-blue hover:bg-white' : ''
           ]"
           :disabled="disabled || !selected || player.fouledOut"
           @click="pickIncoming(player)"
         >
-          <span class="w-7 shrink-0 text-court-300">{{ player.position }}</span>
+          <span class="w-7 shrink-0 text-tv-muted">{{
+            POSITION_ABBREVIATIONS[player.position]
+          }}</span>
           <AppAvatar kind="player" :seed="player.playerId" :size="22" />
           <AppFlag :code="player.nationality" />
           <span class="flex-1 truncate">{{ player.playerName }}</span>
-          <span v-if="player.fouledOut" class="text-xs text-bad-400">eliminado</span>
+          <span v-if="player.fouledOut" class="text-xs text-tv-red">eliminado</span>
           <template v-else>
-            <span class="figure w-10 text-right text-xs text-court-300">
+            <span class="figure w-10 text-right text-xs text-tv-muted">
               {{ formatPlayedMinutes(player.secondsPlayed) }}
             </span>
             <span class="figure w-8 text-right text-xs font-semibold">{{ player.points }}</span>
             <span class="figure w-8 text-right text-xs" :class="foulsTone(player)">
               {{ player.fouls }}f
             </span>
-            <span class="figure w-8 text-right text-xs" :class="legsTone(player)">
+            <span class="figure w-8 text-right text-xs font-semibold" :class="legsTone(player)">
               {{ player.freshness }}
             </span>
           </template>
         </button>
       </li>
     </ul>
-  </AppPanel>
+  </div>
 </template>

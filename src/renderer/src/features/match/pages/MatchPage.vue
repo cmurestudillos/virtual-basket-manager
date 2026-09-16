@@ -1,9 +1,26 @@
 <script setup lang="ts">
+/**
+ * El partido, de la previa a la jornada, con la piel de retransmisión de IBM.
+ *
+ * Tres momentos en la misma pantalla:
+ *
+ * 1. **La previa**, sobre el pabellón en 3D: los cincos, los jugadores de
+ *    referencia y cómo llegan los equipos. Sólo en un partido del usuario que
+ *    todavía no ha empezado.
+ * 2. **El partido**: la cabecera con marcador, reloj y parciales, cuatro
+ *    pestañas —resumen, acta, texto y pista 2D— y la barra del banquillo.
+ * 3. **La jornada**, al pulsar «Continuar» con el partido recién acabado: se
+ *    juega el resto del día y se enseñan todos los resultados y el MVP.
+ */
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRoute } from 'vue-router';
-import type { BoxScoreLine, LiveTacticsPatch, MatchState } from '@shared/contracts/match.contract';
+import { useRoute, useRouter } from 'vue-router';
+import type {
+  LiveTacticsPatch,
+  MatchPreview as MatchPreviewData,
+  MatchState,
+  RoundResults
+} from '@shared/contracts/match.contract';
 import type { TeamTacticsView } from '@shared/contracts/tactics.contract';
-import { percentage } from '@shared/domain/box-score';
 import {
   matchKits,
   shirtNumbers,
@@ -12,29 +29,32 @@ import {
 } from '@shared/domain/court';
 import { formatGameClock, periodName, visibleLineCount } from '@shared/domain/play-by-play';
 import { useSeasonStore } from '@renderer/features/season/season.store';
-import { formatMatchDate, formatPlayedMinutes } from '@renderer/shared/format';
-import {
-  AppButton,
-  AppEmpty,
-  AppFlag,
-  AppPanel,
-  AppSectionTitle,
-  AppSegmented
-} from '@renderer/shared/ui';
+import BroadcastBackdrop from '../components/BroadcastBackdrop.vue';
+import BroadcastButton from '../components/BroadcastButton.vue';
+import BroadcastDrawer from '../components/BroadcastDrawer.vue';
+import BroadcastPanel from '../components/BroadcastPanel.vue';
+import CommentaryCards from '../components/CommentaryCards.vue';
+import FullBoxScore from '../components/FullBoxScore.vue';
 import LiveBench from '../components/LiveBench.vue';
 import LiveTacticsPanel from '../components/LiveTacticsPanel.vue';
 import MatchCourt from '../components/MatchCourt.vue';
+import MatchPreview from '../components/MatchPreview.vue';
+import MatchScoreboard from '../components/MatchScoreboard.vue';
 import PlayByPlayFeed from '../components/PlayByPlayFeed.vue';
+import RoundResultsView from '../components/RoundResultsView.vue';
+import TeamBoxCard from '../components/TeamBoxCard.vue';
+import TeamComparison from '../components/TeamComparison.vue';
 import { usePlayback } from '../composables/usePlayback';
 import { useLiveMatch } from '../composables/useLiveMatch';
 
 const route = useRoute();
+const router = useRouter();
+const seasonStore = useSeasonStore();
 
 /** El código de nacionalidad de una selección (`seleccion-esp`); nulo en un club. */
 function nationOf(teamId: string): string | null {
   return teamId.startsWith('seleccion-') ? teamId.slice('seleccion-'.length).toUpperCase() : null;
 }
-const seasonStore = useSeasonStore();
 
 const state = ref<MatchState | null>(null);
 /**
@@ -51,7 +71,7 @@ const playback = usePlayback(onPlaybackFinished);
  *
  * Convive con la retransmisión diferida en vez de sustituirla: quien quiera
  * dirigir el partido lo ve posesión a posesión, y quien quiera llegar al
- * resultado sigue teniendo el botón de jugar el cuarto de una tacada. Son dos
+ * resultado sigue teniendo el botón de pasar el cuarto de una tacada. Son dos
  * maneras de ver el mismo partido, no dos partidos.
  */
 const live = useLiveMatch(playback.speed, onLiveFinished, onLivePeriodEnded);
@@ -62,38 +82,65 @@ const SPEEDS = [
   { id: 'slow', label: 'Lenta' },
   { id: 'normal', label: 'Normal' },
   { id: 'fast', label: 'Rápida' }
+] as const;
+
+// ---------------------------------------------------------------------------
+// Los tres momentos
+// ---------------------------------------------------------------------------
+
+type Stage = 'preview' | 'match' | 'results';
+const stage = ref<Stage>('match');
+const preview = ref<MatchPreviewData | null>(null);
+const results = ref<RoundResults | null>(null);
+/**
+ * El partido ha acabado en esta pantalla. Sólo entonces «Continuar» sigue con
+ * el día: al volver a abrir un partido viejo no se mueve el calendario.
+ */
+const justFinished = ref(false);
+
+// ---------------------------------------------------------------------------
+// Las pestañas
+// ---------------------------------------------------------------------------
+
+type Tab = 'summary' | 'stats' | 'text' | 'court';
+const TAB_KEY = 'match.tab';
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'summary', label: 'Resumen' },
+  { id: 'stats', label: 'Estadísticas' },
+  { id: 'text', label: 'Texto' },
+  { id: 'court', label: 'Vista 2D' }
 ];
+
+function readTab(): Tab {
+  try {
+    const stored = localStorage.getItem(TAB_KEY);
+    if (stored === 'summary' || stored === 'stats' || stored === 'text' || stored === 'court') {
+      return stored;
+    }
+    // Quien veía el partido en la pista (2D o la 3D que ya no existe) sigue en la pista.
+    const legacy = localStorage.getItem('match.view');
+    return legacy === '2d' || legacy === '3d' ? 'court' : 'summary';
+  } catch {
+    return 'summary';
+  }
+}
+
+/** La pestaña se recuerda para el siguiente partido. */
+const tab = ref<Tab>(readTab());
+watch(tab, (value) => {
+  try {
+    localStorage.setItem(TAB_KEY, value);
+  } catch {
+    // Sin almacenamiento, la pestaña se olvida al salir.
+  }
+});
+
+/** El cajón del banquillo abierto, si hay alguno. */
+const drawer = ref<'bench' | 'tactics' | null>(null);
 
 // ---------------------------------------------------------------------------
 // La pista
 // ---------------------------------------------------------------------------
-
-type CourtView = 'text' | '2d' | '3d';
-const VIEW_KEY = 'match.view';
-const VIEWS = [
-  { id: 'text', label: 'Texto' },
-  { id: '2d', label: 'Pista 2D' },
-  { id: '3d', label: 'Pista 3D' }
-];
-
-function readView(): CourtView {
-  try {
-    const stored = localStorage.getItem(VIEW_KEY);
-    return stored === '2d' || stored === '3d' ? stored : 'text';
-  } catch {
-    return 'text';
-  }
-}
-
-/** Cómo se ve el partido: se recuerda para el siguiente. */
-const courtView = ref<CourtView>(readView());
-watch(courtView, (value) => {
-  try {
-    localStorage.setItem(VIEW_KEY, value);
-  } catch {
-    // Sin almacenamiento, la vista se olvida al salir.
-  }
-});
 
 /** Las jugadas que conoce la pista: las del directo o las guardadas del partido. */
 const courtEvents = computed(() =>
@@ -133,7 +180,9 @@ const kits = computed(() =>
   matchKits(state.value?.home.teamId ?? '', state.value?.away.teamId ?? '')
 );
 
-const showCourt = computed(() => courtView.value !== 'text' && courtEvents.value.length > 0);
+// ---------------------------------------------------------------------------
+// El marcador
+// ---------------------------------------------------------------------------
 
 /** Sólo se puede jugar el partido si el usuario está en él. */
 const playable = computed(() => state.value?.managedSide !== null && !state.value?.finished);
@@ -163,20 +212,48 @@ const score = computed(() => {
   };
 });
 
-/** La línea de debajo del marcador: en qué punto del partido estamos. */
+/** Segundos que dura el cuarto que va a empezar: el reloj arranca ahí. */
+const periodSeconds = computed(() => {
+  const current = state.value;
+  if (!current) return 0;
+  // La duración la dice el reglamento del partido, no la pantalla: son diez
+  // minutos en FIBA y doce en la NBA, y una prórroga dura menos que un cuarto.
+  const played = live.active.value ? live.period.value : current.playedPeriods;
+  return played >= current.regulationPeriods ? current.overtimeSeconds : current.periodSeconds;
+});
+
+const clock = computed(() => {
+  if (live.active.value && !live.finished.value) return formatGameClock(live.clockSeconds.value);
+  if (running.value && playback.period.value !== null) {
+    return formatGameClock(playback.clockSeconds.value);
+  }
+  if (state.value?.playedPeriods === 0) return formatGameClock(periodSeconds.value);
+  return formatGameClock(0);
+});
+
+const periodLabel = computed(() => {
+  const current = state.value;
+  if (!current) return '';
+  const period = live.active.value
+    ? live.period.value
+    : running.value && playback.period.value !== null
+      ? playback.period.value
+      : Math.max(1, current.playedPeriods);
+  return period > current.regulationPeriods ? 'PR' : String(period);
+});
+
+/** La línea de debajo del reloj: en qué punto del partido estamos. */
 const moment = computed(() => {
   const current = state.value;
   if (!current) return '';
   if (live.active.value && !live.finished.value) {
     const name = periodName(live.period.value, current.regulationPeriods);
-    const clock = formatGameClock(live.clockSeconds.value);
-    const label = `${name.charAt(0).toUpperCase()}${name.slice(1)} · ${clock}`;
     if (live.periodEnded.value) return `Final ${name === 'prórroga' ? 'de la' : 'del'} ${name}`;
-    return live.paused.value ? `${label} · en pausa` : label;
+    return live.paused.value ? 'En pausa' : 'En directo';
   }
+  if (replaying.value) return playback.paused.value ? 'Repetición · en pausa' : 'Repetición';
   if (running.value && playback.period.value !== null) {
-    const name = periodName(playback.period.value, current.regulationPeriods);
-    return `${name.charAt(0).toUpperCase()}${name.slice(1)} · ${formatGameClock(playback.clockSeconds.value)}`;
+    return playback.paused.value ? 'En pausa' : 'En juego';
   }
   if (current.finished) return 'Final';
   if (current.playedPeriods === 0) return 'Previa';
@@ -184,15 +261,17 @@ const moment = computed(() => {
   return `Final del ${periodName(current.playedPeriods, current.regulationPeriods)}`;
 });
 
-const buttonLabel = computed(() => {
-  const played = state.value?.playedPeriods ?? 0;
-  const regulation = state.value?.regulationPeriods ?? 4;
-  if (played === 0) return 'Jugar 1er cuarto';
-  if (played < regulation) return `Jugar ${played + 1}º cuarto`;
-  return `Jugar prórroga ${played - regulation + 1}`;
-});
+// ---------------------------------------------------------------------------
+// Carga
+// ---------------------------------------------------------------------------
 
 onMounted(load);
+watch(
+  () => route.params.gameId,
+  (next, before) => {
+    if (next && next !== before) void load();
+  }
+);
 
 // Si se sale a mitad de la retransmisión del último cuarto, el partido ya está
 // guardado: la cabecera y el calendario tienen que enterarse igualmente.
@@ -205,12 +284,32 @@ onUnmounted(() => {
 
 async function load(): Promise<void> {
   const gameId = String(route.params.gameId);
+  live.stop();
+  previous.value = null;
+  results.value = null;
+  justFinished.value = false;
+  liveTactics.value = null;
   // Un partido ya jugado se lee del acta guardada y uno a medias de su sesión:
   // salir al club y volver no puede reiniciar el partido que estabas jugando.
   // Sólo se prepara de cero el que no ha empezado.
   const current = await window.api.match.snapshot(gameId);
   state.value = current ?? (await window.api.match.start(gameId));
+
+  const fresh = state.value;
+  stage.value = 'match';
+  if (fresh.managedSide && fresh.playedPeriods === 0 && !fresh.finished) {
+    try {
+      preview.value = await window.api.match.preview(gameId);
+      stage.value = 'preview';
+    } catch {
+      // Sin previa se juega igual: es decorado, no puede impedir el partido.
+    }
+  }
 }
+
+// ---------------------------------------------------------------------------
+// Partido cuarto a cuarto (diferido)
+// ---------------------------------------------------------------------------
 
 async function advance(): Promise<void> {
   if (!state.value || busy.value || running.value) {
@@ -220,6 +319,7 @@ async function advance(): Promise<void> {
   try {
     previous.value = state.value;
     state.value = await window.api.match.advancePeriod(state.value.gameId);
+    if (state.value.finished) justFinished.value = true;
     playback.play(state.value.playByPlay ?? [], state.value.playedPeriods);
   } finally {
     busy.value = false;
@@ -256,7 +356,7 @@ const replayPeriod = ref(1);
 
 const replayPeriods = computed(() =>
   (state.value?.periods ?? []).map((entry) => ({
-    id: String(entry.period),
+    id: entry.period,
     label: entry.period > (state.value?.regulationPeriods ?? 4) ? 'PR' : `${entry.period}º`
   }))
 );
@@ -299,22 +399,14 @@ async function playLive(): Promise<void> {
   }
 }
 
-/** Segundos que dura el cuarto que va a empezar: el reloj arranca ahí. */
-const periodSeconds = computed(() => {
-  const current = state.value;
-  if (!current) return 0;
-  // La duración la dice el reglamento del partido, no la pantalla: son diez
-  // minutos en FIBA y doce en la NBA, y una prórroga dura menos que un cuarto.
-  const played = live.active.value ? live.period.value : current.playedPeriods;
-  return played >= current.regulationPeriods ? current.overtimeSeconds : current.periodSeconds;
-});
-
 function onLivePeriodEnded(): void {
   // El cuarto se cierra: el acta y los parciales ya se pueden refrescar.
   void refreshFromStore();
 }
 
 function onLiveFinished(): void {
+  justFinished.value = true;
+  drawer.value = null;
   void finishLive();
 }
 
@@ -328,21 +420,45 @@ async function finishLive(): Promise<void> {
   await seasonStore.refresh();
 }
 
-/** Tras cada cuarto, el acta en pantalla se pone al día con lo jugado. */
+let refreshing = false;
+/** El acta en pantalla se pone al día con lo jugado. */
 async function refreshFromStore(): Promise<void> {
   const gameId = state.value?.gameId;
-  if (!gameId) return;
-  // El partido en vivo todavía no está guardado: lo que va jugado lo tiene la
-  // sesión, no la base de datos.
-  const current = await window.api.match.snapshot(gameId);
-  if (current) {
-    state.value = current;
+  if (!gameId || refreshing) return;
+  refreshing = true;
+  try {
+    // El partido en vivo todavía no está guardado: lo que va jugado lo tiene la
+    // sesión, no la base de datos.
+    const current = await window.api.match.snapshot(gameId);
+    if (current) {
+      state.value = current;
+    }
+  } finally {
+    refreshing = false;
   }
 }
+
+/**
+ * En directo, el acta del resumen se refresca cada pocas jugadas: esperar al
+ * final del cuarto dejaría las cifras de los jugadores congeladas diez minutos.
+ */
+const REFRESH_EVERY_LINES = 6;
+let refreshedAtLine = 0;
+watch(
+  () => live.lines.value.length,
+  (count) => {
+    if (count < refreshedAtLine) refreshedAtLine = 0;
+    if (inLive.value && count - refreshedAtLine >= REFRESH_EVERY_LINES) {
+      refreshedAtLine = count;
+      void refreshFromStore();
+    }
+  }
+);
 
 /** Se deja de dirigir y el resto del partido se juega cuarto a cuarto. */
 async function leaveLive(): Promise<void> {
   live.stop();
+  drawer.value = null;
   await advance();
 }
 
@@ -368,207 +484,362 @@ async function onTacticsChange(patch: LiveTacticsPatch): Promise<void> {
   }
 }
 
-function shooting(line: BoxScoreLine): string {
-  const made = line.twoPointMade + line.threePointMade;
-  const attempted = line.twoPointAttempted + line.threePointAttempted;
-  return `${made}/${attempted}`;
+/** Los mandos del banquillo sólo valen con el reloj del directo en marcha. */
+const benchEnabled = computed(() => inLive.value && live.bench.value.length > 0);
+const timeoutEnabled = computed(
+  () => inLive.value && !live.periodEnded.value && live.timeoutsLeft.value > 0
+);
+
+// ---------------------------------------------------------------------------
+// La jornada
+// ---------------------------------------------------------------------------
+
+/**
+ * «Continuar» con el partido recién acabado: se juega lo que queda del día
+ * —los demás partidos de la jornada— y se enseñan los resultados. Es lo mismo
+ * que haría «Avanzar día» desde el club, pero sin salir de la retransmisión.
+ */
+async function continueToRound(): Promise<void> {
+  const current = state.value;
+  if (!current || busy.value) return;
+  busy.value = true;
+  try {
+    let round = await window.api.match.roundResults(current.gameId);
+    if (justFinished.value && round.pending > 0) {
+      const nextGameId = await seasonStore.advance('day');
+      justFinished.value = false;
+      if (nextGameId && nextGameId !== current.gameId) {
+        // Otro partido tuyo ese mismo día (la selección): se va directo a él.
+        await router.push({ name: 'match', params: { gameId: nextGameId } });
+        return;
+      }
+      round = await window.api.match.roundResults(current.gameId);
+    }
+    results.value = round;
+    stage.value = 'results';
+  } finally {
+    busy.value = false;
+  }
 }
 
-function teamTotal(lines: readonly BoxScoreLine[], key: keyof BoxScoreLine): number {
-  return lines.reduce((sum, line) => sum + (line[key] as number), 0);
-}
-
-function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
-  const made = teamTotal(lines, 'twoPointMade') + teamTotal(lines, 'threePointMade');
-  const attempted = teamTotal(lines, 'twoPointAttempted') + teamTotal(lines, 'threePointAttempted');
-  return percentage(made, attempted);
+async function leaveResults(): Promise<void> {
+  await router.push({ name: 'dashboard' });
 }
 </script>
 
 <template>
-  <div v-if="state && shown" class="flex flex-col gap-5">
-    <header class="flex items-center justify-between">
-      <div>
-        <p class="text-sm text-court-300">
-          {{ state.roundLabel }} · {{ formatMatchDate(state.scheduledOn) }}
-        </p>
-      </div>
-      <RouterLink :to="{ name: 'dashboard' }" class="text-sm text-court-300 hover:text-court-100">
-        Volver al club
-      </RouterLink>
-    </header>
+  <div class="h-screen overflow-y-auto bg-tv-950">
+    <MatchPreview
+      v-if="state && stage === 'preview' && preview"
+      class="h-screen"
+      :preview="preview"
+      :kits="kits"
+      :managed-side="state.managedSide"
+      :scouting="state.scouting"
+      @done="stage = 'match'"
+    />
 
-    <!-- Marcador -->
-    <section class="rounded border border-court-700 bg-court-900 p-6">
-      <div class="grid grid-cols-[1fr_auto_1fr] items-center gap-6">
-        <div class="text-right">
-          <p
-            class="flex items-center justify-end gap-2 text-xl"
-            :class="state.managedSide === 'home' ? 'text-ball-400' : ''"
-          >
-            {{ state.home.teamName }}
-            <AppFlag
-              v-if="nationOf(state.home.teamId)"
-              :code="nationOf(state.home.teamId)"
-              size="md"
-            />
-          </p>
-        </div>
-        <div class="text-center">
-          <p class="text-5xl font-bold tabular-nums">
-            {{ score.home }} <span class="text-court-600">-</span> {{ score.away }}
-          </p>
-          <p class="mt-1 text-sm text-court-300 tabular-nums">{{ moment }}</p>
-        </div>
-        <div>
-          <p
-            class="flex items-center gap-2 text-xl"
-            :class="state.managedSide === 'away' ? 'text-ball-400' : ''"
-          >
-            <AppFlag
-              v-if="nationOf(state.away.teamId)"
-              :code="nationOf(state.away.teamId)"
-              size="md"
-            />
-            {{ state.away.teamName }}
-          </p>
-        </div>
-      </div>
+    <BroadcastBackdrop v-else-if="state && stage === 'results' && results">
+      <RoundResultsView :results="results" :busy="busy" @continue="leaveResults" />
+    </BroadcastBackdrop>
 
-      <!-- Parciales por cuarto -->
-      <table v-if="shown.periods.length > 0" class="mx-auto mt-5 text-sm">
-        <thead>
-          <tr class="text-court-300">
-            <th class="px-3 py-1 text-left"></th>
-            <th v-for="period in shown.periods" :key="period.period" class="px-3 py-1 text-center">
-              {{ period.period > shown.regulationPeriods ? 'PR' : `${period.period}º` }}
-            </th>
-          </tr>
-        </thead>
-        <tbody class="tabular-nums">
-          <tr>
-            <td class="px-3 py-1 text-court-300">{{ state.home.teamName }}</td>
-            <td v-for="period in shown.periods" :key="period.period" class="px-3 py-1 text-center">
-              {{ period.home }}
-            </td>
-          </tr>
-          <tr>
-            <td class="px-3 py-1 text-court-300">{{ state.away.teamName }}</td>
-            <td v-for="period in shown.periods" :key="period.period" class="px-3 py-1 text-center">
-              {{ period.away }}
-            </td>
-          </tr>
-        </tbody>
-      </table>
-
-      <div class="mt-6 flex flex-wrap items-center justify-center gap-4">
-        <!-- Partido en vivo: los mandos del banquillo mientras corre el reloj. -->
-        <template v-if="inLive">
-          <template v-if="live.periodEnded.value">
-            <AppButton variant="primary" size="lg" :disabled="busy" @click="playLive">
-              {{ buttonLabel }}
-            </AppButton>
-            <!-- Dirigir cansa: quien ya ha visto bastante se lleva el resto simulado. -->
-            <AppButton variant="ghost" :disabled="busy" @click="leaveLive">
-              Simular el resto
-            </AppButton>
-          </template>
-          <template v-else>
-            <AppButton
-              variant="primary"
-              size="lg"
-              @click="live.paused.value ? live.resume() : live.pause()"
-            >
-              {{ live.paused.value ? 'Reanudar' : 'Pausa' }}
-            </AppButton>
-            <AppButton variant="secondary" @click="onTimeout">
-              Tiempo muerto ({{ live.timeoutsLeft.value }})
-            </AppButton>
-            <AppButton variant="ghost" @click="live.skipPeriod">
-              Saltar al final del cuarto
-            </AppButton>
-          </template>
-        </template>
-
-        <!-- Repetición de un partido ya jugado. -->
-        <template v-else-if="replaying">
-          <AppButton
-            variant="primary"
-            size="lg"
-            @click="playback.paused.value ? playback.resume() : playback.pause()"
-          >
-            {{ playback.paused.value ? 'Reanudar' : 'Pausa' }}
-          </AppButton>
-          <AppButton variant="secondary" @click="playback.skip">Siguiente cuarto</AppButton>
-          <AppButton variant="ghost" @click="stopReplay">Terminar repetición</AppButton>
-          <AppSegmented
-            :model-value="String(replayPeriod)"
-            :options="replayPeriods"
-            aria-label="Ir al cuarto"
-            @update:model-value="(id: string) => startReplay(Number(id))"
-          />
-        </template>
-
-        <AppButton v-else-if="running" variant="secondary" size="lg" @click="playback.skip">
-          Saltar al final del cuarto
-        </AppButton>
-
-        <!-- Sin partido en vivo empezado: se elige cómo verlo. -->
-        <template v-else-if="playable">
-          <AppButton variant="primary" size="lg" :disabled="busy" @click="playLive">
-            {{ busy ? 'Empezando…' : 'Dirigir en vivo' }}
-          </AppButton>
-          <AppButton variant="secondary" size="lg" :disabled="busy" @click="advance">
-            {{ busy ? 'Jugando…' : buttonLabel }}
-          </AppButton>
-        </template>
-
-        <template v-else-if="state.finished">
-          <AppButton
-            v-if="state.playByPlay && state.playByPlay.length > 0"
-            variant="secondary"
-            size="lg"
-            @click="startReplay()"
-          >
-            Ver repetición
-          </AppButton>
-          <p v-else class="text-sm text-court-300">Partido finalizado</p>
-        </template>
-        <p v-else class="text-sm text-court-300">Partido de otros equipos</p>
-
-        <!-- La velocidad se elige antes o durante: vale para todos los cuartos. -->
-        <AppSegmented
-          v-if="running || playable || inLive"
-          v-model="playback.speed.value"
-          :options="SPEEDS"
-          aria-label="Velocidad de la retransmisión"
-        />
-        <!-- Texto, pista 2D o 3D: se elige cuando hay jugadas que dibujar. -->
-        <AppSegmented
-          v-if="state.courtEvents !== null || inLive"
-          v-model="courtView"
-          :options="VIEWS"
-          aria-label="Cómo ver el partido"
-        />
-      </div>
-    </section>
-
-    <!-- Dirigiendo: el banquillo y la pizarra al lado de la retransmisión. -->
-    <section v-if="inLive && live.bench.value.length > 0" class="grid grid-cols-[2fr_1fr] gap-4">
-      <div class="flex min-w-0 flex-col gap-4">
-        <MatchCourt
-          v-if="showCourt && courtView !== 'text'"
-          :view="courtView"
-          :events="courtEvents"
-          :visible-count="courtVisible"
-          :roster="courtRoster"
+    <BroadcastBackdrop v-else-if="state && shown">
+      <div class="flex min-h-screen flex-col">
+        <MatchScoreboard
+          :round-label="state.roundLabel"
+          :home-name="state.home.teamName"
+          :away-name="state.away.teamName"
           :kits="kits"
+          :home-nation="nationOf(state.home.teamId)"
+          :away-nation="nationOf(state.away.teamId)"
+          :managed-side="state.managedSide"
+          :score="score"
+          :clock="clock"
+          :period-label="periodLabel"
+          :periods="shown.periods"
           :regulation-periods="state.regulationPeriods"
-          :speed="playback.speed.value"
-        />
-        <PlayByPlayFeed :lines="visibleLines" :managed-side="state.managedSide" />
+          :status="moment"
+        >
+          <template #corner>
+            <RouterLink
+              :to="{ name: 'dashboard' }"
+              class="text-[0.7rem] font-semibold uppercase text-tv-muted hover:text-tv-blue"
+            >
+              ‹ Volver al club
+            </RouterLink>
+          </template>
+
+          <template #under-away>
+            <span class="text-[0.65rem] font-semibold uppercase tracking-wide">T. muertos</span>
+            <span
+              class="figure border border-white/30 bg-black px-2 text-lg font-bold leading-6 text-tv-amber"
+            >
+              {{ inLive ? live.timeoutsLeft.value : '-' }}
+            </span>
+          </template>
+
+          <template #actions>
+            <!-- Repetición de un partido ya jugado. -->
+            <template v-if="replaying">
+              <BroadcastButton
+                arrow="single"
+                @click="playback.paused.value ? playback.resume() : playback.pause()"
+              >
+                {{ playback.paused.value ? 'Reanudar' : 'Pausa' }}
+              </BroadcastButton>
+              <BroadcastButton variant="muted" @click="stopReplay">
+                Terminar repetición
+              </BroadcastButton>
+            </template>
+
+            <!-- Partido en vivo con el reloj en marcha. -->
+            <template v-else-if="inLive && !live.periodEnded.value">
+              <BroadcastButton
+                arrow="single"
+                @click="live.paused.value ? live.resume() : live.pause()"
+              >
+                {{ live.paused.value ? 'Reanudar' : 'Pausa' }}
+              </BroadcastButton>
+              <BroadcastButton arrow="double" @click="live.skipPeriod">
+                Saltar cuarto
+              </BroadcastButton>
+            </template>
+
+            <!-- Diferido: el cuarto se está retransmitiendo. -->
+            <template v-else-if="running">
+              <BroadcastButton arrow="single" disabled>Jugar</BroadcastButton>
+              <BroadcastButton arrow="double" @click="playback.skip">Saltar cuarto</BroadcastButton>
+            </template>
+
+            <!-- Entre cuartos: jugar el siguiente dirigiendo o pasarlo simulado. -->
+            <template v-else-if="playable">
+              <BroadcastButton arrow="single" :disabled="busy" @click="playLive">
+                Jugar
+              </BroadcastButton>
+              <BroadcastButton
+                arrow="double"
+                :disabled="busy"
+                @click="inLive ? leaveLive() : advance()"
+              >
+                Pasar cuarto
+              </BroadcastButton>
+            </template>
+
+            <template v-else-if="state.finished">
+              <BroadcastButton
+                v-if="state.managedSide"
+                arrow="single"
+                :disabled="busy"
+                @click="continueToRound"
+              >
+                Continuar
+              </BroadcastButton>
+              <BroadcastButton
+                v-if="state.playByPlay && state.playByPlay.length > 0"
+                variant="muted"
+                @click="startReplay()"
+              >
+                Ver repetición
+              </BroadcastButton>
+            </template>
+            <p v-else class="text-sm text-white/70">Partido de otros equipos</p>
+          </template>
+        </MatchScoreboard>
+
+        <!-- Pestañas -->
+        <nav class="flex items-center gap-1 bg-tv-900/80 px-5" aria-label="Modo de partido">
+          <span class="mr-4 border-r border-white/40 py-3 pr-5 text-sm font-bold uppercase">
+            Modo de partido
+          </span>
+          <button
+            v-for="option in TABS"
+            :key="option.id"
+            type="button"
+            class="border-b-4 px-4 py-3 text-sm font-semibold transition"
+            :class="
+              tab === option.id
+                ? 'border-tv-blue text-white'
+                : 'border-transparent text-white/70 hover:text-white'
+            "
+            :aria-pressed="tab === option.id"
+            @click="tab = option.id"
+          >
+            {{ option.label }}
+          </button>
+
+          <div class="ml-auto flex items-center gap-3 py-2">
+            <!-- Repetición: saltar de cuarto. -->
+            <template v-if="replaying">
+              <button
+                type="button"
+                class="bg-tv-700 px-3 py-1 text-xs font-semibold hover:bg-tv-600"
+                @click="playback.skip"
+              >
+                Siguiente cuarto
+              </button>
+              <span class="flex gap-0.5" role="group" aria-label="Ir al cuarto">
+                <button
+                  v-for="option in replayPeriods"
+                  :key="option.id"
+                  type="button"
+                  class="px-2 py-1 text-xs font-semibold"
+                  :class="replayPeriod === option.id ? 'bg-tv-blue' : 'bg-tv-700 hover:bg-tv-600'"
+                  :aria-pressed="replayPeriod === option.id"
+                  @click="startReplay(option.id)"
+                >
+                  {{ option.label }}
+                </button>
+              </span>
+            </template>
+            <!-- La velocidad vale para el directo, el diferido y la repetición. -->
+            <span
+              v-if="running || playable || inLive || replaying"
+              class="flex items-center gap-0.5"
+              role="group"
+              aria-label="Velocidad de la retransmisión"
+            >
+              <span class="mr-2 text-xs uppercase text-white/60">Velocidad</span>
+              <button
+                v-for="option in SPEEDS"
+                :key="option.id"
+                type="button"
+                class="px-2.5 py-1 text-xs font-semibold"
+                :class="
+                  playback.speed.value === option.id ? 'bg-tv-blue' : 'bg-tv-700 hover:bg-tv-600'
+                "
+                :aria-pressed="playback.speed.value === option.id"
+                @click="playback.speed.value = option.id"
+              >
+                {{ option.label }}
+              </button>
+            </span>
+          </div>
+        </nav>
+
+        <main class="flex-1 p-4">
+          <!-- Resumen: las dos actas cortas y, en medio, la comparativa y los comentarios. -->
+          <div
+            v-if="tab === 'summary'"
+            class="grid grid-cols-[minmax(0,1fr)_minmax(0,0.8fr)_minmax(0,1fr)] gap-4"
+          >
+            <TeamBoxCard :lines="shown.home.boxScores" :managed="state.managedSide === 'home'" />
+            <div class="flex min-w-0 flex-col gap-3">
+              <TeamComparison
+                :home="shown.home.boxScores"
+                :away="shown.away.boxScores"
+                :home-score="score.home"
+                :away-score="score.away"
+              />
+              <CommentaryCards
+                v-if="state.playByPlay !== null || inLive"
+                :lines="visibleLines"
+                :home-name="state.home.teamName"
+                :away-name="state.away.teamName"
+                :kits="kits"
+                :regulation-periods="state.regulationPeriods"
+              />
+              <BroadcastPanel v-else title="Comentarios">
+                <p class="p-3 text-center text-sm text-tv-muted">
+                  De los partidos entre otros equipos sólo se guarda el acta: la retransmisión se
+                  queda para los tuyos.
+                </p>
+              </BroadcastPanel>
+            </div>
+            <TeamBoxCard :lines="shown.away.boxScores" :managed="state.managedSide === 'away'" />
+          </div>
+
+          <!-- Estadísticas: el acta entera. -->
+          <div v-else-if="tab === 'stats'" class="grid grid-cols-2 gap-4">
+            <FullBoxScore
+              :team-name="shown.home.teamName"
+              :lines="shown.home.boxScores"
+              :managed="state.managedSide === 'home'"
+            />
+            <FullBoxScore
+              :team-name="shown.away.teamName"
+              :lines="shown.away.boxScores"
+              :managed="state.managedSide === 'away'"
+            />
+          </div>
+
+          <!-- Texto: la retransmisión escrita entera. -->
+          <PlayByPlayFeed
+            v-else-if="tab === 'text'"
+            :lines="visibleLines"
+            :managed-side="state.managedSide"
+            :kits="kits"
+          />
+
+          <!-- Vista 2D: la pista, con los últimos comentarios al lado. -->
+          <div v-else class="grid grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)] gap-4">
+            <BroadcastPanel title="Vista 2D" flush>
+              <MatchCourt
+                v-if="courtEvents.length > 0"
+                :events="courtEvents"
+                :visible-count="courtVisible"
+                :roster="courtRoster"
+                :kits="kits"
+                :regulation-periods="state.regulationPeriods"
+                :speed="playback.speed.value"
+              />
+              <p v-else class="p-8 text-center text-sm text-tv-muted">
+                {{
+                  state.courtEvents === null && !inLive
+                    ? 'De los partidos entre otros equipos no se guardan las jugadas.'
+                    : 'La pista se mueve en cuanto empiece el partido.'
+                }}
+              </p>
+            </BroadcastPanel>
+            <CommentaryCards
+              :lines="visibleLines"
+              :home-name="state.home.teamName"
+              :away-name="state.away.teamName"
+              :kits="kits"
+              :regulation-periods="state.regulationPeriods"
+              max-height="62vh"
+            />
+          </div>
+        </main>
+
+        <!-- La barra del banquillo -->
+        <footer class="sticky bottom-0 flex justify-end gap-3 bg-tv-950/90 px-4 py-3">
+          <p
+            v-if="playable && !inLive && !running"
+            class="mr-auto self-center text-sm text-white/70"
+          >
+            Los mandos del banquillo se usan jugando el cuarto en directo.
+          </p>
+          <BroadcastButton
+            variant="muted"
+            class="min-w-56 justify-center"
+            :disabled="!timeoutEnabled"
+            @click="onTimeout"
+          >
+            Tiempo muerto: {{ inLive ? live.timeoutsLeft.value : '-' }}
+          </BroadcastButton>
+          <BroadcastButton
+            class="min-w-56 justify-center"
+            :disabled="!benchEnabled || !liveTactics"
+            @click="drawer = 'tactics'"
+          >
+            Tácticas
+          </BroadcastButton>
+          <BroadcastButton
+            variant="muted"
+            class="min-w-56 justify-center"
+            :disabled="!benchEnabled"
+            @click="drawer = 'bench'"
+          >
+            Sustituciones
+          </BroadcastButton>
+        </footer>
       </div>
-      <div class="flex flex-col gap-4">
+
+      <BroadcastDrawer
+        v-if="drawer === 'bench' && inLive"
+        title="Sustituciones"
+        @close="drawer = null"
+      >
         <LiveBench
           :on-court="live.onCourt.value"
           :benched="live.benched.value"
@@ -578,8 +849,13 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
           @substitute="onSubstitute"
           @auto-rotation="onAutoRotation"
         />
+      </BroadcastDrawer>
+      <BroadcastDrawer
+        v-if="drawer === 'tactics' && inLive && liveTactics"
+        title="Tácticas"
+        @close="drawer = null"
+      >
         <LiveTacticsPanel
-          v-if="liveTactics"
           :offensive-system="liveTactics.offensiveSystem"
           :defensive-system="liveTactics.defensiveSystem"
           :pace="liveTactics.pace"
@@ -587,131 +863,7 @@ function teamShootingPercentage(lines: readonly BoxScoreLine[]): number {
           :disabled="live.finished.value"
           @change="onTacticsChange"
         />
-      </div>
-    </section>
-
-    <template v-else-if="state.playByPlay && state.playedPeriods > 0">
-      <MatchCourt
-        v-if="showCourt && courtView !== 'text'"
-        :view="courtView"
-        :events="courtEvents"
-        :visible-count="courtVisible"
-        :roster="courtRoster"
-        :kits="kits"
-        :regulation-periods="state.regulationPeriods"
-        :speed="playback.speed.value"
-      />
-      <PlayByPlayFeed :lines="visibleLines" :managed-side="state.managedSide" />
-    </template>
-    <AppPanel v-else-if="state.finished" title="Retransmisión">
-      <AppEmpty>
-        De los partidos entre otros equipos sólo se guarda el acta: la retransmisión se queda para
-        los tuyos.
-      </AppEmpty>
-    </AppPanel>
-
-    <!-- Actas -->
-    <section v-if="shown.playedPeriods > 0" class="grid grid-cols-2 gap-4">
-      <div
-        v-for="side in [shown.home, shown.away]"
-        :key="side.teamId"
-        class="overflow-auto rounded border border-court-700"
-      >
-        <h2
-          class="flex items-baseline justify-between border-b border-court-700 bg-court-900 px-4 py-2"
-        >
-          <span class="text-sm">{{ side.teamName }}</span>
-          <span class="text-xs text-court-300">
-            TC {{ teamShootingPercentage(side.boxScores) }}% ·
-            {{ teamTotal(side.boxScores, 'assists') }} as ·
-            {{
-              teamTotal(side.boxScores, 'offensiveRebounds') +
-              teamTotal(side.boxScores, 'defensiveRebounds')
-            }}
-            reb
-          </span>
-        </h2>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Jugador</th>
-              <th class="numeric">Min</th>
-              <th class="numeric">Pts</th>
-              <th class="numeric">TC</th>
-              <th class="numeric">T3</th>
-              <th class="numeric">TL</th>
-              <th class="numeric">Reb</th>
-              <th class="numeric">As</th>
-              <th class="numeric">Val</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="line in side.boxScores"
-              :key="line.playerId"
-              :class="line.secondsPlayed === 0 ? 'text-court-600' : ''"
-            >
-              <td>
-                <span class="text-ball-400">{{ line.position }}</span>
-                <RouterLink
-                  :to="{ name: 'player', params: { playerId: line.playerId } }"
-                  class="ml-2 inline-flex items-center gap-1.5 hover:text-ball-400"
-                >
-                  <AppFlag :code="line.nationality" />
-                  {{ line.playerName }}
-                </RouterLink>
-              </td>
-              <td class="numeric">{{ formatPlayedMinutes(line.secondsPlayed) }}</td>
-              <td class="numeric font-semibold">{{ line.points }}</td>
-              <td class="numeric">{{ shooting(line) }}</td>
-              <td class="numeric">{{ line.threePointMade }}/{{ line.threePointAttempted }}</td>
-              <td class="numeric">{{ line.freeThrowMade }}/{{ line.freeThrowAttempted }}</td>
-              <td class="numeric">{{ line.offensiveRebounds + line.defensiveRebounds }}</td>
-              <td class="numeric">{{ line.assists }}</td>
-              <td class="numeric" :class="line.efficiency >= 15 ? 'text-good-400' : ''">
-                {{ line.efficiency }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
-    </section>
-
-    <!-- Previa: todavía no se ha jugado nada -->
-    <section v-else class="rounded border border-court-700 p-5">
-      <AppSectionTitle>Previa</AppSectionTitle>
-
-      <!-- Lo que el analista ha sacado del rival. -->
-      <div v-if="state.scouting" class="mt-3 rounded border border-court-700 bg-court-900 p-3">
-        <p class="text-xs uppercase tracking-wide text-court-300">
-          Informe del analista · {{ state.scouting.teamName }}
-        </p>
-        <p class="mt-1 text-sm">
-          {{ state.scouting.offensiveSystem }} en ataque y {{ state.scouting.defensiveSystem }} en
-          defensa · ritmo {{ state.scouting.pace }} · intensidad
-          {{ state.scouting.defensiveIntensity }}
-        </p>
-        <p v-if="state.scouting.focusPlayerName" class="text-sm text-court-300">
-          Van a buscar a {{ state.scouting.focusPlayerName }}
-        </p>
-      </div>
-      <div class="mt-3 grid grid-cols-2 gap-6">
-        <div v-for="side in [shown.home, shown.away]" :key="side.teamId">
-          <p class="mb-2 text-sm">{{ side.teamName }} · cinco inicial</p>
-          <ul class="flex flex-col gap-1 text-sm">
-            <li
-              v-for="line in side.boxScores.slice(0, 5)"
-              :key="line.playerId"
-              class="flex gap-2 text-court-300"
-            >
-              <span class="w-6 text-ball-400">{{ line.position }}</span>
-              <span class="inline-flex items-center gap-1.5">
-                <AppFlag :code="line.nationality" />{{ line.playerName }}
-              </span>
-            </li>
-          </ul>
-        </div>
-      </div>
-    </section>
+      </BroadcastDrawer>
+    </BroadcastBackdrop>
   </div>
 </template>
