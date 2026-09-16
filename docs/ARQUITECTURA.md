@@ -89,11 +89,25 @@ depende de Electron ni de la base de datos: entra un `SimulateGameInput` y sale
 un `GameResult`. Se puede testear sin arrancar la aplicación, y su registro de
 jugadas es lo que narra la retransmisión (`shared/domain/play-by-play.ts`).
 
+`GameSimulation` se puede jugar a tres granularidades, y **las tres son el mismo
+código**: `simulateGame()` de una tacada (los partidos de la IA), `playPeriod()`
+cuarto a cuarto (el modo resultado) y `playPossession()` posesión a posesión (el
+partido en vivo). Las dos primeras no son más que un bucle sobre la tercera, así
+que un partido que nadie toca sale idéntico se juegue como se juegue — lo
+comprueban los tests, y `scripts/engine-fingerprint.mts` saca una huella de
+veinticinco partidos para verificarlo a mano cuando se toque el motor.
+
+Entre posesiones el motor acepta **órdenes** —cambio, tiempo muerto, pizarra—
+que no gastan azar: son decisiones, no sucesos. Por eso dirigir un partido lo
+cambia, pero limitarse a mirarlo no.
+
 ## Verificación
 
 - `pnpm test` — unitarios más un test de integración real contra SQLite que
   siembra una partida entera en una carpeta temporal.
 - `pnpm typecheck` — `tsc` y `vue-tsc` contra los dos tsconfig.
+- `pnpm verify:engine` — huella del motor, para saber si un cambio en
+  `simulate-game.ts` ha alterado los partidos o no.
 - `pnpm build && pnpm verify:app` — arranca Electron de verdad, recorre el flujo
   completo y deja capturas en `.dev-data/shots`.
 

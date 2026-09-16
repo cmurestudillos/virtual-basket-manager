@@ -14,6 +14,9 @@ export type {
   GameEvent,
   GameEventType,
   GameResult,
+  LiveBench,
+  LivePlayer,
+  OrderResult,
   PeriodScore,
   SimulateGameInput,
   TeamGameResult

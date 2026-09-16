@@ -13,6 +13,7 @@ import type { ClubApi } from '@shared/contracts/club.contract';
 import type { StaffApi } from '@shared/contracts/staff.contract';
 import type { YouthApi } from '@shared/contracts/youth.contract';
 import type { MarketApi } from '@shared/contracts/market.contract';
+import type { HistoryApi } from '@shared/contracts/history.contract';
 
 export interface VbmApi {
   settings: SettingsApi;
@@ -30,6 +31,7 @@ export interface VbmApi {
   youth: YouthApi;
   market: MarketApi;
   match: MatchApi;
+  history: HistoryApi;
 }
 
 declare global {

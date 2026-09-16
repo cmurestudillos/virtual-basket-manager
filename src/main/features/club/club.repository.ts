@@ -26,6 +26,11 @@ export interface NewEntry {
 export class ClubRepository {
   constructor(private readonly db: SaveDatabase) {}
 
+  /** Si esta partida se juega con despido. Por defecto sí: es lo de siempre. */
+  dismissalEnabled(): boolean {
+    return this.db.select().from(gameStateTable).get()?.dismissalEnabled ?? true;
+  }
+
   managedTeamId(): string | null {
     return this.db.select().from(gameStateTable).get()?.managedTeamId ?? null;
   }

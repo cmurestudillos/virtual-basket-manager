@@ -4,7 +4,9 @@ export const createSaveRequestSchema = z.object({
   name: z.string().trim().min(1).max(60),
   /** Equipo que dirigirá el usuario. */
   teamId: z.string().min(1),
-  managerName: z.string().trim().min(1).max(60)
+  managerName: z.string().trim().min(1).max(60),
+  /** Con el despido apagado el consejo sigue opinando, pero no te echa. */
+  dismissalEnabled: z.boolean().default(true)
 });
 export type CreateSaveRequest = z.infer<typeof createSaveRequestSchema>;
 

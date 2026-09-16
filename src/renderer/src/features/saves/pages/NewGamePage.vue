@@ -15,6 +15,14 @@ const league = ref<string | null>(null);
 const search = ref('');
 const selectedTeamId = ref<string | null>(null);
 const managerName = ref('');
+/**
+ * Con el despido apagado el consejo sigue puntuando, pero no te echa.
+ *
+ * Es la primera pieza de la dificultad, y se elige aquí porque es una decisión
+ * sobre qué clase de partida quieres: la que se juega con el puesto en el aire
+ * o la que se juega para construir un club a diez años vista.
+ */
+const dismissalEnabled = ref(true);
 const saveName = ref('');
 const creating = ref(false);
 const error = ref<string | null>(null);
@@ -78,7 +86,8 @@ async function create(): Promise<void> {
       // que va a reconocer después en el listado.
       name: saveName.value.trim() || (selectedTeam.value?.name ?? 'Partida'),
       teamId: selectedTeamId.value,
-      managerName: managerName.value.trim()
+      managerName: managerName.value.trim(),
+      dismissalEnabled: dismissalEnabled.value
     });
     await store.refresh();
     await router.push({ name: 'dashboard' });
@@ -196,6 +205,16 @@ async function create(): Promise<void> {
             :placeholder="selectedTeam?.name ?? ''"
             class="rounded border border-court-600 bg-court-900 px-3 py-2"
           />
+        </label>
+
+        <label class="flex cursor-pointer items-start gap-2 text-sm">
+          <input v-model="dismissalEnabled" type="checkbox" class="mt-1" />
+          <span>
+            <span>El consejo puede despedirte</span>
+            <span class="block text-xs text-court-300">
+              Desactívalo para que la partida no se acabe aunque el consejo pierda la paciencia.
+            </span>
+          </span>
         </label>
 
         <p v-if="error" class="text-sm text-ball-400">{{ error }}</p>

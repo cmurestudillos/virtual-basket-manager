@@ -71,6 +71,13 @@
       "when": 1789321077646,
       "tag": "0009_misty_marrow",
       "breakpoints": true
+    },
+    {
+      "idx": 10,
+      "version": "6",
+      "when": 1789541553303,
+      "tag": "0010_bent_warhawk",
+      "breakpoints": true
     }
   ]
 }

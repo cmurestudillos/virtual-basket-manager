@@ -265,21 +265,50 @@ Sólo se guarda la retransmisión de **los partidos del usuario**, compactada
 guardar la de los miles de partidos de la IA engordaría la partida sin que nadie
 la leyera.
 
-### Lo que queda del bloque
+### Fase 2 — el partido en vivo (hecha)
 
 |     | Pieza           | Detalle                                                            |     |
 | --- | --------------- | ------------------------------------------------------------------ | --- |
-| ⬜  | Partido en vivo | Pausar, cambiar, tiempo muerto, cambiar de defensa sobre la marcha | L   |
-| ⬜  | Pista 2D        | Vista cenital con los diez jugadores, estilo PC Basket             | L   |
-| ⬜  | Pista 3D        | Como IBM. Caro y lo último que aporta valor de manager             | L   |
+| ✅  | Partido en vivo | Pausar, cambiar, tiempo muerto, cambiar de defensa sobre la marcha | L   |
+
+La diferencia de fondo con la retransmisión de la fase 1 es que aquí **nada
+está decidido todavía**. El motor pasa a jugar **posesión a posesión** y la
+pantalla pide una, la reproduce con su reloj y pide la siguiente: entre una y
+otra caben las órdenes del banquillo. Por eso no se juega por delante — con
+posesiones ya jugadas en la recámara, el cambio que ordenases llegaría tarde y
+dirigir no significaría nada.
+
+Partir el cuarto en posesiones no movió ni una tirada de dado: un partido que
+nadie toca sale **exactamente igual** jugado en vivo que simulado de una tacada,
+y eso es lo primero que comprueban los tests. La huella del motor sobre
+veinticinco partidos es la misma antes y después.
+
+Se dirige desde el banquillo: los cinco de pista con sus minutos, sus faltas y
+sus piernas, y el cambio se hace señalando a uno de cada lado. En cuanto
+ordenas el primero, **el motor te deja el banquillo** —si siguiera rotando por
+su cuenta desharía la orden en dos posesiones— y hay un botón para devolvérselo.
+El tiempo muerto son los del reglamento, devuelven algo de piernas a los cinco
+de pista y se cuentan; la pizarra cambia de defensa y de ritmo sobre la marcha.
+
+Los dos modos conviven en el mismo partido: se puede dirigir el primer cuarto y
+llevarse el resto simulado, o no dirigir nada. Y el consejo, la taquilla y las
+lesiones pasan por el mismo sitio en los dos casos, así que verlo de una manera
+o de otra deja lo mismo en la partida.
+
+### Lo que queda del bloque
+
+|     | Pieza    | Detalle                                                |     |
+| --- | -------- | ------------------------------------------------------ | --- |
+| ⬜  | Pista 2D | Vista cenital con los diez jugadores, estilo PC Basket | L   |
+| ⬜  | Pista 3D | Como IBM. Caro y lo último que aporta valor de manager | L   |
 
 ## Bloque 6 — Alrededor
 
 |     | Pieza                   | Detalle                                                 |     |
 | --- | ----------------------- | ------------------------------------------------------- | --- |
 | ⬜  | Modos de juego          | Mánager (un club) y carrera (te fichan otros)           | L   |
-| ⬜  | Dificultad              | Incluye poder jugar sin despido                         | S   |
-| ⬜  | Historial y palmarés    | Temporadas, títulos, récords                            | M   |
+| ✅  | Dificultad              | Incluye poder jugar sin despido                         | S   |
+| ✅  | Historial y palmarés    | Temporadas, títulos, récords                            | M   |
 | ⬜  | Prensa y notificaciones | Bandeja de avisos, ruedas de prensa                     | M   |
 | ⬜  | Editor de datos         | Editar equipos y plantillas dentro del juego            | M   |
 | ⬜  | Ajustes                 | Resolución, reglamento, idioma                          | S   |
@@ -295,9 +324,31 @@ reputación del entrenador ya existan, que es justo lo que hay montado.
 
 La **dificultad** incluye poder jugar **sin despido**, y no es sólo una
 comodidad: el consejo es la mecánica más punitiva del juego y quien quiera
-construir un club a diez años vista tiene que poder desactivarla. Es un ajuste
-de la partida, no del dominio: `BoardService` ya decide en un solo sitio si
-estás destituido.
+construir un club a diez años vista tiene que poder desactivarla. Se elige al
+crear la partida y se guarda con ella. El consejo no cambia —sigue poniendo
+objetivos y sigue perdiendo la paciencia, porque de la confianza salen cosas que
+no son el despido—: lo único que pasa es que a cero nadie te echa. Fue un ajuste
+de la partida y no del dominio, como estaba previsto: `BoardService` decide en un
+solo sitio si estás destituido, y ese sitio es el único que hubo que tocar.
+
+### Historial y palmarés
+
+**No se guarda: se calcula al leerlo.** El campeón de cada temporada lo apunta
+ya la propia temporada, y el puesto sale de los partidos, que no se borran
+nunca; una tabla de historial sería un segundo sitio donde apuntar lo mismo, y
+el día que los dos no coincidieran habría que decidir cuál miente. Diez
+temporadas son unas pocas miles de filas: cuesta menos recalcularlo que
+mantenerlo al día.
+
+Son tres pestañas: **temporada a temporada** con el puesto, el balance, el
+campeón de la liga y lo que se hizo en Copa, playoffs y Europa; el **palmarés**
+del club, con cada título y los años en que se ganó; y los **récords** de la
+partida —más puntos, rebotes, asistencias y triples en un partido—, que salen de
+la tabla del acta con una consulta por marca, porque traerse esas filas a memoria
+para ordenarlas costaría más que todo el resto del historial junto.
+
+Y es, además, la memoria que necesita el **modo carrera**: un entrenador vale lo
+que dice su palmarés.
 
 ---
 
@@ -309,7 +360,9 @@ estás destituido.
 2. **¿Datos reales o inventados?** El dataset actual es inventado a propósito
    para no arrastrar el problema de marcas que apareció en el proyecto de
    fútbol. Cambiar de idea más adelante es caro.
-3. **¿Hasta dónde llega el partido en vivo?** Determina buena parte del
-   esfuerzo total: no es lo mismo texto que pista 2D.
+3. **¿Hasta dónde llega el partido en vivo?** Resuelta a medias: el partido se
+   dirige en vivo —pausa, cambios, tiempo muerto y pizarra sobre la marcha— y
+   queda decidir si se llega a pintar la pista en 2D, que es lo que de verdad
+   dispara el esfuerzo. El valor de manager ya está entregado sin ella.
 4. **¿Un país o el mundo?** IBM abarcaba medio mundo; PC Basket, una liga bien
    hecha. Las dos son opciones defendibles y llevan a proyectos muy distintos.

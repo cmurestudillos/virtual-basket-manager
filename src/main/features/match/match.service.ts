@@ -8,16 +8,27 @@ import {
   DEFENSIVE_SYSTEM_LABELS,
   OFFENSIVE_SYSTEM_LABELS,
   type DefensiveSystem,
-  type OffensiveSystem
+  type OffensiveSystem,
+  type TeamTactics
 } from '@shared/domain/tactics';
 import type { Position } from '@shared/domain/positions';
 import type {
   BoxScoreLine,
+  LiveBenchPlayer,
+  LiveOrderResult,
+  LiveTacticsPatch,
+  LiveTick,
   MatchScouting,
   MatchState,
   MatchTeamState
 } from '@shared/contracts/match.contract';
-import { GameSimulation, type GameEvent, type GameResult } from '@shared/engine/basketball';
+import {
+  GameSimulation,
+  type GameEvent,
+  type GameResult,
+  type LiveBench,
+  type OrderResult
+} from '@shared/engine/basketball';
 import type { SaveDatabase } from '../../database/save-database';
 import type { GameRow } from '../../database/schema/save';
 import { StaffService } from '../staff/staff.service';
@@ -52,7 +63,18 @@ export class GameAlreadyPlayedError extends Error {
  * sueltos obligaría a que la clasificación supiera qué hacer con un partido a
  * medio jugar, que es un problema que no hace falta tener.
  */
-const sessions = new Map<string, GameSimulation>();
+interface LiveSession {
+  simulation: GameSimulation;
+  /**
+   * Cuántas líneas narradas se han mandado ya a la pantalla. La retransmisión
+   * se vuelve a narrar entera en cada posesión —narrar sólo el trozo nuevo
+   * partiría los parciales y los tiros libres seguidos, que necesitan lo de
+   * antes para contarse bien— y de aquí sale lo que todavía no ha visto.
+   */
+  deliveredLines: number;
+}
+
+const sessions = new Map<string, LiveSession>();
 
 export class MatchService {
   /** Ver el porqué del resolutor en {@link SeasonService}. */
@@ -71,7 +93,7 @@ export class MatchService {
       ruleset: repository.rulesetForGame(game.id),
       neutralVenue: game.neutralVenue
     });
-    sessions.set(gameId, simulation);
+    sessions.set(gameId, { simulation, deliveredLines: 0 });
 
     return toMatchState(db, repository, game, simulation.result, simulation.isFinished);
   }
@@ -88,8 +110,8 @@ export class MatchService {
     // Sin sesión viva (recarga de la interfaz, partido ya archivado) se
     // devuelve lo que haya guardado en vez de empezar un partido nuevo por
     // detrás, que dejaría dos resultados distintos para el mismo encuentro.
-    const simulation = sessions.get(gameId);
-    if (!simulation) {
+    const session = sessions.get(gameId);
+    if (!session) {
       const stored = this.get(gameId);
       if (stored) {
         return stored;
@@ -97,18 +119,191 @@ export class MatchService {
       return this.start(gameId);
     }
 
+    const { simulation } = session;
     simulation.playPeriod();
     const result = simulation.result;
 
     if (simulation.isFinished) {
-      const playedOn = repository.currentDate();
-      repository.saveResult(game, result, playedOn, keptPlayByPlay(repository, game, result));
-      applyPhysicalEffects(db, game.id, result, playedOn);
-      applyClubEffects(db, game, result, playedOn, repository);
+      archiveGame(db, repository, game, result);
       sessions.delete(gameId);
     }
 
     return toMatchState(db, repository, game, result, simulation.isFinished);
+  }
+
+  // ------------------------------------------------------------------------
+  // El partido en vivo
+  // ------------------------------------------------------------------------
+
+  /**
+   * El partido como va ahora mismo: acta y parciales de lo jugado hasta aquí.
+   *
+   * Hace falta porque un partido en vivo **no está en la base de datos hasta
+   * que termina** —y con razón: la clasificación no sabría qué hacer con un
+   * tercer cuarto— así que entre cuarto y cuarto la pantalla no tiene de dónde
+   * sacar los parciales. Con sesión viva se los da la sesión; sin ella, el acta
+   * guardada, que es lo que pasa en cuanto suena la bocina.
+   */
+  snapshot(gameId: string): MatchState | null {
+    const db = this.resolveDb();
+    const repository = new MatchRepository(db);
+    const game = repository.findGame(gameId);
+    if (!game) {
+      return null;
+    }
+
+    const session = sessions.get(gameId);
+    if (!session) {
+      return this.get(gameId);
+    }
+
+    return toMatchState(
+      db,
+      repository,
+      game,
+      session.simulation.result,
+      session.simulation.isFinished
+    );
+  }
+
+  /**
+   * Juega **una posesión** y devuelve lo que ha pasado en ella.
+   *
+   * Es el latido del partido en vivo: la pantalla pide una posesión, la
+   * reproduce con su reloj y pide la siguiente. Entre una y otra caben las
+   * órdenes del banquillo, y por eso no se juega por delante ni se guarda
+   * nada adelantado — lo que el entrenador ordena ahora tiene que notarse en
+   * la posesión siguiente, no tres más tarde.
+   */
+  advancePossession(gameId: string): LiveTick {
+    const db = this.resolveDb();
+    const repository = new MatchRepository(db);
+    const game = repository.findGame(gameId);
+    if (!game) {
+      throw new GameNotFoundError(gameId);
+    }
+
+    const session = this.requireSession(gameId, game);
+    const { simulation } = session;
+    const periodBefore = simulation.nextPeriod;
+
+    const alive = simulation.playPossession();
+
+    if (simulation.isFinished) {
+      archiveGame(db, repository, game, simulation.result);
+    }
+
+    const tick = this.buildTick(repository, game, session, periodBefore, !alive);
+    if (simulation.isFinished) {
+      sessions.delete(gameId);
+    }
+    return tick;
+  }
+
+  /** Cambio ordenado desde el banquillo, en vivo. */
+  substitute(gameId: string, outgoingId: string, incomingId: string): LiveOrderResult {
+    return this.order(gameId, (simulation, teamId) =>
+      simulation.orderSubstitution(teamId, outgoingId, incomingId)
+    );
+  }
+
+  /** Tiempo muerto del equipo del usuario. */
+  callTimeout(gameId: string): LiveOrderResult {
+    return this.order(gameId, (simulation, teamId) => simulation.callTimeout(teamId));
+  }
+
+  /** La pizarra, sin parar el partido. */
+  setLiveTactics(gameId: string, patch: LiveTacticsPatch): LiveOrderResult {
+    return this.order(gameId, (simulation, teamId) =>
+      simulation.setTactics(teamId, sanitizeTacticsPatch(patch))
+    );
+  }
+
+  /** Devuelve la rotación al motor, o se la quita. */
+  setAutoRotation(gameId: string, enabled: boolean): LiveOrderResult {
+    return this.order(gameId, (simulation, teamId) => simulation.setAutoRotation(teamId, enabled));
+  }
+
+  /**
+   * El camino común de todas las órdenes: encontrar el partido, comprobar que
+   * es del usuario —nadie dirige al rival— y devolver el banquillo como quede.
+   */
+  private order(
+    gameId: string,
+    apply: (simulation: GameSimulation, teamId: string) => OrderResult
+  ): LiveOrderResult {
+    const db = this.resolveDb();
+    const repository = new MatchRepository(db);
+    const game = repository.findGame(gameId);
+    if (!game) {
+      throw new GameNotFoundError(gameId);
+    }
+
+    const managedTeamId = repository.managedTeamId();
+    const side = managedSideOf(game, managedTeamId);
+    if (!side || !managedTeamId) {
+      return { ok: false, reason: 'Este partido no es tuyo', tick: null };
+    }
+
+    const session = this.requireSession(gameId, game);
+    const result = apply(session.simulation, managedTeamId);
+    const tick = this.buildTick(repository, game, session, session.simulation.nextPeriod, false);
+
+    return { ok: result.ok, reason: result.ok ? null : result.reason, tick };
+  }
+
+  /** La sesión viva del partido, arrancándola si hiciera falta. */
+  private requireSession(gameId: string, game: GameRow): LiveSession {
+    const existing = sessions.get(gameId);
+    if (existing) {
+      return existing;
+    }
+    if (game.homeScore !== null) {
+      throw new GameAlreadyPlayedError(gameId);
+    }
+    this.start(gameId);
+    return sessions.get(gameId) as LiveSession;
+  }
+
+  /** Lo que la pantalla necesita tras una posesión o una orden. */
+  private buildTick(
+    repository: MatchRepository,
+    game: GameRow,
+    session: LiveSession,
+    period: number,
+    periodEnded: boolean
+  ): LiveTick {
+    const { simulation } = session;
+    const result = simulation.result;
+    const regulationPeriods = repository.rulesetForGame(game.id).periods;
+
+    const all = narrate(repository, game, result.events, regulationPeriods);
+    const lines = all.slice(session.deliveredLines);
+    session.deliveredLines = all.length;
+
+    const managedTeamId = repository.managedTeamId();
+    const side = managedSideOf(game, managedTeamId);
+    const rivalId = side === 'home' ? game.awayTeamId : game.homeTeamId;
+    const bench = managedTeamId ? simulation.liveBench(managedTeamId) : null;
+    const rivalBench = simulation.liveBench(rivalId);
+
+    return {
+      gameId: game.id,
+      period,
+      // Con el cuarto cerrado, el motor ya tiene puesto el reloj del siguiente:
+      // decir eso aquí haría saltar el marcador a 10:00 justo al sonar la
+      // bocina. Lo que la pantalla tiene que enseñar es el cero.
+      clockSeconds: periodEnded ? 0 : simulation.clockSeconds,
+      homeScore: result.home.score,
+      awayScore: result.away.score,
+      lines,
+      periodEnded,
+      finished: simulation.isFinished,
+      bench: bench ? toBenchPlayers(repository, bench, managedTeamId as string) : null,
+      timeoutsLeft: bench?.timeoutsLeft ?? 0,
+      rivalTimeoutsLeft: rivalBench?.timeoutsLeft ?? 0,
+      autoRotation: bench?.autoRotation ?? true
+    };
   }
 
   /** Acta de un partido ya jugado, leída de la base de datos. */
@@ -137,7 +332,8 @@ export class MatchService {
         .sort(byActaOrder)
     });
 
-    const regulationPeriods = repository.rulesetForGame(game.id).periods;
+    const ruleset = repository.rulesetForGame(game.id);
+    const regulationPeriods = ruleset.periods;
     const events = decodePlayByPlay(game.playByPlay, game);
 
     return {
@@ -150,6 +346,8 @@ export class MatchService {
       periods: repository.parsePeriodScores(game),
       playedPeriods: repository.parsePeriodScores(game).length,
       regulationPeriods,
+      periodSeconds: ruleset.periodMinutes * 60,
+      overtimeSeconds: ruleset.overtimeMinutes * 60,
       finished: true,
       managedSide: managedSideOf(game, managedTeamId),
       scouting: scoutRival(db, repository, game, managedTeamId),
@@ -181,6 +379,85 @@ export class MatchService {
     applyClubEffects(db, game, result, playedOn, repository);
     return result;
   }
+}
+
+/**
+ * Guarda el partido terminado: acta, retransmisión, piernas y caja.
+ *
+ * Pasa por aquí tanto el partido jugado cuarto a cuarto como el visto en vivo
+ * posesión a posesión, que es lo que garantiza que verlo de una manera o de
+ * otra deje exactamente lo mismo en la partida.
+ */
+function archiveGame(
+  db: SaveDatabase,
+  repository: MatchRepository,
+  game: GameRow,
+  result: GameResult
+): void {
+  const playedOn = repository.currentDate();
+  repository.saveResult(game, result, playedOn, keptPlayByPlay(repository, game, result));
+  applyPhysicalEffects(db, game.id, result, playedOn);
+  applyClubEffects(db, game, result, playedOn, repository);
+}
+
+/** El banquillo del motor, con los nombres y las posiciones de la ficha puestos. */
+function toBenchPlayers(
+  repository: MatchRepository,
+  bench: LiveBench,
+  teamId: string
+): LiveBenchPlayer[] {
+  const cards = repository.playerCards(teamId);
+  const depthOf = (playerId: string): number => cards.get(playerId)?.depth ?? 99;
+
+  return (
+    bench.players
+      .map((player) => {
+        const card = cards.get(player.playerId);
+        return {
+          playerId: player.playerId,
+          playerName: card?.name ?? player.playerId,
+          position: card?.position ?? player.playedPosition,
+          playedPosition: player.playedPosition,
+          onCourt: player.onCourt,
+          fouls: player.fouls,
+          fouledOut: player.fouledOut,
+          freshness: player.freshness,
+          secondsPlayed: player.secondsPlayed,
+          points: player.points
+        };
+      })
+      // Los de pista arriba; debajo, el banquillo por orden de rotación.
+      .sort(
+        (a, b) => Number(b.onCourt) - Number(a.onCourt) || depthOf(a.playerId) - depthOf(b.playerId)
+      )
+  );
+}
+
+/**
+ * La pizarra llega del renderer, así que se comprueba aquí: un sistema que no
+ * existe o un deslizador fuera de rango se descarta en vez de colarse al motor.
+ */
+function sanitizeTacticsPatch(patch: LiveTacticsPatch): Partial<TeamTactics> {
+  const clean: Partial<TeamTactics> = {};
+
+  if (patch.offensiveSystem && patch.offensiveSystem in OFFENSIVE_SYSTEM_LABELS) {
+    clean.offensiveSystem = patch.offensiveSystem as OffensiveSystem;
+  }
+  if (patch.defensiveSystem && patch.defensiveSystem in DEFENSIVE_SYSTEM_LABELS) {
+    clean.defensiveSystem = patch.defensiveSystem as DefensiveSystem;
+  }
+  if (typeof patch.pace === 'number') {
+    clean.pace = clampSlider(patch.pace);
+  }
+  if (typeof patch.defensiveIntensity === 'number') {
+    clean.defensiveIntensity = clampSlider(patch.defensiveIntensity);
+  }
+
+  return clean;
+}
+
+function clampSlider(value: number): number {
+  return Math.min(10, Math.max(1, Math.round(value)));
 }
 
 /**
@@ -260,7 +537,8 @@ function toMatchState(
   const managedTeamId = repository.managedTeamId();
   const homeCards = repository.playerCards(game.homeTeamId);
   const awayCards = repository.playerCards(game.awayTeamId);
-  const regulationPeriods = repository.rulesetForGame(game.id).periods;
+  const ruleset = repository.rulesetForGame(game.id);
+  const regulationPeriods = ruleset.periods;
 
   return {
     gameId: game.id,
@@ -286,6 +564,8 @@ function toMatchState(
     periods: result.periods,
     playedPeriods: result.periods.length,
     regulationPeriods,
+    periodSeconds: ruleset.periodMinutes * 60,
+    overtimeSeconds: ruleset.overtimeMinutes * 60,
     finished,
     managedSide: managedSideOf(game, managedTeamId),
     scouting: scoutRival(db, repository, game, managedTeamId),
