@@ -46,6 +46,9 @@ node node_modules/electron/install.js
 | `pnpm seed:finished`        | Deja en `.dev-data` una partida ya con campeón     |
 | `pnpm verify:app`           | Arranca Electron, recorre el flujo y deja capturas |
 | `pnpm build:win`            | Instalador NSIS                                    |
+| `pnpm build:win:private`    | Instalador de la edición privada (dataset real)    |
+| `pnpm dev:real`             | Desarrollo con el dataset real                     |
+| `pnpm dataset:backup`       | Copia del dataset real (`verify`, `restore`)       |
 
 ## Documentación
 
@@ -55,6 +58,8 @@ node node_modules/electron/install.js
   atributos, reglamentos, acta y motor.
 - [docs/ROADMAP.md](docs/ROADMAP.md) — inventario de módulos pendiente de
   decidir.
+- [docs/DATASET-REAL.md](docs/DATASET-REAL.md) — la edición privada con datos
+  reales: cómo se separa de la pública y cómo se guarda.
 
 ## Dónde están los datos
 
@@ -67,3 +72,5 @@ En desarrollo, todo va a `.dev-data/` dentro del proyecto: `app.sqlite`
 El dataset que se distribuye es **inventado**: equipos, pabellones y jugadores
 generados por `scripts/seed-data/generate-dataset.mts`. Es deliberado — un
 dataset con nombres y escudos reales condiciona qué se puede publicar después.
+Los datos reales viven aparte, fuera del repositorio, en una edición privada que
+no se distribuye (ver [docs/DATASET-REAL.md](docs/DATASET-REAL.md)).
