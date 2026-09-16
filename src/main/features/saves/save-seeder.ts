@@ -37,6 +37,8 @@ import type { Dataset } from './dataset';
 const DEFAULT_YOUTH_LEVEL = 2;
 /** Técnicos libres en el mercado al empezar la partida. */
 const FREE_STAFF = 14;
+/** Nacionalidades del mercado de técnicos, por turno: no gastan azar. */
+const FREE_STAFF_NATIONALITIES = ['ESP', 'ITA', 'SRB', 'GRE', 'LTU', 'USA', 'FRA'];
 /** Y jugadores sin equipo. */
 const FREE_AGENTS = 20;
 
@@ -61,6 +63,8 @@ export function seedSave(
     careerMode?: boolean;
     /** Países que se juegan, además del del club dirigido. */
     activeCountries?: readonly string[];
+    /** Nacionalidad del entrenador; sin ella, la del club. */
+    managerNationality?: string;
   }
 ): void {
   // Todo en una transacción: una partida a medio sembrar es peor que ninguna.
@@ -178,6 +182,8 @@ export function seedSave(
             teamId: team.id,
             ...randomName(rng),
             role,
+            // El cuerpo técnico es de casa: la mayoría de los clubes lo forma.
+            nationality: team.country,
             level: clamp(level + rng.int(-1, 1), 1, 5)
           })
           .run();
@@ -219,6 +225,7 @@ export function seedSave(
           teamId: null,
           ...randomName(marketRng),
           role: STAFF_ROLES[marketRng.int(0, STAFF_ROLES.length - 1)] as string,
+          nationality: FREE_STAFF_NATIONALITIES[index % FREE_STAFF_NATIONALITIES.length] as string,
           level: marketRng.int(1, 5)
         })
         .run();
@@ -229,6 +236,10 @@ export function seedSave(
         id: 'singleton',
         managedTeamId: options.managedTeamId,
         managerName: options.managerName,
+        managerNationality:
+          options.managerNationality ??
+          dataset.teams.find((team) => team.id === options.managedTeamId)?.country ??
+          'ESP',
         // 1 de septiembre del año en que arranca la temporada: pretemporada.
         currentDate: new Date(Date.UTC(dataset.seasonStartYear, 8, 1)),
         seasonNumber: 1,

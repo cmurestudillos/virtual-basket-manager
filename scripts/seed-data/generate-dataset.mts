@@ -191,6 +191,7 @@ interface DatasetCompetition {
   format: string;
   playoffTeams: number;
   playoffSeriesLength: number;
+  nbaFormat: boolean;
 }
 
 interface DatasetTeam {
@@ -249,7 +250,8 @@ for (const country of WORLD) {
       tier: tierIndex + 1,
       format: 'league',
       playoffTeams: tier.playoffTeams,
-      playoffSeriesLength: tier.playoffSeriesLength
+      playoffSeriesLength: tier.playoffSeriesLength,
+      nbaFormat: tier.nbaFormat ?? false
     });
 
     for (let index = 0; index < tier.teams; index += 1) {
@@ -273,7 +275,8 @@ for (const country of WORLD) {
     tier: 1,
     format: 'cup',
     playoffTeams: 0,
-    playoffSeriesLength: 1
+    playoffSeriesLength: 1,
+    nbaFormat: false
   });
 }
 
@@ -291,7 +294,8 @@ for (const competition of CONTINENTAL_COMPETITIONS) {
     format: 'continental',
     // Ocho a la eliminatoria tras la fase de liga, al mejor de tres.
     playoffTeams: 8,
-    playoffSeriesLength: 3
+    playoffSeriesLength: 3,
+    nbaFormat: false
   });
 }
 

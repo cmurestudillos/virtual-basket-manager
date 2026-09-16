@@ -179,6 +179,7 @@ function toMember(row: StaffRow): StaffMember {
   return {
     id: row.id,
     name: `${row.firstName} ${row.lastName}`,
+    nationality: row.nationality,
     role,
     roleLabel: STAFF_ROLE_LABELS[role],
     roleHint: STAFF_ROLE_HINTS[role],

@@ -1,5 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { isNotNull } from 'drizzle-orm';
+import { UNHAPPY_MORALE } from '@shared/domain/morale';
 import type { InboxMessage, InboxView, PressConference } from '@shared/contracts/inbox.contract';
 import { MAX_SUPPORT, MIN_SUPPORT } from '@shared/domain/attendance';
 import {
@@ -280,7 +281,11 @@ export class InboxService {
       calledUp: this.calledUp(
         squad.map((player) => player.id),
         today
-      )
+      ),
+      unhappy: squad
+        .filter((player) => player.morale < UNHAPPY_MORALE)
+        .map((player) => player.id)
+        .sort()
     };
   }
 
@@ -403,7 +408,8 @@ function parseSnapshot(json: string | null): ClubSnapshot | null {
       date: parsed.date ?? 0,
       lastGameId: parsed.lastGameId ?? null,
       champions: parsed.champions ?? {},
-      calledUp: parsed.calledUp ?? {}
+      calledUp: parsed.calledUp ?? {},
+      unhappy: parsed.unhappy ?? []
     };
   } catch {
     return null;

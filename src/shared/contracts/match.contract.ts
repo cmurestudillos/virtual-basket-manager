@@ -4,6 +4,8 @@ import type { Position } from '@shared/domain/positions';
 export interface BoxScoreLine {
   playerId: string;
   playerName: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   position: Position;
   /** Puesto en la rotación: 0-4 son los titulares. */
   depth: number;
@@ -93,6 +95,8 @@ export interface MatchScouting {
 export interface LiveBenchPlayer {
   playerId: string;
   playerName: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   /** Posición natural: la de su ficha. */
   position: Position;
   /** El hueco que ocupa ahora, que puede no ser el suyo. */

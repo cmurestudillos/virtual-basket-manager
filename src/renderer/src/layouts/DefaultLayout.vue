@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { AppAvatar } from '@renderer/shared/ui';
+import { AppAvatar, AppFlag } from '@renderer/shared/ui';
 import { onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
@@ -61,6 +61,7 @@ watch(
         }}</span>
         <span v-if="store.state" class="inline-flex items-center gap-2 text-sm text-court-300">
           <AppAvatar kind="coach" :seed="store.state.managerName" :size="24" />
+          <AppFlag :code="store.state.managerNationality" />
           {{ store.state.managerName }}
         </span>
       </div>

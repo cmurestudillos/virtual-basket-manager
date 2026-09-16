@@ -15,6 +15,7 @@ import { registerMarketIpcHandlers } from '../features/market/market.ipc-handler
 import { registerMatchIpcHandlers } from '../features/match/match.ipc-handler';
 import { registerHistoryIpcHandlers } from '../features/history/history.ipc-handler';
 import { registerNationalIpcHandlers } from '../features/national/national.ipc-handler';
+import { registerDraftIpcHandlers } from '../features/draft/draft.ipc-handler';
 import { registerCareerIpcHandlers } from '../features/career/career.ipc-handler';
 import { registerInboxIpcHandlers } from '../features/inbox/inbox.ipc-handler';
 import { registerWorldEditorIpcHandlers } from '../features/world-editor/world-editor.ipc-handler';
@@ -43,6 +44,7 @@ export function registerIpcHandlers(): void {
   registerHistoryIpcHandlers();
   registerCareerIpcHandlers();
   registerNationalIpcHandlers();
+  registerDraftIpcHandlers();
   registerInboxIpcHandlers();
   registerWorldEditorIpcHandlers();
   registerUpdatesIpcHandlers();

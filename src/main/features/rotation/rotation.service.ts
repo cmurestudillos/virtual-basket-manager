@@ -157,6 +157,7 @@ function toSlotView(entry: RotationEntry, player: PlayerSummary): RotationSlotVi
   return {
     playerId: player.id,
     playerName: `${player.firstName} ${player.lastName}`,
+    nationality: player.nationality,
     position: player.position,
     secondaryPosition: player.secondaryPosition,
     overall: player.overall,

@@ -2,6 +2,8 @@ export interface ManagedTeamState {
   teamId: string;
   teamName: string;
   managerName: string;
+  /** Código de nacionalidad del entrenador, para su bandera. */
+  managerNationality: string;
   /** Fecha dentro del juego, en milisegundos. */
   currentDate: number;
   seasonNumber: number;

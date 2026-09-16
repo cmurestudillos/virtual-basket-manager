@@ -11,6 +11,8 @@ export const gameStateTable = sqliteTable('game_state', {
   id: text('id').primaryKey().default('singleton'),
   managedTeamId: text('managed_team_id'),
   managerName: text('manager_name').notNull().default('Entrenador'),
+  /** Nacionalidad del entrenador, para su bandera. */
+  managerNationality: text('manager_nationality').notNull().default('ESP'),
   /** Fecha dentro del juego. El reloj real de la máquina no pinta nada aquí. */
   currentDate: integer('current_date', { mode: 'timestamp_ms' }).notNull(),
   seasonNumber: integer('season_number').notNull().default(1),

@@ -38,6 +38,7 @@
     "seed:finished": "tsx --tsconfig tsconfig.node.json scripts/seed-finished-season.mts",
     "seed:career": "tsx --tsconfig tsconfig.node.json scripts/seed-dismissed-career.mts",
     "seed:press": "tsx --tsconfig tsconfig.node.json scripts/seed-press-conference.mts",
+    "seed:nba": "tsx --tsconfig tsconfig.node.json scripts/seed-nba-draft.mts",
     "verify:app": "node scripts/verify-app.mjs",
     "verify:engine": "tsx --tsconfig tsconfig.node.json scripts/engine-fingerprint.mts",
     "build:win": "electron-vite build && electron-builder --win --publish never",

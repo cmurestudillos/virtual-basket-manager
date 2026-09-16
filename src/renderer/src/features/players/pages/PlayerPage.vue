@@ -9,6 +9,7 @@ import { POSITION_LABELS } from '@shared/domain/positions';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
 import { AppAvatar, AppFlag, AppPageHeader, AppStat } from '@renderer/shared/ui';
 import { nationName } from '@shared/domain/national-teams';
+import { UNHAPPY_MORALE, moraleLabel } from '@shared/domain/morale';
 
 const route = useRoute();
 const player = ref<PlayerSummary | null>(null);
@@ -55,6 +56,7 @@ function barColor(value: number): string {
           :name="`${player.firstName} ${player.lastName}`"
           :size="72"
         />
+        <AppFlag :code="player.nationality" size="lg" :label="nationName(player.nationality)" />
         <AppPageHeader :title="`${player.firstName} ${player.lastName}`" />
       </div>
       <span class="text-ball-400">
@@ -107,6 +109,19 @@ function barColor(value: number): string {
           }}
         </p>
       </article>
+      <AppStat
+        label="Ánimo"
+        size="md"
+        boxed
+        :tone="player.morale < UNHAPPY_MORALE ? 'bad' : player.morale >= 65 ? 'good' : null"
+        :note="
+          player.morale < UNHAPPY_MORALE
+            ? 'Rinde por debajo y pide más para renovar'
+            : `${player.morale} de 100`
+        "
+      >
+        {{ moraleLabel(player.morale) }}
+      </AppStat>
     </div>
 
     <p v-if="player.uncertainty > 0" class="text-sm text-line-500">

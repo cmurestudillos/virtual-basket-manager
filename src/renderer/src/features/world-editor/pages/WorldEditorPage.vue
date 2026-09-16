@@ -20,7 +20,14 @@ import type {
 } from '@shared/contracts/world-editor.contract';
 import { ATTRIBUTE_GROUPS, ATTRIBUTE_LABELS, type AttributeKey } from '@shared/domain/attributes';
 import { POSITIONS, POSITION_LABELS } from '@shared/domain/positions';
-import { AppAvatar, AppButton, AppField, AppPageHeader, AppPanel } from '@renderer/shared/ui';
+import {
+  AppAvatar,
+  AppButton,
+  AppField,
+  AppFlag,
+  AppPageHeader,
+  AppPanel
+} from '@renderer/shared/ui';
 
 const overview = ref<EditorOverview | null>(null);
 const league = ref<string>('liga-nacional');
@@ -433,6 +440,7 @@ function attributeKeys(group: keyof typeof ATTRIBUTE_GROUPS): readonly Attribute
                     <span class="inline-flex items-center gap-2">
                       <AppAvatar kind="player" :seed="row.playerId" />
                       <span v-if="row.edited" class="text-ball-500" title="Con cambios">●</span>
+                      <AppFlag :code="row.nationality" />
                       {{ row.firstName }} {{ row.lastName }}
                     </span>
                   </td>

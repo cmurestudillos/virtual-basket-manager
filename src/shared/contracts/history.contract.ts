@@ -51,6 +51,8 @@ export interface HistorySeasonEntry {
 export interface RecordEntry {
   label: string;
   playerName: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   teamName: string;
   value: number;
   /** «Jornada 12 · 2025-26», para poder situarla. */

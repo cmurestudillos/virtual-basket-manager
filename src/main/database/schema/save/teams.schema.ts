@@ -31,7 +31,10 @@ export const teamsTable = sqliteTable('teams', {
    * Las selecciones no tienen plantilla, finanzas ni cantera: todo lo que
    * recorre «los clubes del mundo» tiene que dejarlas fuera.
    */
-  nationalOf: text('national_of')
+  nationalOf: text('national_of'),
+  /** Conferencia (`east`/`west`) y división en una liga de formato NBA; nulas en las demás. */
+  conference: text('conference'),
+  division: text('division')
 });
 
 export type TeamRow = typeof teamsTable.$inferSelect;

@@ -522,3 +522,82 @@ describe('el mercado se mueve solo', () => {
     expect(roster().some((row) => row.id === contract.playerId)).toBe(false);
   });
 });
+
+describe('liga americana: tope salarial blando', () => {
+  const NBA_TEAM = 'usa-1-1';
+
+  function openNbaSave(): void {
+    closeSaveDatabase(filePath);
+    rmSync(directory, { recursive: true, force: true });
+    directory = mkdtempSync(join(tmpdir(), 'vbm-market-nba-'));
+    filePath = join(directory, 'partida.sqlite');
+    db = openSaveDatabase(filePath, MIGRATIONS);
+    seedSave(db, loadDataset(SEED_DIRECTORY), { managedTeamId: NBA_TEAM, managerName: 'Carlos' });
+    market = new MarketService(() => db);
+  }
+
+  it('enseña tope, umbral de impuesto y mínimo; en Europa no hay tal cosa', () => {
+    expect(market.getStatus().salaryCap).toBeNull();
+
+    openNbaSave();
+    const cap = market.getStatus().salaryCap!;
+    expect(cap.capCents).toBeGreaterThan(0);
+    expect(cap.taxLineCents).toBeGreaterThan(cap.capCents);
+    expect(cap.minimumCents).toBeLessThan(cap.capCents);
+  });
+
+  it('por encima del tope sólo se firman mínimos', () => {
+    openNbaSave();
+    const cap = market.getStatus().salaryCap!;
+    // Una nómina ya por encima del tope.
+    db.update(playersTable)
+      .set({ wageCents: Math.ceil(cap.capCents / 8) })
+      .where(eq(playersTable.teamId, NBA_TEAM))
+      .run();
+    // Hueco en la plantilla para que lo que decida sea el dinero.
+    for (const player of roster(NBA_TEAM).slice(0, 2)) {
+      db.update(playersTable).set({ teamId: null }).where(eq(playersTable.id, player.id)).run();
+    }
+    const agent = freeAgents()[0]!;
+    db.update(playersTable)
+      .set({ wageCents: MIN_WAGE_CENTS, valueCents: 1_000_00 })
+      .where(eq(playersTable.id, agent.id))
+      .run();
+
+    const expensive = market.offer({
+      playerId: agent.id,
+      feeCents: 0,
+      wageCents: cap.minimumCents * 3,
+      years: 2
+    });
+    expect(expensive.accepted).toBe(false);
+    expect(expensive.reason).toContain('tope salarial');
+
+    const minimum = market.offer({
+      playerId: agent.id,
+      feeCents: 0,
+      wageCents: Math.max(MIN_WAGE_CENTS, cap.minimumCents),
+      years: 1
+    });
+    expect(minimum.reason).not.toContain('tope salarial');
+  });
+
+  it('pasarse del umbral se paga como impuesto de lujo al cerrar la temporada', () => {
+    openNbaSave();
+    const cap = market.getStatus().salaryCap!;
+    db.update(playersTable)
+      .set({ wageCents: Math.ceil((cap.taxLineCents * 1.3) / roster(NBA_TEAM).length) })
+      .where(eq(playersTable.teamId, NBA_TEAM))
+      .run();
+    expect(market.getStatus().salaryCap!.projectedTaxCents).toBeGreaterThan(0);
+
+    market.chargeLuxuryTax('temporada-1', new Date(Date.UTC(2026, 5, 30)));
+    const tax = db
+      .select()
+      .from(financeEntriesTable)
+      .where(eq(financeEntriesTable.type, 'luxuryTax'))
+      .all();
+    expect(tax).toHaveLength(1);
+    expect(tax[0]!.amountCents).toBeLessThan(0);
+  });
+});

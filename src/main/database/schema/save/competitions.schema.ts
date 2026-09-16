@@ -32,7 +32,12 @@ export const competitionsTable = sqliteTable('competitions', {
    */
   playoffTeams: integer('playoff_teams').notNull().default(0),
   /** Partidos de cada eliminatoria de playoff (3, 5 o 7). */
-  playoffSeriesLength: integer('playoff_series_length').notNull().default(5)
+  playoffSeriesLength: integer('playoff_series_length').notNull().default(5),
+  /**
+   * Formato NBA: conferencias, play-in, draft, tope salarial y sin descensos.
+   * Sólo lo tiene la liga americana de primera.
+   */
+  nbaFormat: integer('nba_format', { mode: 'boolean' }).notNull().default(false)
 });
 
 export type CompetitionRow = typeof competitionsTable.$inferSelect;

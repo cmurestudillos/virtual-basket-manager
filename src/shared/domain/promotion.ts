@@ -23,10 +23,11 @@ export const RELEGATION_SLOTS = 2;
 export const DIVISION_REPUTATION_STEP = 7;
 
 /** Cómo se pinta una plaza en la clasificación. */
-export type StandingZone = 'playoffs' | 'promotion' | 'relegation' | null;
+export type StandingZone = 'playoffs' | 'playIn' | 'promotion' | 'relegation' | null;
 
 export const STANDING_ZONE_LABELS: Record<Exclude<StandingZone, null>, string> = {
   playoffs: 'Playoffs',
+  playIn: 'Play-in',
   promotion: 'Ascenso',
   relegation: 'Descenso'
 };

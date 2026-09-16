@@ -311,6 +311,7 @@ function toRecord(label: string, raw: RawRecord, managedTeamId: string): RecordE
   return {
     label,
     playerName: raw.playerName,
+    nationality: raw.nationality,
     teamName: raw.teamName,
     value: raw.value,
     context: `Jornada ${raw.round} · ${yearsLabel(raw.startYear)}`,

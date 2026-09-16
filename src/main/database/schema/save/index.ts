@@ -14,3 +14,4 @@ export * from './game-state.schema';
 export * from './career.schema';
 export * from './inbox.schema';
 export * from './national.schema';
+export * from './draft.schema';

@@ -108,6 +108,7 @@ function toPlayerSeasonStats(
   return {
     playerId: totals.playerId,
     playerName: card?.name ?? totals.playerId,
+    nationality: card?.nationality ?? '',
     teamId,
     teamName: teamNames.get(teamId) ?? '—',
     position: card?.position ?? 'SF',

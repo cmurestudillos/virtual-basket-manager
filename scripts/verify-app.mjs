@@ -47,6 +47,10 @@ execSync('pnpm seed:career', { cwd: PROJECT, stdio: 'inherit' });
 console.log('sembrando una partida con rueda de prensa pendiente…');
 execSync('pnpm seed:press', { cwd: PROJECT, stdio: 'inherit' });
 
+// Y una quinta en la liga americana, con la temporada acabada y el draft abierto.
+console.log('sembrando una partida de la liga americana con el draft abierto…');
+execSync('pnpm seed:nba', { cwd: PROJECT, stdio: 'inherit' });
+
 const app = await electron.launch({
   args: ['.'],
   cwd: PROJECT,
@@ -669,6 +673,79 @@ await page.waitForTimeout(1500);
 const reaccion = await page.locator('main section').first().innerText();
 console.log('tras contestar:', reaccion.replace(/\n/g, ' · '));
 await page.screenshot({ path: `${SHOTS}/30-prensa-contestada.png` });
+
+// --- Liga americana: conferencias, draft, tope salarial y moral ------------
+
+await page.getByRole('link', { name: 'Salir al menú' }).click();
+await page.waitForTimeout(1000);
+await page.getByRole('link', { name: 'Cargar partida' }).click();
+await page.waitForTimeout(1200);
+await page
+  .locator('li', { hasText: 'Liga americana con draft' })
+  .getByRole('button', { name: 'Cargar' })
+  .click();
+await page.waitForTimeout(2500);
+
+await page.getByRole('link', { name: 'Competición' }).click();
+await page.waitForTimeout(1800);
+await page.getByRole('button', { name: 'Clasificación' }).click();
+await page.waitForTimeout(1200);
+console.log('tablas por conferencia:', await page.locator('main table').count());
+console.log('zonas NBA:', (await page.locator('main ul li').allInnerTexts()).join(' · '));
+await page.screenshot({ path: `${SHOTS}/31-conferencias.png` });
+
+await page.getByRole('button', { name: 'Playoffs' }).click();
+await page.waitForTimeout(1500);
+console.log(
+  'rondas del cuadro:',
+  (await page.locator('main h2, main h3').allInnerTexts()).slice(0, 6).join(' · ')
+);
+await page.screenshot({ path: `${SHOTS}/32-cuadro-nba.png` });
+
+await page.getByRole('button', { name: 'Draft' }).click();
+await page.waitForTimeout(2000);
+console.log(
+  'draft:',
+  (await page.locator('main section').first().innerText())
+    .split(String.fromCharCode(10))
+    .join(' · ')
+);
+await page.getByRole('button', { name: /^Avanzar/ }).click();
+await page.waitForTimeout(2500);
+console.log(
+  'en el reloj:',
+  (await page.locator('main section').first().innerText())
+    .split(String.fromCharCode(10))
+    .join(' · ')
+);
+await page.screenshot({ path: `${SHOTS}/33-draft.png` });
+const elegir = page.getByRole('button', { name: 'Elegir' });
+if ((await elegir.count()) > 0) {
+  await elegir.first().click();
+  await page.waitForTimeout(2000);
+}
+console.log(
+  'tras elegir:',
+  (await page.locator('main section').first().innerText())
+    .split(String.fromCharCode(10))
+    .join(' · ')
+);
+
+await page.getByRole('link', { name: 'Plantilla' }).click();
+await page.waitForTimeout(1500);
+console.log(
+  'descontentos en la plantilla:',
+  await page.locator('tbody tr', { hasText: 'Enfadado' }).count()
+);
+await page.screenshot({ path: `${SHOTS}/34-plantilla-animo.png` });
+
+await page.getByRole('link', { name: 'Mercado' }).click();
+await page.waitForTimeout(1500);
+console.log(
+  'mercado NBA:',
+  (await page.locator('main header').first().innerText()).split(String.fromCharCode(10)).join(' · ')
+);
+await page.screenshot({ path: `${SHOTS}/35-tope-salarial.png` });
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);

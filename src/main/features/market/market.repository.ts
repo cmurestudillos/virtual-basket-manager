@@ -49,6 +49,8 @@ export class MarketRepository {
       .where(
         and(
           eq(playersTable.isYouth, false),
+          // Los prospectos del draft no se fichan: se eligen.
+          isNull(playersTable.draftClass),
           or(isNull(playersTable.teamId), ne(playersTable.teamId, managedTeamId))
         )
       )
@@ -213,7 +215,13 @@ export class MarketRepository {
     return this.db
       .select()
       .from(playersTable)
-      .where(and(isNull(playersTable.teamId), eq(playersTable.isYouth, false)))
+      .where(
+        and(
+          isNull(playersTable.teamId),
+          eq(playersTable.isYouth, false),
+          isNull(playersTable.draftClass)
+        )
+      )
       .all();
   }
 

@@ -1,4 +1,5 @@
 import { and, asc, eq } from 'drizzle-orm';
+import { moraleAttributeOffset } from '@shared/domain/morale';
 import { POSITIONS, type Position } from '@shared/domain/positions';
 import { LINEUP_SIZE } from '@shared/domain/rotation';
 import type { TeamTactics } from '@shared/domain/tactics';
@@ -103,34 +104,41 @@ function slotOrder(slotPosition: string): number {
   return index < 0 ? POSITIONS.length : index;
 }
 
+/**
+ * La ficha tal y como sale a la pista: con el ánimo encima. Un jugador eufórico
+ * juega unos puntos por encima de sus medias en todo y uno hundido, por debajo;
+ * con el ánimo normal, exactamente sus medias.
+ */
 function toEnginePlayer(row: PlayerRow): EnginePlayer {
+  const offset = moraleAttributeOffset(row.morale);
+  const value = (attribute: number) => Math.min(99, Math.max(1, attribute + offset));
   return {
     id: row.id,
     name: `${row.firstName} ${row.lastName}`,
     position: row.position as Position,
     condition: row.condition,
     attributes: {
-      close: row.close,
-      midRange: row.midRange,
-      threePoint: row.threePoint,
-      freeThrow: row.freeThrow,
-      finishing: row.finishing,
-      passing: row.passing,
-      handling: row.handling,
-      driving: row.driving,
-      perimeterDefense: row.perimeterDefense,
-      interiorDefense: row.interiorDefense,
-      steal: row.steal,
-      block: row.block,
-      offensiveRebound: row.offensiveRebound,
-      defensiveRebound: row.defensiveRebound,
-      speed: row.speed,
-      strength: row.strength,
-      jumping: row.jumping,
-      stamina: row.stamina,
-      basketballIQ: row.basketballIq,
-      consistency: row.consistency,
-      aggression: row.aggression
+      close: value(row.close),
+      midRange: value(row.midRange),
+      threePoint: value(row.threePoint),
+      freeThrow: value(row.freeThrow),
+      finishing: value(row.finishing),
+      passing: value(row.passing),
+      handling: value(row.handling),
+      driving: value(row.driving),
+      perimeterDefense: value(row.perimeterDefense),
+      interiorDefense: value(row.interiorDefense),
+      steal: value(row.steal),
+      block: value(row.block),
+      offensiveRebound: value(row.offensiveRebound),
+      defensiveRebound: value(row.defensiveRebound),
+      speed: value(row.speed),
+      strength: value(row.strength),
+      jumping: value(row.jumping),
+      stamina: value(row.stamina),
+      basketballIQ: value(row.basketballIq),
+      consistency: value(row.consistency),
+      aggression: value(row.aggression)
     }
   };
 }

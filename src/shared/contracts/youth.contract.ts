@@ -16,6 +16,8 @@ export type UpgradeYouthRequest = z.infer<typeof upgradeYouthRequestSchema>;
 export interface YouthPlayer {
   playerId: string;
   playerName: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   age: number;
   position: Position;
   secondaryPosition: Position | null;

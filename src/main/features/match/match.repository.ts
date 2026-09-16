@@ -24,6 +24,7 @@ import { isNationalTeam, userTeamIds } from '../national/national-squad';
 export interface PlayerCard {
   id: string;
   name: string;
+  nationality: string;
   position: Position;
   depth: number;
 }
@@ -121,6 +122,7 @@ export class MatchRepository {
         {
           id: row.id,
           name: `${row.firstName} ${row.lastName}`,
+          nationality: row.nationality,
           position: row.position as Position,
           // Un jugador fuera de la rotación va al final del acta, no el primero.
           depth: depths.get(row.id) ?? 99

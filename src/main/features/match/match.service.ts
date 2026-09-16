@@ -417,6 +417,7 @@ function toBenchPlayers(
         return {
           playerId: player.playerId,
           playerName: card?.name ?? player.playerId,
+          nationality: card?.nationality ?? '',
           position: card?.position ?? player.playedPosition,
           playedPosition: player.playedPosition,
           onCourt: player.onCourt,
@@ -474,10 +475,24 @@ function applyPhysicalEffects(
   result: GameResult,
   playedOn: Date
 ): void {
-  const lines = [...result.home.boxScores, ...result.away.boxScores].map((line) => ({
-    playerId: line.playerId,
-    secondsPlayed: line.secondsPlayed
-  }));
+  const margin = result.home.score - result.away.score;
+  const game = new MatchRepository(db).findGame(gameId);
+  const lines = [
+    ...result.home.boxScores.map((line) => ({
+      playerId: line.playerId,
+      secondsPlayed: line.secondsPlayed,
+      teamId: game?.homeTeamId,
+      won: margin > 0,
+      margin
+    })),
+    ...result.away.boxScores.map((line) => ({
+      playerId: line.playerId,
+      secondsPlayed: line.secondsPlayed,
+      teamId: game?.awayTeamId,
+      won: margin < 0,
+      margin: -margin
+    }))
+  ];
 
   new FitnessService(() => db).applyGameEffects(gameId, lines, playedOn);
 }
@@ -703,6 +718,7 @@ function fromEngineLine(line: PlayerBoxScore, card: PlayerCard | undefined): Box
   return {
     playerId: line.playerId,
     playerName: card?.name ?? line.playerId,
+    nationality: card?.nationality ?? '',
     position: card?.position ?? ('SF' as Position),
     depth: card?.depth ?? 99,
     secondsPlayed: line.secondsPlayed,

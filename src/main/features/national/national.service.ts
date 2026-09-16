@@ -61,6 +61,7 @@ import type {
   PlayerRow,
   SeasonRow
 } from '../../database/schema/save';
+import { FitnessService } from '../fitness/fitness.service';
 import { MatchService } from '../match/match.service';
 import { toPlayerSummary } from '../players/players.mapper';
 import {
@@ -681,6 +682,7 @@ export class NationalService {
       }
 
       repository.replaceCallups(team.id, qualifiers.seasonNumber, window, squad);
+      new FitnessService(this.resolveDb).boostCalledUp(squad);
       this.rebuildRotation(
         repository,
         team.id,
@@ -1109,7 +1111,8 @@ function competition(
     tier: 1,
     format,
     playoffTeams: 0,
-    playoffSeriesLength: 1
+    playoffSeriesLength: 1,
+    nbaFormat: false
   };
 }
 

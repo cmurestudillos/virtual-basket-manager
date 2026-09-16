@@ -2,7 +2,7 @@
 import { computed, onMounted, ref } from 'vue';
 import type { StaffMember, TeamStaff } from '@shared/contracts/staff.contract';
 import { formatMoney } from '@renderer/shared/format';
-import { AppAvatar, AppButton, AppSectionTitle } from '@renderer/shared/ui';
+import { AppAvatar, AppButton, AppFlag, AppSectionTitle } from '@renderer/shared/ui';
 
 const props = defineProps<{ teamId: string }>();
 
@@ -71,7 +71,9 @@ function fire(member: StaffMember): void {
               <td class="text-ball-400">{{ member.roleLabel }}</td>
               <td>
                 <span class="inline-flex items-center gap-2">
-                  <AppAvatar kind="staff" :seed="member.id" />{{ member.name }}
+                  <AppAvatar kind="staff" :seed="member.id" /><AppFlag
+                    :code="member.nationality"
+                  />{{ member.name }}
                 </span>
               </td>
               <td class="text-court-300">{{ member.levelLabel }} ({{ member.level }})</td>
@@ -125,7 +127,9 @@ function fire(member: StaffMember): void {
               <td class="text-court-300">{{ member.roleLabel }}</td>
               <td>
                 <span class="inline-flex items-center gap-2">
-                  <AppAvatar kind="staff" :seed="member.id" />{{ member.name }}
+                  <AppAvatar kind="staff" :seed="member.id" /><AppFlag
+                    :code="member.nationality"
+                  />{{ member.name }}
                 </span>
               </td>
               <td>{{ member.levelLabel }} ({{ member.level }})</td>

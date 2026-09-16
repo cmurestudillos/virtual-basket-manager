@@ -37,6 +37,10 @@ export interface StandingEntry {
   isManaged: boolean;
   /** Qué se juega ese puesto: playoff, ascenso, descenso o nada. */
   zone: StandingZone;
+  /** Sólo en formato NBA: conferencia (`east`/`west`), división y puesto en la conferencia. */
+  conference?: string | null;
+  division?: string | null;
+  conferenceRank?: number | null;
 }
 
 /** Una división de las que se juegan en la partida. */
@@ -52,6 +56,8 @@ export interface LeagueEntry {
   totalRounds: number;
   /** Equipos que juegan los playoffs; 0 si la liga los corona sin eliminatoria. */
   playoffTeams: number;
+  /** Conferencias, play-in, draft y tope salarial. */
+  nbaFormat: boolean;
   /** La del equipo del usuario. */
   isManaged: boolean;
   /** Igual que `isManaged`; se mantiene aparte por si un día hay filiales. */

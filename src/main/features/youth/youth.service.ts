@@ -243,6 +243,7 @@ function toYouthPlayer(row: PlayerRow, today: Date): YouthPlayer {
   return {
     playerId: row.id,
     playerName: `${row.firstName} ${row.lastName}`,
+    nationality: row.nationality,
     age: ageAt(row.birthDate, today),
     position,
     secondaryPosition: (row.secondaryPosition as Position | null) ?? null,

@@ -150,7 +150,7 @@ catorce: ni se puede vaciar el vestuario ni acumular jugadores.
 | ✅  | Cesiones              | Ceder y pedir cedido hasta final de temporada, con vuelta en verano | M   |
 | ✅  | Negociación           | Contraoferta del club cuando la oferta se queda cerca               | M   |
 | ✅  | Cupos y tope salarial | Mínimo de jugadores de formación y tope de nómina del consejo       | M   |
-| ⛔  | **Draft**             | Necesita formato NBA, que es casi un juego aparte (Bloque 4)        | M   |
+| ✅  | Draft                 | Llegó con el formato NBA del Bloque 4: lotería y dos rondas         | M   |
 
 Una cesión es un jugador cuyo club de hoy y cuyo dueño no coinciden: juega,
 entra en la rotación y sale en el acta con el que lo recibe, y vuelve el 30 de
@@ -163,8 +163,8 @@ fija el consejo, medido contra lo que ingresa el club. No es un _salary cap_ de
 la NBA con excepciones y sanciones: es un consejo europeo que no firma lo que no
 se puede pagar.
 
-**El draft se queda fuera a propósito**: sólo tiene sentido con formato NBA, que
-está en el Bloque 4 y es casi un juego aparte.
+El draft llegó con el formato NBA del Bloque 4, y allí está contado; en esa liga
+el tope del consejo lo sustituye un tope salarial blando con impuesto de lujo.
 
 ## Bloque 4 — Más competiciones
 
@@ -221,13 +221,14 @@ manda la reputación, con un tope de cuatro plazas por liga. Y hay un **aforo
 mínimo de pabellón** para entrar en cada categoría, que es lo que por fin le da
 un objetivo claro a ampliar el pabellón.
 
-### Fase 4 — el resto del bloque
+### Fase 4 — el resto del bloque (hecha)
 
 |     | Pieza                       | Detalle                                                           |     |
 | --- | --------------------------- | ----------------------------------------------------------------- | --- |
 | ✅  | Escoger ligas jugables      | Elegir qué países se juegan, con su coste en tiempo de partida    | M   |
 | ✅  | Selecciones y ventanas FIBA | Clasificación, Mundial y selección dirigible a la vez que el club | L   |
-| ⬜  | Formato NBA                 | Conferencias, divisiones, _cap_, draft — es casi un juego aparte  | L   |
+| ✅  | Formato NBA                 | Conferencias, play-in, playoffs de 16, draft y tope blando        | L   |
+| ✅  | Moral                       | Minutos, resultados, entrenamiento y selección; efecto en pista   | M   |
 
 **Escoger ligas jugables.** Se eligen **países**, no ligas, y sólo al crear la
 partida: las divisiones de un país van atadas por los ascensos, y una liga que
@@ -271,6 +272,46 @@ Si no se dirige selección, el verano no hace esperar: el Mundial se juega de
 golpe al empezar la temporada siguiente. La bandeja avisa de los convocados del
 club, y las nacionalidades se ven ya con su **bandera** (`flag-icons`, MIT, en
 local).
+
+**Formato NBA.** La liga americana de primera juega como la NBA con el calendario
+de siempre (una vuelta de treinta): **dos conferencias de tres divisiones**, la
+tabla se lee por conferencia —seis directos y del séptimo al décimo al
+**play-in**—, **playoffs de dieciséis al mejor de siete** por conferencias hasta
+unas finales entre ellas, y **nadie sube ni baja**. El consejo lee las rondas en
+su escala: primera ronda y semifinales de conferencia son «playoffs», finales de
+conferencia «semifinales» y finales «final». Las partidas guardadas estrenan el
+formato al migrar, salvo las que estén en mitad de sus playoffs, que lo hacen la
+temporada siguiente.
+
+Al acabar la temporada americana se abre el **draft**: una clase de ochenta
+prospectos de 19 a 22 años —la mitad americanos—, dos rondas de treinta y
+**lotería** entre los catorce que no jugaron playoffs (las probabilidades de la
+NBA desde 2019, las cuatro primeras elecciones sorteadas). La IA elige hasta tu
+turno y tú escoges con lo que ve tu ojeador, o renuncias; lo que no se elija se
+hace solo al empezar la temporada siguiente, y los que nadie quiso quedan libres.
+Los elegidos firman **contrato de novato** con escala por elección.
+
+El tope del consejo se sustituye allí por un **tope salarial blando**: la nómina
+media de la liga. Por debajo se firma lo que quepa; por encima, sólo contratos
+mínimos. Renovar a los tuyos no pasa por el tope —los derechos Bird—, así que se
+puede acabar pagando **impuesto de lujo**: uno y medio por cada euro por encima
+del umbral (un 22 % sobre el tope), cobrado al cerrar la temporada. No hay cupo de
+formación. La IA no se mete en impuesto por un agente libre.
+
+**Moral.** Vale para todos los jugadores del mundo. La mueven **los minutos**
+comparados con los que cree merecer por su lugar en la plantilla, **los
+resultados**, la **intensidad de entrenamiento** y **ser convocado** por su
+selección, y vuelve sola a lo normal con los días. Tiene efecto: en pista suma o
+resta a todos los atributos (de +4 eufórico a −6 hundido), el descontento **pide
+más por renovar** y el enfadado **no renueva**, también en la IA, y la bandeja
+avisa cuando alguien cruza la raya. Se ve en la plantilla, en la ficha y en los
+contratos.
+
+**Banderas en todas partes.** La nacionalidad se ve con su bandera en casi todas
+las pantallas con jugadores —plantilla, ficha, alineación, entrenamiento,
+estadísticas, mercado, cantera, draft, récords y el partido, acta y banquillo—,
+en el cuerpo técnico y en el entrenador, que elige nacionalidad al crear la
+partida.
 
 ## Bloque 5 — Ver el partido
 
@@ -448,10 +489,9 @@ contestar, porque con los números delante nadie contesta, calcula; después
 llega la reacción en palabras. Sólo vale la última rueda: en cuanto llega otra,
 la que quedó sin contestar caduca.
 
-Hay una columna `players.morale` que **no hace nada**: se inicializa a 70 y
-ningún código la mueve ni el motor la lee. Se dejó sin tocar a propósito — mover
-un número que no cambia nada sería engañar al jugador. Darle efecto en el motor
-sería una pieza aparte.
+La columna `players.morale` estuvo mucho tiempo sin hacer nada, a propósito: mover
+un número que no cambia nada sería engañar al jugador. Tiene efecto desde la
+fase 4 del Bloque 4, y allí está contado.
 
 ### Editor del mundo
 

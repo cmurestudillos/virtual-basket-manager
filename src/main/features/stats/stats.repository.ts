@@ -11,6 +11,7 @@ import {
 
 export interface PlayerCard {
   name: string;
+  nationality: string;
   position: Position;
   teamId: string | null;
 }
@@ -63,6 +64,7 @@ export class StatsRepository {
           id: playersTable.id,
           firstName: playersTable.firstName,
           lastName: playersTable.lastName,
+          nationality: playersTable.nationality,
           position: playersTable.position,
           teamId: playersTable.teamId
         })
@@ -72,6 +74,7 @@ export class StatsRepository {
           row.id,
           {
             name: `${row.firstName} ${row.lastName}`,
+            nationality: row.nationality,
             position: row.position as Position,
             teamId: row.teamId
           }

@@ -33,7 +33,9 @@ export type FinanceEntryType =
   /** Obras de ampliación del pabellón o de la cantera. */
   | 'facilities'
   /** Traspasos pagados o cobrados. */
-  | 'transfer';
+  | 'transfer'
+  /** Impuesto de lujo de la liga de formato NBA, al cerrar la temporada. */
+  | 'luxuryTax';
 
 export const FINANCE_ENTRY_LABELS: Record<FinanceEntryType, string> = {
   ticketing: 'Taquilla',
@@ -44,7 +46,8 @@ export const FINANCE_ENTRY_LABELS: Record<FinanceEntryType, string> = {
   wages: 'Nóminas',
   maintenance: 'Mantenimiento',
   facilities: 'Instalaciones',
-  transfer: 'Traspasos'
+  transfer: 'Traspasos',
+  luxuryTax: 'Impuesto de lujo'
 };
 
 /** Mensualidades en las que se reparte un curso. */

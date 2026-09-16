@@ -52,6 +52,8 @@ export type RenewRequest = z.infer<typeof renewRequestSchema>;
 export interface MarketPlayer {
   playerId: string;
   playerName: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   teamId: string | null;
   teamName: string | null;
   position: Position;
@@ -89,6 +91,17 @@ export interface MarketStatus {
   /** Jugadores de formación inscritos y los que exige el reglamento. */
   homegrownInSquad: number;
   minHomegrown: number;
+  /**
+   * Tope salarial blando de la liga de formato NBA; nulo en las demás. Ahí no
+   * hay cupo de formación ni tope del consejo: hay tope, mínimos e impuesto.
+   */
+  salaryCap: {
+    capCents: number;
+    taxLineCents: number;
+    minimumCents: number;
+    /** Lo que costaría el impuesto con la nómina de hoy. */
+    projectedTaxCents: number;
+  } | null;
 }
 
 export interface MarketOfferResult {
@@ -104,6 +117,8 @@ export interface MarketOfferResult {
 export interface LoanEntry {
   playerId: string;
   playerName: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   position: Position;
   overall: number;
   /** `out` es uno tuyo cedido fuera; `in`, uno que juega aquí prestado. */
@@ -117,6 +132,8 @@ export interface LoanEntry {
 export interface ContractEntry {
   playerId: string;
   playerName: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   position: Position;
   age: number;
   overall: number;
@@ -127,8 +144,12 @@ export interface ContractEntry {
   isHomegrown: boolean;
   /** Está aquí cedido: ni se vende ni se rescinde. */
   isOnLoan: boolean;
-  /** Lo que pediría para renovar. */
+  /** Lo que pediría para renovar: el descontento pide más y el eufórico, menos. */
   renewalWageCents: number;
+  /** Su ánimo, 0-100. */
+  morale: number;
+  /** Tan enfadado que no renueva por nada. */
+  refusesRenewal: boolean;
   /** Lo que costaría echarlo hoy. */
   releaseCostCents: number;
   isYouth: boolean;

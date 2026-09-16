@@ -25,6 +25,8 @@ export type SaveTrainingPlanRequest = z.infer<typeof saveTrainingPlanRequestSche
 export interface TrainingPlayer {
   playerId: string;
   playerName: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   position: Position;
   age: number;
   overall: number;

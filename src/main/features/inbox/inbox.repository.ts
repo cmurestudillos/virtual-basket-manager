@@ -52,6 +52,7 @@ export class InboxRepository {
     injuryDaysLeft: number;
     injuryName: string | null;
     contractUntil: Date | null;
+    morale: number;
   }[] {
     return this.db
       .select({
@@ -60,7 +61,8 @@ export class InboxRepository {
         lastName: playersTable.lastName,
         injuryDaysLeft: playersTable.injuryDaysLeft,
         injuryName: playersTable.injuryName,
-        contractUntil: playersTable.contractUntil
+        contractUntil: playersTable.contractUntil,
+        morale: playersTable.morale
       })
       .from(playersTable)
       .where(and(eq(playersTable.teamId, teamId), eq(playersTable.isYouth, false)))

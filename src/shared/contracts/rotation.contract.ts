@@ -27,6 +27,8 @@ export const teamIdRequestSchema = z.object({ teamId: z.string().min(1) });
 export interface RotationSlotView {
   playerId: string;
   playerName: string;
+  /** Código de nacionalidad, para su bandera. */
+  nationality: string;
   /** Posición natural del jugador, que no tiene por qué ser la que juega. */
   position: Position;
   secondaryPosition: Position | null;

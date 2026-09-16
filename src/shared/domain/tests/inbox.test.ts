@@ -232,6 +232,24 @@ describe('convocatorias', () => {
   });
 });
 
+describe('vestuario', () => {
+  it('avisa una vez cuando un jugador cruza la raya del descontento', () => {
+    const avisos = diffSnapshots(snapshot({ unhappy: [] }), snapshot({ unhappy: ['base'] }), names);
+    expect(avisos).toHaveLength(1);
+    expect(avisos[0]!.category).toBe('morale');
+    expect(avisos[0]!.title).toBe('Jugador base está descontento');
+  });
+
+  it('seguir descontento o haberse ido del club no es noticia', () => {
+    expect(
+      diffSnapshots(snapshot({ unhappy: ['base'] }), snapshot({ unhappy: ['base'] }), names)
+    ).toEqual([]);
+    expect(
+      diffSnapshots(snapshot({ unhappy: [] }), snapshot({ unhappy: ['fichado-y-vendido'] }), names)
+    ).toEqual([]);
+  });
+});
+
 describe('cambio de banquillo', () => {
   it('fichar por otro club es un aviso, no doce idas y doce llegadas', () => {
     const avisos = diffSnapshots(

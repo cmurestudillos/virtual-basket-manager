@@ -38,6 +38,14 @@ import {
 } from '@shared/domain/attendance';
 import type { Position } from '@shared/domain/positions';
 import { MAX_ROSTER } from '@shared/domain/youth';
+import { UNHAPPY_MORALE, refusesToRenew, renewalWageFactor } from '@shared/domain/morale';
+import {
+  canSignUnderCap,
+  luxuryTaxCents,
+  luxuryTaxLineCents,
+  minimumSalaryCents,
+  salaryCapCents
+} from '@shared/domain/nba';
 import { createRng, seedFromString } from '@shared/engine/basketball/rng';
 import type { SaveDatabase } from '../../database/save-database';
 import type { PlayerRow } from '../../database/schema/save';
@@ -45,6 +53,7 @@ import { ClubService } from '../club/club.service';
 import { toPlayerSummary } from '../players/players.mapper';
 import { scoutPlayer, scoutingErrorFor } from '../players/scouting';
 import { StaffService } from '../staff/staff.service';
+import { SeasonRepository } from '../season/season.repository';
 import { MarketRepository } from './market.repository';
 
 /** Plantilla mínima de un club: por debajo, no se vende ni se rescinde. */
@@ -89,6 +98,13 @@ export class PlayerNotAvailableError extends Error {
   }
 }
 
+export class RenewalRefusedError extends Error {
+  constructor(playerName: string) {
+    super(`${playerName} no quiere renovar: está enfadado con su situación en el club`);
+    this.name = 'RenewalRefusedError';
+  }
+}
+
 export class NotYourPlayerError extends Error {
   constructor() {
     super('Ese jugador no es tuyo');
@@ -127,8 +143,102 @@ export class MarketService {
       seasonWagesCents: repository.seasonWagesCents(teamId),
       wageCeilingCents: this.wageCeiling(repository, teamId),
       homegrownInSquad: this.homegrownCount(repository, teamId),
-      minHomegrown: MIN_HOMEGROWN
+      minHomegrown: MIN_HOMEGROWN,
+      salaryCap: this.salaryCapStatus(repository, teamId)
     };
+  }
+
+  /** El tope salarial de la liga NBA, si el club juega en ella. */
+  private salaryCapStatus(repository: MarketRepository, teamId: string): MarketStatus['salaryCap'] {
+    const cap = this.nbaCap(teamId);
+    if (cap === null) {
+      return null;
+    }
+    const taxLine = luxuryTaxLineCents(cap);
+    return {
+      capCents: cap,
+      taxLineCents: taxLine,
+      minimumCents: minimumSalaryCents(cap),
+      projectedTaxCents: luxuryTaxCents(repository.seasonWagesCents(teamId), taxLine)
+    };
+  }
+
+  /**
+   * El tope de la liga de formato NBA en la que juega el club: la nómina media
+   * de sus equipos. `null` si el club juega cualquier otra liga.
+   */
+  private nbaCap(teamId: string): number | null {
+    const db = this.resolveDb();
+    const seasons = new SeasonRepository(db);
+    const team = seasons.findTeam(teamId);
+    const competition = team ? seasons.findCompetition(team.competitionId) : null;
+    if (!competition?.nbaFormat) {
+      return null;
+    }
+    const market = new MarketRepository(db);
+    const teamIds = seasons.teamIdsInCompetition(competition.id);
+    const total = teamIds.reduce((sum, id) => sum + market.seasonWagesCents(id), 0);
+    return salaryCapCents(teamIds.length > 0 ? total / teamIds.length : 0);
+  }
+
+  /**
+   * Las reglas de inscripción de un fichaje: en la liga NBA, el tope blando;
+   * en las demás, el cupo de formación y el tope del consejo.
+   */
+  private signingRules(
+    repository: MarketRepository,
+    teamId: string,
+    player: PlayerRow,
+    wageOfferedCents: number
+  ): { ok: boolean; reason: string } {
+    const cap = this.nbaCap(teamId);
+    if (cap !== null) {
+      if (repository.countRoster(teamId) >= MAX_ROSTER) {
+        return { ok: false, reason: `La plantilla ya tiene ${MAX_ROSTER} jugadores` };
+      }
+      return canSignUnderCap({
+        payrollCents: repository.seasonWagesCents(teamId),
+        wageOfferedCents,
+        salaryCapCents: cap
+      });
+    }
+    return canSign({
+      homegrownInSquad: this.homegrownCount(repository, teamId),
+      squadSize: repository.countRoster(teamId),
+      maxSquadSize: MAX_ROSTER,
+      signingIsHomegrown: player.nationality === repository.findTeam(teamId)?.country,
+      wageBillCents: repository.seasonWagesCents(teamId),
+      wageOfferedCents,
+      wageCeilingCents: this.wageCeiling(repository, teamId)
+    });
+  }
+
+  /**
+   * El impuesto de lujo del club del usuario, al cerrar la temporada: uno y
+   * medio por cada euro de nómina por encima del umbral.
+   */
+  chargeLuxuryTax(seasonId: string, date: Date): void {
+    const repository = new MarketRepository(this.resolveDb());
+    const teamId = repository.managedTeamId();
+    if (!teamId) {
+      return;
+    }
+    const cap = this.nbaCap(teamId);
+    if (cap === null) {
+      return;
+    }
+    const tax = luxuryTaxCents(repository.seasonWagesCents(teamId), luxuryTaxLineCents(cap));
+    if (tax <= 0) {
+      return;
+    }
+    new ClubService(this.resolveDb).recordEntry({
+      teamId,
+      seasonId,
+      happenedOn: date,
+      type: 'luxuryTax',
+      description: 'Impuesto de lujo por pasar del umbral de nómina',
+      amountCents: -tax
+    });
   }
 
   /**
@@ -225,15 +335,7 @@ export class MarketService {
     }
 
     // Reglamento antes que dinero: el cupo y el tope no se negocian.
-    const rules = canSign({
-      homegrownInSquad: this.homegrownCount(repository, teamId),
-      squadSize: repository.countRoster(teamId),
-      maxSquadSize: MAX_ROSTER,
-      signingIsHomegrown: row.nationality === repository.findTeam(teamId)?.country,
-      wageBillCents: repository.seasonWagesCents(teamId),
-      wageOfferedCents: validated.wageCents,
-      wageCeilingCents: this.wageCeiling(repository, teamId)
-    });
+    const rules = this.signingRules(repository, teamId, row, validated.wageCents);
     if (!rules.ok) {
       return { accepted: false, reason: rules.reason, status: this.getStatus() };
     }
@@ -314,6 +416,7 @@ export class MarketService {
         return {
           playerId: row.id,
           playerName: `${summary.firstName} ${summary.lastName}`,
+          nationality: row.nationality,
           position: row.position as Position,
           age: summary.age,
           overall: summary.overall,
@@ -322,10 +425,9 @@ export class MarketService {
           contractYearsLeft: years,
           isHomegrown: row.nationality === country,
           isOnLoan: row.loanFromTeamId !== null,
-          renewalWageCents: wageDemandCents({
-            valueCents: row.valueCents,
-            currentWageCents: row.wageCents
-          }),
+          renewalWageCents: renewalDemand(row),
+          morale: row.morale,
+          refusesRenewal: refusesToRenew(row.morale),
           releaseCostCents: releaseCostCents(row.wageCents, years),
           isYouth: row.isYouth
         };
@@ -344,10 +446,10 @@ export class MarketService {
 
     const today = repository.currentDate();
     const summary = toPlayerSummary(row, today);
-    const demand = wageDemandCents({
-      valueCents: row.valueCents,
-      currentWageCents: row.wageCents
-    });
+    if (refusesToRenew(row.morale)) {
+      throw new RenewalRefusedError(`${row.firstName} ${row.lastName}`);
+    }
+    const demand = renewalDemand(row);
     if (validated.wageCents < demand) {
       // Renovar no es negociar: o se paga lo que pide o sigue como está.
       return this.listContracts();
@@ -421,6 +523,7 @@ export class MarketService {
       return {
         playerId: row.id,
         playerName: `${summary.firstName} ${summary.lastName}`,
+        nationality: row.nationality,
         position: summary.position,
         overall: summary.overall,
         direction: out ? ('out' as const) : ('in' as const),
@@ -526,15 +629,7 @@ export class MarketService {
       throw new PlayerNotAvailableError();
     }
 
-    const rules = canSign({
-      homegrownInSquad: this.homegrownCount(repository, teamId),
-      squadSize: repository.countRoster(teamId),
-      maxSquadSize: MAX_ROSTER,
-      signingIsHomegrown: row.nationality === repository.findTeam(teamId)?.country,
-      wageBillCents: repository.seasonWagesCents(teamId),
-      wageOfferedCents: row.wageCents,
-      wageCeilingCents: this.wageCeiling(repository, teamId)
-    });
+    const rules = this.signingRules(repository, teamId, row, row.wageCents);
     if (!rules.ok) {
       return { accepted: false, reason: rules.reason, status: this.getStatus() };
     }
@@ -601,7 +696,15 @@ export class MarketService {
       }
 
       const rng = createRng(seedFromString(`${row.id}-renovacion-${date.getUTCFullYear()}`));
-      if (rng.chance(0.75)) {
+      // En la IA también: al descontento cuesta retenerlo y el contento se queda.
+      const stays = refusesToRenew(row.morale)
+        ? 0
+        : row.morale < UNHAPPY_MORALE
+          ? 0.4
+          : row.morale >= 85
+            ? 0.9
+            : 0.75;
+      if (rng.chance(stays)) {
         repository.renew(row.id, row.wageCents, contractEnd(date, rng.int(1, 3)), row.valueCents);
       } else {
         repository.release(row.id);
@@ -622,11 +725,28 @@ export class MarketService {
         continue;
       }
 
+      // En la liga NBA la IA no se mete en impuesto de lujo por un agente libre:
+      // por encima del umbral, sólo mínimos.
+      const cap = this.nbaCap(team.id);
+      const skipped: PlayerRow[] = [];
       let size = repository.countRoster(team.id);
       while (size < AI_TARGET_ROSTER && free.length > 0) {
         const row = free.shift() as PlayerRow;
         const summary = toPlayerSummary(row, date);
         const rng = createRng(seedFromString(`${team.id}-${row.id}-ficha`));
+        if (cap !== null) {
+          const wage = wageDemandCents({
+            valueCents: row.valueCents,
+            currentWageCents: row.wageCents
+          });
+          if (
+            repository.seasonWagesCents(team.id) + wage > luxuryTaxLineCents(cap) &&
+            wage > minimumSalaryCents(cap)
+          ) {
+            skipped.push(row);
+            continue;
+          }
+        }
 
         repository.transfer({
           playerId: row.id,
@@ -646,6 +766,8 @@ export class MarketService {
         });
         size += 1;
       }
+      // Los que este club no podía pagar siguen libres para los demás.
+      free.unshift(...skipped);
     }
   }
 
@@ -700,6 +822,7 @@ export class MarketService {
     return {
       playerId: row.id,
       playerName: `${summary.firstName} ${summary.lastName}`,
+      nationality: row.nationality,
       teamId: row.teamId,
       teamName: row.teamId ? (names.get(row.teamId) ?? null) : null,
       position: summary.position,
@@ -737,6 +860,14 @@ export class MarketService {
 }
 
 /** Los contratos acaban el 30 de junio, como en cualquier liga. */
+/** Lo que pide un jugador para renovar, con su ánimo encima. */
+function renewalDemand(row: PlayerRow): number {
+  return Math.round(
+    wageDemandCents({ valueCents: row.valueCents, currentWageCents: row.wageCents }) *
+      renewalWageFactor(row.morale)
+  );
+}
+
 function contractEnd(today: Date, years: number): Date {
   const year =
     today.getUTCMonth() >= 6 ? today.getUTCFullYear() + years : today.getUTCFullYear() + years - 1;
