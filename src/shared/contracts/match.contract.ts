@@ -182,6 +182,98 @@ export interface LiveTacticsPatch {
   defensiveIntensity?: number;
 }
 
+// ---------------------------------------------------------------------------
+// La previa y la jornada
+// ---------------------------------------------------------------------------
+
+/** Un titular en la previa: la cara, el puesto y la media. */
+export interface MatchPreviewPlayer {
+  playerId: string;
+  playerName: string;
+  nationality: string;
+  position: Position;
+  overall: number;
+}
+
+/** Medias por partido de un equipo o de un jugador en la competición del partido. */
+export interface MatchPreviewAverages {
+  games: number;
+  points: number;
+  rebounds: number;
+  assists: number;
+  steals: number;
+  efficiency: number;
+}
+
+export interface MatchPreviewTeam {
+  teamId: string;
+  teamName: string;
+  /** Código de nacionalidad si es una selección; `null` en un club. */
+  nationOf: string | null;
+  /** El cinco inicial, en el orden de la rotación. */
+  starters: MatchPreviewPlayer[];
+  /** Medias del equipo en esta competición; `null` si todavía no ha jugado. */
+  averages: MatchPreviewAverages | null;
+  /**
+   * Su jugador de referencia: el de más valoración media en la competición o,
+   * si todavía no han jugado, el de más media. `averages` es `null` en ese caso.
+   */
+  keyPlayer: (MatchPreviewPlayer & { averages: MatchPreviewAverages | null }) | null;
+}
+
+/** Lo que se enseña antes de saltar a la pista. */
+export interface MatchPreview {
+  gameId: string;
+  competitionName: string;
+  roundLabel: string;
+  pavilionName: string;
+  pavilionCapacity: number;
+  neutralVenue: boolean;
+  home: MatchPreviewTeam;
+  away: MatchPreviewTeam;
+}
+
+/** Un partido de la jornada, con la posición de cada equipo en la tabla. */
+export interface RoundResultEntry {
+  gameId: string;
+  homeTeamId: string;
+  homeTeamName: string;
+  awayTeamId: string;
+  awayTeamName: string;
+  homeScore: number | null;
+  awayScore: number | null;
+  /** Posición en la clasificación; `null` fuera de una liga. */
+  homePosition: number | null;
+  awayPosition: number | null;
+  played: boolean;
+  involvesManaged: boolean;
+}
+
+/** El mejor de la jornada: la valoración más alta de todos sus partidos. */
+export interface RoundMvp {
+  playerId: string;
+  playerName: string;
+  nationality: string;
+  teamId: string;
+  teamName: string;
+  points: number;
+  rebounds: number;
+  assists: number;
+  steals: number;
+  blocks: number;
+  efficiency: number;
+}
+
+export interface RoundResults {
+  competitionName: string;
+  roundLabel: string;
+  games: RoundResultEntry[];
+  /** Partidos de la jornada que todavía no se han jugado. */
+  pending: number;
+  /** `null` mientras no se haya jugado ninguno. */
+  mvp: RoundMvp | null;
+}
+
 export interface MatchApi {
   /** Prepara el partido del usuario y devuelve la previa (sin jugar nada). */
   start: (gameId: string) => Promise<MatchState>;
@@ -201,4 +293,8 @@ export interface MatchApi {
   setLiveTactics: (gameId: string, patch: LiveTacticsPatch) => Promise<LiveOrderResult>;
   /** Devuelve la rotación al motor, o se la quita. */
   setAutoRotation: (gameId: string, enabled: boolean) => Promise<LiveOrderResult>;
+  /** Titulares, medias y jugador de referencia de cada equipo, para la previa. */
+  preview: (gameId: string) => Promise<MatchPreview>;
+  /** Los partidos de la jornada de este partido, con la tabla y el mejor de la jornada. */
+  roundResults: (gameId: string) => Promise<RoundResults>;
 }

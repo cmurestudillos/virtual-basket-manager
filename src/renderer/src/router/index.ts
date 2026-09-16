@@ -114,13 +114,17 @@ export const router = createRouter({
           path: 'history',
           name: 'history',
           component: () => import('@renderer/features/history/pages/HistoryPage.vue')
-        },
-        {
-          path: 'match/:gameId',
-          name: 'match',
-          component: () => import('@renderer/features/match/pages/MatchPage.vue')
         }
       ]
+    },
+    {
+      // El partido va a pantalla completa, fuera del layout de juego: es una
+      // retransmisión, con su propia cabecera, y el menú lateral le robaba el
+      // sitio a las dos actas. Conserva la ruta bajo `/game` para que los
+      // enlaces y el historial no cambien.
+      path: '/game/match/:gameId',
+      name: 'match',
+      component: () => import('@renderer/features/match/pages/MatchPage.vue')
     }
   ]
 });

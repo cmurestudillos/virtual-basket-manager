@@ -32,6 +32,27 @@
   --color-warn-400: #fbbf24;
   --color-bad-500: #ef4444;
   --color-bad-400: #f87171;
+
+  /* La piel de la retransmisión: la del partido, su previa y la jornada. Sale
+     de International Basketball Manager —cromo morado, rótulos añil y tablas
+     claras— y sólo se usa en esas pantallas; el resto del juego sigue siendo
+     la pista de noche de arriba. */
+  --color-tv-950: #0d0726;
+  --color-tv-900: #170c42;
+  --color-tv-800: #21146a;
+  --color-tv-700: #2f2090;
+  --color-tv-600: #4b3bb0;
+  --color-tv-paper: #f2f2f6;
+  --color-tv-cell: #e2e2ea;
+  --color-tv-ink: #1c1b2e;
+  --color-tv-muted: #6d6c85;
+  --color-tv-blue: #1d8fff;
+  --color-tv-blue-dim: #3a4f9c;
+  --color-tv-amber: #f6c20f;
+  --color-tv-green: #3bc55a;
+  --color-tv-red: #dc4444;
+  --color-tv-magenta: #b8175e;
+  --color-tv-orange: #ff6b3d;
 }
 
 html,

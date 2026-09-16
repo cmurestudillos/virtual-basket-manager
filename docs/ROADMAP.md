@@ -396,14 +396,15 @@ o de otra deja lo mismo en la partida.
 
 ### Fase 3 — la pista (hecha)
 
-|     | Pieza    | Detalle                                                       |     |
-| --- | -------- | ------------------------------------------------------------- | --- |
-| ✅  | Pista 2D | Vista cenital animada jugada a jugada, estilo PC Basket       | L   |
-| ✅  | Pista 3D | La misma animación en 3D, con cámara de tele y detrás del aro | L   |
-| ✅  | Repetir  | Volver a ver en la pista los partidos propios ya jugados      | M   |
+|     | Pieza    | Detalle                                                     |     |
+| --- | -------- | ----------------------------------------------------------- | --- |
+| ✅  | Pista 2D | Vista cenital animada jugada a jugada, estilo PC Basket     | L   |
+| ✅  | Pista 3D | Hubo animación 3D; hoy es el pabellón de fondo de la previa | L   |
+| ✅  | Repetir  | Volver a ver en la pista los partidos propios ya jugados    | M   |
 
-El partido se ve de tres maneras —**texto, pista 2D o pista 3D**— y se elige en
-el propio partido; la elección se recuerda. Vale para el directo, para la
+El partido se ve en texto o en la pista 2D —al principio también en 3D; ver
+«La retransmisión de IBM» más abajo— y se elige en el propio partido; la
+elección se recuerda. Vale para el directo, para la
 retransmisión cuarto a cuarto y para **las repeticiones**: un partido tuyo ya
 jugado se vuelve a ver entero, con pausa, velocidad y salto a cualquier cuarto.
 
@@ -416,7 +417,7 @@ de la canasta asistida, la fila de tiros libres, el rebote bajo el aro, el robo
 que da la vuelta al ataque y los diez al banquillo en los tiempos muertos. Lo
 que parece variedad —el ángulo de cada tiro, dónde cae el rebote— sale del
 número de jugada y no de un dado, así que **la misma repetición se ve siempre
-igual**. La 2D y la 3D dibujan la misma escena: sólo cambia el dibujo.
+igual**.
 
 La pista va al paso del reloj de la retransmisión: si la pantalla se queda atrás
 —velocidad rápida, un salto al final del cuarto— pone al día de golpe las
@@ -427,8 +428,58 @@ visitante va de blanco si coinciden) y cada jugador con el mismo dorsal.
 Apuntar zona y quintetos **cambia la huella del motor** (ahora
 `bb5d5b2b…`) pero ni una tirada: quitando esos dos campos sale la huella de
 antes. Los partidos guardados antes de la pista se siguen viendo: los quintetos
-se deducen de las jugadas y la zona de cada tiro se estima. La 3D es
-**three.js** en local, en un trozo aparte que sólo se carga al abrirla.
+se deducen de las jugadas y la zona de cada tiro se estima.
+
+### Fase 4 — la retransmisión de IBM (hecha)
+
+|     | Pieza                | Detalle                                                              |     |
+| --- | -------------------- | -------------------------------------------------------------------- | --- |
+| ✅  | Pantalla de partido  | Cabecera con marcador y parciales, cuatro pestañas y barra de mandos | L   |
+| ✅  | Previa               | Cincos cara a cara, jugadores de referencia y medias, en un pabellón | M   |
+| ✅  | Jornada y MVP        | Al acabar, el resto del día jugado, los resultados y el mejor        | M   |
+| ⛔  | Órdenes individuales | Descartadas por ahora                                                |     |
+
+Decidido con el usuario el 2026-09-16, mirando las capturas de International
+Basketball Manager 23: su partido **no se anima en 3D** —sólo se ve el pabellón
+detrás de las pantallas de antes de jugar— y tiene una pestaña «Vista 2D». Así
+que el 3D dejó de ser una forma de ver el partido y pasó a ser **decorado**: el
+pabellón vacío, con las gradas, las vallas y el marcador del techo, dando la
+vuelta despacio detrás de la previa. Sigue siendo **three.js** en local y en un
+trozo aparte, que ahora sólo se descarga al abrir una previa.
+
+La pantalla del partido copia la distribución de IBM **y también sus colores**
+(ver «La piel de la retransmisión» en `DESIGN-SYSTEM.md`):
+
+- **Cabecera**: la competición, los dos equipos con su escudo, el marcador en
+  cifras de pabellón, el reloj, el cuarto, los parciales y los tiempos muertos.
+  «Jugar» dirige el cuarto en directo y «Pasar cuarto» lo simula.
+- **Resumen**: el acta corta de cada equipo —titulares arriba con su puesto,
+  banquillo debajo— y su jugador del partido; en medio, la comparativa de
+  equipos y los últimos comentarios en tarjetas, verdes los triples y los
+  parciales y rojas las pérdidas. En directo el acta se refresca cada pocas
+  jugadas, no al final del cuarto.
+- **Estadísticas** (el acta entera), **Texto** (la retransmisión escrita) y
+  **Vista 2D** (la pista con los comentarios al lado).
+- **Barra de mandos**: tiempo muerto, tácticas y sustituciones. Las dos últimas
+  abren un cajón encima del partido en vez de otra pantalla, para no perder de
+  vista el marcador mientras se decide el cambio.
+
+Como los clubes no tienen escudo, se dibuja uno con los colores de su camiseta
+y sus iniciales: siempre el mismo para el mismo club.
+
+La **previa** son tres pantallas seguidas —los dos cincos con su media, los
+jugadores de referencia (el de más valoración media en la competición, o el de
+más media si todavía no han jugado) y cómo llegan los equipos, con el informe
+del analista—, y se puede saltar entera. El cinco sale de donde lo saca el
+motor, así que no promete un titular lesionado o con su selección.
+
+Al acabar, **«Continuar»** hace lo que haría «Avanzar día» desde el club —se
+juegan los demás partidos del día— y enseña **la jornada**: todos los
+resultados con la posición de cada equipo en la tabla y el **MVP**, la
+valoración más alta de todas las actas de la jornada. Un partido viejo abierto
+desde el calendario no mueve el calendario.
+
+El partido va ahora **a pantalla completa**, fuera del menú lateral del juego.
 
 ## Bloque 6 — Alrededor
 
@@ -655,6 +706,7 @@ que dice su palmarés.
    fútbol. Cambiar de idea más adelante es caro.
 3. **¿Hasta dónde llega el partido en vivo?** Resuelta: el partido se dirige en
    vivo —pausa, cambios, tiempo muerto y pizarra sobre la marcha— y se ve en
-   texto, en pista 2D o en 3D, también en las repeticiones.
+   resumen, acta, texto o pista 2D, también en las repeticiones. El 3D se quedó
+   de fondo en la previa, como en IBM.
 4. **¿Un país o el mundo?** IBM abarcaba medio mundo; PC Basket, una liga bien
    hecha. Las dos son opciones defendibles y llevan a proyectos muy distintos.

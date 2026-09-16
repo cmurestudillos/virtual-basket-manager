@@ -15,7 +15,6 @@ import {
   type DefensiveSystem,
   type OffensiveSystem
 } from '@shared/domain/tactics';
-import { AppPanel } from '@renderer/shared/ui';
 
 const props = defineProps<{
   offensiveSystem: OffensiveSystem;
@@ -37,69 +36,70 @@ function slide(key: 'pace' | 'defensiveIntensity', event: Event): void {
 </script>
 
 <template>
-  <AppPanel title="Pizarra" hint="se aplica en la siguiente posesión">
-    <div class="flex flex-col gap-3 text-sm">
-      <label class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-court-300">Defensa</span>
-        <select
-          class="rounded border border-court-700 bg-court-900 px-2 py-1.5"
-          :value="props.defensiveSystem"
-          :disabled="disabled"
-          @change="
-            emit('change', {
-              defensiveSystem: ($event.target as HTMLSelectElement).value
-            })
-          "
-        >
-          <option v-for="[id, label] in DEFENSES" :key="id" :value="id">{{ label }}</option>
-        </select>
-      </label>
+  <div class="flex flex-col gap-4 text-sm text-tv-ink">
+    <p class="text-tv-muted">Los cambios se aplican en la siguiente posesión.</p>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs font-semibold uppercase tracking-wide">Defensa</span>
+      <select
+        class="border border-tv-cell bg-white px-2 py-1.5"
+        :value="props.defensiveSystem"
+        :disabled="disabled"
+        @change="
+          emit('change', {
+            defensiveSystem: ($event.target as HTMLSelectElement).value
+          })
+        "
+      >
+        <option v-for="[id, label] in DEFENSES" :key="id" :value="id">{{ label }}</option>
+      </select>
+    </label>
 
-      <label class="flex flex-col gap-1">
-        <span class="text-xs uppercase tracking-wide text-court-300">Ataque</span>
-        <select
-          class="rounded border border-court-700 bg-court-900 px-2 py-1.5"
-          :value="props.offensiveSystem"
-          :disabled="disabled"
-          @change="
-            emit('change', {
-              offensiveSystem: ($event.target as HTMLSelectElement).value
-            })
-          "
-        >
-          <option v-for="[id, label] in OFFENSES" :key="id" :value="id">{{ label }}</option>
-        </select>
-      </label>
+    <label class="flex flex-col gap-1">
+      <span class="text-xs font-semibold uppercase tracking-wide">Ataque</span>
+      <select
+        class="border border-tv-cell bg-white px-2 py-1.5"
+        :value="props.offensiveSystem"
+        :disabled="disabled"
+        @change="
+          emit('change', {
+            offensiveSystem: ($event.target as HTMLSelectElement).value
+          })
+        "
+      >
+        <option v-for="[id, label] in OFFENSES" :key="id" :value="id">{{ label }}</option>
+      </select>
+    </label>
 
-      <label class="flex flex-col gap-1">
-        <span class="flex justify-between text-xs uppercase tracking-wide text-court-300">
-          <span>Ritmo</span>
-          <span class="figure text-court-100">{{ props.pace }}</span>
-        </span>
-        <input
-          type="range"
-          min="1"
-          max="10"
-          :value="props.pace"
-          :disabled="disabled"
-          @change="slide('pace', $event)"
-        />
-      </label>
+    <label class="flex flex-col gap-1">
+      <span class="flex justify-between text-xs font-semibold uppercase tracking-wide">
+        <span>Ritmo</span>
+        <span class="figure">{{ props.pace }}</span>
+      </span>
+      <input
+        type="range"
+        min="1"
+        max="10"
+        class="accent-tv-blue"
+        :value="props.pace"
+        :disabled="disabled"
+        @change="slide('pace', $event)"
+      />
+    </label>
 
-      <label class="flex flex-col gap-1">
-        <span class="flex justify-between text-xs uppercase tracking-wide text-court-300">
-          <span>Intensidad defensiva</span>
-          <span class="figure text-court-100">{{ props.defensiveIntensity }}</span>
-        </span>
-        <input
-          type="range"
-          min="1"
-          max="10"
-          :value="props.defensiveIntensity"
-          :disabled="disabled"
-          @change="slide('defensiveIntensity', $event)"
-        />
-      </label>
-    </div>
-  </AppPanel>
+    <label class="flex flex-col gap-1">
+      <span class="flex justify-between text-xs font-semibold uppercase tracking-wide">
+        <span>Intensidad defensiva</span>
+        <span class="figure">{{ props.defensiveIntensity }}</span>
+      </span>
+      <input
+        type="range"
+        min="1"
+        max="10"
+        class="accent-tv-blue"
+        :value="props.defensiveIntensity"
+        :disabled="disabled"
+        @change="slide('defensiveIntensity', $event)"
+      />
+    </label>
+  </div>
 </template>

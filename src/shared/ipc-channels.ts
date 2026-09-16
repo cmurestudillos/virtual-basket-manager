@@ -69,6 +69,8 @@ export const IPC_CHANNELS = {
   matchTimeout: 'match:timeout',
   matchLiveTactics: 'match:liveTactics',
   matchAutoRotation: 'match:autoRotation',
+  matchPreview: 'match:preview',
+  matchRoundResults: 'match:roundResults',
   historyGet: 'history:get',
   careerGetStatus: 'career:getStatus',
   careerAccept: 'career:accept',

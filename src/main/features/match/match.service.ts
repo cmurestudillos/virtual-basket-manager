@@ -695,7 +695,7 @@ function scoutRival(
  * no es «la jornada 3»— así que la cabecera necesita el nombre de la ronda y el
  * número de partido dentro de la eliminatoria.
  */
-function roundLabel(repository: MatchRepository, game: GameRow): string {
+export function roundLabel(repository: MatchRepository, game: GameRow): string {
   const competition = repository.competitionForGame(game.id);
 
   // La Copa no tiene jornadas: tiene rondas, y se juega a partido único.

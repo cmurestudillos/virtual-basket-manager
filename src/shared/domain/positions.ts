@@ -20,6 +20,15 @@ export const POSITION_LABELS: Record<Position, string> = {
   C: 'Pívot'
 };
 
+/** Abreviatura en castellano, la del acta de la retransmisión: B, E, A, AP, P. */
+export const POSITION_ABBREVIATIONS: Record<Position, string> = {
+  PG: 'B',
+  SG: 'E',
+  SF: 'A',
+  PF: 'AP',
+  C: 'P'
+};
+
 /** Número clásico de la posición (1-5), el que se usa al hablar de quintetos. */
 export const POSITION_NUMBERS: Record<Position, 1 | 2 | 3 | 4 | 5> = {
   PG: 1,
