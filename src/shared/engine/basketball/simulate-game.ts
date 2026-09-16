@@ -6,7 +6,8 @@ import {
   DEFENSIVE_SYSTEM_PROFILES,
   OFFENSIVE_SYSTEM_PROFILES,
   type DefensiveSystemProfile,
-  type OffensiveSystemProfile
+  type OffensiveSystemProfile,
+  type TeamTactics
 } from '@shared/domain/tactics';
 import { createRng, seedFromString, type Rng } from './rng';
 import {
@@ -22,6 +23,8 @@ import type {
   GameEvent,
   GameEventType,
   GameResult,
+  LiveBench,
+  OrderResult,
   PeriodScore,
   SimulateGameInput
 } from './types';
@@ -89,6 +92,11 @@ const MIN_STINT_SECONDS = 150;
 /** Margen de cuota que tiene que ganar el cambio para merecer la pena. */
 const SWAP_MARGIN = 0.04;
 /**
+ * Frescura que devuelve un tiempo muerto a los cinco de pista. Menos que un
+ * descanso entre cuartos: es un minuto, no dos, y sin irse al vestuario.
+ */
+const TIMEOUT_RECOVERY = 5;
+/**
  * Cuota de partido de cada puesto de la rotación, del titular más usado al
  * duodécimo. Suma 5, que son los huecos de pista: repartida así da una rotación
  * de nueve hombres con titulares en torno a 30 minutos, que es lo que se ve en
@@ -122,6 +130,13 @@ interface TeamState {
   offense: OffensiveSystemProfile;
   defense: DefensiveSystemProfile;
   isHome: boolean;
+  /** Tiempos muertos que le quedan por gastar. */
+  timeoutsLeft: number;
+  /**
+   * Si la rotación la lleva el motor. La IA siempre; el equipo del usuario
+   * hasta que él ordena su primer cambio en vivo y toma el mando.
+   */
+  autoRotation: boolean;
 }
 
 /**
@@ -144,11 +159,17 @@ export class GameSimulation {
   private readonly awayState: TeamState;
   private readonly events: GameEvent[] = [];
   private readonly periodScores: PeriodScore[] = [];
-  private readonly averagePossession: number;
+  /** No es constante: cambiar el ritmo en la pizarra lo recalcula. */
+  private averagePossession: number;
   private offenseIsHome: boolean;
   private period = 1;
   private elapsedSeconds = 0;
   private finished = false;
+  /** Reloj del cuarto en curso. Sólo significa algo con `periodStarted`. */
+  private periodClock = 0;
+  private periodStarted = false;
+  private periodHomeAtStart = 0;
+  private periodAwayAtStart = 0;
 
   readonly gameId: string;
   readonly seed: number;
@@ -159,8 +180,9 @@ export class GameSimulation {
     this.seed = input.seed ?? seedFromString(input.gameId);
     this.rng = createRng(this.seed);
     const regulationMinutes = this.ruleset.periods * this.ruleset.periodMinutes;
-    this.homeState = buildTeamState(input.home, true, regulationMinutes);
-    this.awayState = buildTeamState(input.away, false, regulationMinutes);
+    const timeouts = this.ruleset.timeoutsPerGame;
+    this.homeState = buildTeamState(input.home, true, regulationMinutes, timeouts);
+    this.awayState = buildTeamState(input.away, false, regulationMinutes, timeouts);
     this.averagePossession = averagePossessionSeconds(this.homeState, this.awayState);
     // El salto inicial decide quién empieza; a partir de ahí se alterna.
     this.offenseIsHome = this.rng.chance(jumpBallHomeChance(this.homeState, this.awayState));
@@ -180,6 +202,16 @@ export class GameSimulation {
     return this.periodScores.length;
   }
 
+  /** Segundos que le quedan al cuarto en curso. El cuarto entero si no ha empezado. */
+  get clockSeconds(): number {
+    return this.periodStarted ? this.periodClock : this.periodLengthSeconds();
+  }
+
+  /** Hay un cuarto empezado y sin terminar: el partido está en juego. */
+  get isPeriodInProgress(): boolean {
+    return this.periodStarted;
+  }
+
   /**
    * Juega un cuarto entero (o una prórroga) y devuelve su parcial. Llamarlo con
    * el partido ya terminado no hace nada: devuelve el último parcial, para que
@@ -190,69 +222,115 @@ export class GameSimulation {
       return this.periodScores[this.periodScores.length - 1] as PeriodScore;
     }
 
-    const { ruleset, rng, homeState: home, awayState: away, events } = this;
-    const isOvertime = this.period > ruleset.periods;
-    const periodSeconds = (isOvertime ? ruleset.overtimeMinutes : ruleset.periodMinutes) * 60;
+    this.beginPeriod();
+    while (this.periodStarted) {
+      this.playPossession();
+    }
 
-    const homeAtStart = home.score;
-    const awayAtStart = away.score;
+    return this.periodScores[this.periodScores.length - 1] as PeriodScore;
+  }
+
+  /**
+   * Juega **una posesión** y devuelve si el cuarto sigue vivo.
+   *
+   * Es la unidad que necesita el partido en vivo: entre una posesión y la
+   * siguiente el entrenador puede cambiar, pedir tiempo muerto o tocar la
+   * pizarra. El cuarto a cuarto no es más que esto en bucle
+   * ({@link playPeriod}), así que hay un único camino de código y un partido
+   * seguido en vivo sale exactamente igual que uno simulado de una tacada
+   * mientras nadie intervenga.
+   */
+  playPossession(): boolean {
+    if (this.finished) {
+      return false;
+    }
+    if (!this.periodStarted) {
+      this.beginPeriod();
+    }
+
+    const { ruleset, rng, homeState: home, awayState: away, events } = this;
+    const offense = this.offenseIsHome ? home : away;
+    const defense = this.offenseIsHome ? away : home;
+
+    const duration = Math.min(
+      this.periodClock,
+      Math.max(MIN_POSSESSION_SECONDS, Math.round(this.averagePossession + rng.int(-7, 7)))
+    );
+    this.periodClock -= duration;
+
+    chargeMinutes(home, duration);
+    chargeMinutes(away, duration);
+    this.elapsedSeconds += duration;
+
+    resolvePossession({
+      offense,
+      defense,
+      rng,
+      events,
+      period: this.period,
+      clock: this.periodClock,
+      home,
+      away,
+      ruleset,
+      elapsedSeconds: this.elapsedSeconds
+    });
+
+    applyFatigue(offense, defense);
+    for (const team of [home, away]) {
+      // Con el entrenador al mando, sus cambios los ordena él: la rotación
+      // automática se aparta en vez de deshacerle el banquillo cada posesión.
+      if (!team.autoRotation) {
+        continue;
+      }
+      for (const change of substitute(team, ruleset.personalFoulLimit, this.elapsedSeconds)) {
+        pushEvent(events, home, away, {
+          period: this.period,
+          clockSeconds: this.periodClock,
+          type: 'substitution',
+          teamId: team.team.id,
+          playerId: change.incoming.player.id,
+          secondaryPlayerId: change.outgoing.player.id
+        });
+      }
+    }
+
+    this.offenseIsHome = !this.offenseIsHome;
+
+    if (this.periodClock <= 0) {
+      this.endPeriod();
+      return false;
+    }
+    return true;
+  }
+
+  /** Arranca el cuarto: pone el reloj, borra las faltas de equipo y lo anuncia. */
+  private beginPeriod(): void {
+    if (this.periodStarted || this.finished) {
+      return;
+    }
+
+    const { homeState: home, awayState: away } = this;
+    this.periodHomeAtStart = home.score;
+    this.periodAwayAtStart = away.score;
     home.teamFoulsThisPeriod = 0;
     away.teamFoulsThisPeriod = 0;
+    this.periodClock = this.periodLengthSeconds();
+    this.periodStarted = true;
 
-    let clock = periodSeconds;
-    pushEvent(events, home, away, {
+    pushEvent(this.events, home, away, {
       period: this.period,
-      clockSeconds: clock,
+      clockSeconds: this.periodClock,
       type: 'periodStart',
       teamId: '',
       playerId: null
     });
+  }
 
-    while (clock > 0) {
-      const offense = this.offenseIsHome ? home : away;
-      const defense = this.offenseIsHome ? away : home;
+  /** Cierra el cuarto: parcial, descanso y prórroga si hace falta. */
+  private endPeriod(): void {
+    const { ruleset, homeState: home, awayState: away } = this;
 
-      const duration = Math.min(
-        clock,
-        Math.max(MIN_POSSESSION_SECONDS, Math.round(this.averagePossession + rng.int(-7, 7)))
-      );
-      clock -= duration;
-
-      chargeMinutes(home, duration);
-      chargeMinutes(away, duration);
-      this.elapsedSeconds += duration;
-
-      resolvePossession({
-        offense,
-        defense,
-        rng,
-        events,
-        period: this.period,
-        clock,
-        home,
-        away,
-        ruleset,
-        elapsedSeconds: this.elapsedSeconds
-      });
-
-      applyFatigue(offense, defense);
-      for (const team of [home, away]) {
-        for (const change of substitute(team, ruleset.personalFoulLimit, this.elapsedSeconds)) {
-          pushEvent(events, home, away, {
-            period: this.period,
-            clockSeconds: clock,
-            type: 'substitution',
-            teamId: team.team.id,
-            playerId: change.incoming.player.id,
-            secondaryPlayerId: change.outgoing.player.id
-          });
-        }
-      }
-
-      this.offenseIsHome = !this.offenseIsHome;
-    }
-
-    pushEvent(events, home, away, {
+    pushEvent(this.events, home, away, {
       period: this.period,
       clockSeconds: 0,
       type: 'periodEnd',
@@ -260,12 +338,12 @@ export class GameSimulation {
       playerId: null
     });
 
-    const score: PeriodScore = {
+    this.periodScores.push({
       period: this.period,
-      home: home.score - homeAtStart,
-      away: away.score - awayAtStart
-    };
-    this.periodScores.push(score);
+      home: home.score - this.periodHomeAtStart,
+      away: away.score - this.periodAwayAtStart
+    });
+    this.periodStarted = false;
 
     // Descanso entre cuartos: se recupera una parte del cansancio, no todo.
     const isHalfTime = this.period === Math.floor(ruleset.periods / 2);
@@ -278,8 +356,159 @@ export class GameSimulation {
     } else {
       this.period += 1;
     }
+  }
 
-    return score;
+  private periodLengthSeconds(): number {
+    const isOvertime = this.period > this.ruleset.periods;
+    return (isOvertime ? this.ruleset.overtimeMinutes : this.ruleset.periodMinutes) * 60;
+  }
+
+  // ------------------------------------------------------------------------
+  // El entrenador, en vivo
+  //
+  // Todo lo de aquí abajo se llama **entre posesiones** y no gasta azar: son
+  // decisiones, no sucesos. Por eso un partido en el que nadie interviene sale
+  // idéntico a uno simulado de una tacada.
+  // ------------------------------------------------------------------------
+
+  /** Los diez de pista y los que esperan, con lo que hace falta para decidir. */
+  liveBench(teamId: string): LiveBench | null {
+    const team = this.teamById(teamId);
+    if (!team) {
+      return null;
+    }
+
+    return {
+      teamId: team.team.id,
+      timeoutsLeft: team.timeoutsLeft,
+      autoRotation: team.autoRotation,
+      players: team.states.map((state) => ({
+        playerId: state.player.id,
+        onCourt: state.onCourt,
+        playedPosition: state.playedPosition,
+        fouls: state.box.fouls,
+        fouledOut: state.fouledOut,
+        freshness: Math.round(state.freshness),
+        secondsPlayed: state.box.secondsPlayed,
+        points: state.box.twoPointMade * 2 + state.box.threePointMade * 3 + state.box.freeThrowMade
+      }))
+    };
+  }
+
+  /**
+   * Cambio ordenado por el entrenador.
+   *
+   * El que entra ocupa el hueco del que sale, igual que en la rotación
+   * automática: quien sustituye a un pívot juega de pívot esa posesión, aunque
+   * sea base. Devuelve el motivo si no se puede, para que la pantalla lo diga
+   * en vez de tragarse la orden en silencio.
+   */
+  orderSubstitution(teamId: string, outgoingId: string, incomingId: string): OrderResult {
+    const team = this.teamById(teamId);
+    if (!team) {
+      return { ok: false, reason: 'Ese equipo no juega este partido' };
+    }
+
+    const outgoing = team.states.find((state) => state.player.id === outgoingId);
+    const incoming = team.states.find((state) => state.player.id === incomingId);
+    if (!outgoing || !incoming) {
+      return { ok: false, reason: 'Ese jugador no está convocado' };
+    }
+    if (!outgoing.onCourt) {
+      return { ok: false, reason: `${outgoing.player.name} ya está en el banquillo` };
+    }
+    if (incoming.onCourt) {
+      return { ok: false, reason: `${incoming.player.name} ya está en pista` };
+    }
+    if (incoming.fouledOut) {
+      return { ok: false, reason: `${incoming.player.name} está eliminado por faltas` };
+    }
+
+    swap(outgoing, incoming, this.elapsedSeconds);
+    // A partir del primer cambio suyo, el banquillo es del entrenador: que el
+    // motor siguiera rotando por su cuenta desharía la orden en dos posesiones.
+    team.autoRotation = false;
+
+    pushEvent(this.events, this.homeState, this.awayState, {
+      period: this.period,
+      clockSeconds: this.clockSeconds,
+      type: 'substitution',
+      teamId: team.team.id,
+      playerId: incoming.player.id,
+      secondaryPlayerId: outgoing.player.id
+    });
+
+    return { ok: true };
+  }
+
+  /**
+   * Tiempo muerto: un minuto de banquillo que devuelve algo de piernas a los
+   * cinco de pista. No es gratis —son contados— y por eso pedirlo a destiempo
+   * se paga luego, que es justo la decisión que lo hace interesante.
+   */
+  callTimeout(teamId: string): OrderResult {
+    const team = this.teamById(teamId);
+    if (!team) {
+      return { ok: false, reason: 'Ese equipo no juega este partido' };
+    }
+    if (team.timeoutsLeft <= 0) {
+      return { ok: false, reason: 'No quedan tiempos muertos' };
+    }
+    if (!this.periodStarted) {
+      return { ok: false, reason: 'El cuarto no ha empezado' };
+    }
+
+    team.timeoutsLeft -= 1;
+    for (const state of team.states) {
+      if (state.onCourt) {
+        state.freshness = clamp(state.freshness + TIMEOUT_RECOVERY, 0, 100);
+      }
+    }
+
+    pushEvent(this.events, this.homeState, this.awayState, {
+      period: this.period,
+      clockSeconds: this.periodClock,
+      type: 'timeout',
+      teamId: team.team.id,
+      playerId: null
+    });
+
+    return { ok: true };
+  }
+
+  /**
+   * La pizarra, sobre la marcha. Cambiar de defensa a mitad de partido es la
+   * decisión de manager que pedía el partido en vivo, y el ritmo se recalcula
+   * con ella porque lo fijan los dos equipos a la vez.
+   */
+  setTactics(teamId: string, patch: Partial<TeamTactics>): OrderResult {
+    const team = this.teamById(teamId);
+    if (!team) {
+      return { ok: false, reason: 'Ese equipo no juega este partido' };
+    }
+
+    team.team.tactics = { ...team.team.tactics, ...patch };
+    team.offense = OFFENSIVE_SYSTEM_PROFILES[team.team.tactics.offensiveSystem];
+    team.defense = DEFENSIVE_SYSTEM_PROFILES[team.team.tactics.defensiveSystem];
+    this.averagePossession = averagePossessionSeconds(this.homeState, this.awayState);
+
+    return { ok: true };
+  }
+
+  /** Devuelve la rotación al motor, o se la quita. */
+  setAutoRotation(teamId: string, enabled: boolean): OrderResult {
+    const team = this.teamById(teamId);
+    if (!team) {
+      return { ok: false, reason: 'Ese equipo no juega este partido' };
+    }
+    team.autoRotation = enabled;
+    return { ok: true };
+  }
+
+  private teamById(teamId: string): TeamState | null {
+    if (this.homeState.team.id === teamId) return this.homeState;
+    if (this.awayState.team.id === teamId) return this.awayState;
+    return null;
   }
 
   /** Resultado hasta el momento. Sirve tanto a mitad de partido como al final. */
@@ -309,7 +538,12 @@ export function simulateGame(input: SimulateGameInput): GameResult {
 // Construcción del estado
 // --------------------------------------------------------------------------
 
-function buildTeamState(team: EngineTeam, isHome: boolean, regulationMinutes: number): TeamState {
+function buildTeamState(
+  team: EngineTeam,
+  isHome: boolean,
+  regulationMinutes: number,
+  timeouts: number
+): TeamState {
   const startersInOrder = resolveStarters(team);
   const states: PlayerState[] = team.players.map((player) => {
     const starterIndex = startersInOrder.indexOf(player.id);
@@ -331,15 +565,25 @@ function buildTeamState(team: EngineTeam, isHome: boolean, regulationMinutes: nu
   assignMinutesTargets(states, startersInOrder, team.minutesTargets, regulationMinutes);
 
   return {
-    team,
+    team: ownTactics(team),
     states,
     score: 0,
     teamFoulsThisPeriod: 0,
     teamFoulsTotal: 0,
     offense: OFFENSIVE_SYSTEM_PROFILES[team.tactics.offensiveSystem],
     defense: DEFENSIVE_SYSTEM_PROFILES[team.tactics.defensiveSystem],
-    isHome
+    isHome,
+    timeoutsLeft: timeouts,
+    autoRotation: true
   };
+}
+
+/**
+ * Copia de la pizarra para que tocarla en vivo no le cambie el equipo a quien
+ * lo pasó: el motor manda sobre su partido, no sobre la partida.
+ */
+function ownTactics(team: EngineTeam): EngineTeam {
+  return { ...team, tactics: { ...team.tactics } };
 }
 
 /**

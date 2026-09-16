@@ -16,7 +16,8 @@ const sections = [
   { name: 'stats', label: 'Estadísticas' },
   { name: 'market', label: 'Mercado' },
   { name: 'finances', label: 'Finanzas' },
-  { name: 'competition', label: 'Competición' }
+  { name: 'competition', label: 'Competición' },
+  { name: 'history', label: 'Historial' }
 ];
 
 onMounted(async () => {

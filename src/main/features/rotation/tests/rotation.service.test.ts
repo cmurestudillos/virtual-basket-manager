@@ -174,8 +174,20 @@ describe('RotationService', () => {
     }
 
     const side = state.managedSide === 'home' ? state.home : state.away;
-    const masJugado = [...side.boxScores].sort((a, b) => b.secondsPlayed - a.secondsPlayed)[0];
+    const porMinutos = [...side.boxScores].sort((a, b) => b.secondsPlayed - a.secondsPlayed);
+    const suyos = side.boxScores.find((line) => line.playerId === ultimo.playerId);
+    const resto = side.boxScores.filter((line) => line.playerId !== ultimo.playerId);
+    const medioDelResto = resto.reduce((sum, line) => sum + line.secondsPlayed, 0) / resto.length;
 
-    expect(masJugado?.playerId).toBe(ultimo.playerId);
+    // Pidió 40 minutos y los demás 16, así que tiene que acabar arriba del
+    // reparto y jugando bastante más que el resto.
+    //
+    // No se le exige ser **el** que más juega: el id del partido se sortea al
+    // crear el calendario y de él sale la semilla del motor, así que cada
+    // ejecución juega un partido distinto, y en uno concreto cinco faltas
+    // pueden sentarlo diez minutos antes de tiempo. Lo que se comprueba es que
+    // los minutos objetivo llegan al motor, no un partido en particular.
+    expect(porMinutos.slice(0, 3).map((line) => line.playerId)).toContain(ultimo.playerId);
+    expect(suyos!.secondsPlayed).toBeGreaterThan(medioDelResto * 1.4);
   });
 });

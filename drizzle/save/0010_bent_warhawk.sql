@@ -1,0 +1,1 @@
+ALTER TABLE `game_state` ADD `dismissal_enabled` integer DEFAULT true NOT NULL;

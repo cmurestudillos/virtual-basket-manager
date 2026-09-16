@@ -13,7 +13,14 @@ export const gameStateTable = sqliteTable('game_state', {
   managerName: text('manager_name').notNull().default('Entrenador'),
   /** Fecha dentro del juego. El reloj real de la máquina no pinta nada aquí. */
   currentDate: integer('current_date', { mode: 'timestamp_ms' }).notNull(),
-  seasonNumber: integer('season_number').notNull().default(1)
+  seasonNumber: integer('season_number').notNull().default(1),
+  /**
+   * Si el consejo puede echarte. Se elige al crear la partida y no se toca
+   * después: quien quiere construir un club a diez años vista necesita poder
+   * quitarse de en medio la mecánica más punitiva del juego, y quien la deja
+   * puesta no debería poder desactivarla en cuanto le aprieta.
+   */
+  dismissalEnabled: integer('dismissal_enabled', { mode: 'boolean' }).notNull().default(true)
 });
 
 export type GameStateRow = typeof gameStateTable.$inferSelect;

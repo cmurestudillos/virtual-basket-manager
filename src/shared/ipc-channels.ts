@@ -60,7 +60,14 @@ export const IPC_CHANNELS = {
   marketLoanIn: 'market:loanIn',
   matchStart: 'match:start',
   matchAdvancePeriod: 'match:advancePeriod',
-  matchGet: 'match:get'
+  matchGet: 'match:get',
+  matchSnapshot: 'match:snapshot',
+  matchAdvancePossession: 'match:advancePossession',
+  matchSubstitute: 'match:substitute',
+  matchTimeout: 'match:timeout',
+  matchLiveTactics: 'match:liveTactics',
+  matchAutoRotation: 'match:autoRotation',
+  historyGet: 'history:get'
 } as const;
 
 export type IpcChannel = (typeof IPC_CHANNELS)[keyof typeof IPC_CHANNELS];

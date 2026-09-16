@@ -13,6 +13,7 @@ import { registerStaffIpcHandlers } from '../features/staff/staff.ipc-handler';
 import { registerYouthIpcHandlers } from '../features/youth/youth.ipc-handler';
 import { registerMarketIpcHandlers } from '../features/market/market.ipc-handler';
 import { registerMatchIpcHandlers } from '../features/match/match.ipc-handler';
+import { registerHistoryIpcHandlers } from '../features/history/history.ipc-handler';
 
 /**
  * Único punto donde se cablean los handlers IPC de cada feature. Una línea por
@@ -34,4 +35,5 @@ export function registerIpcHandlers(): void {
   registerYouthIpcHandlers();
   registerMarketIpcHandlers();
   registerMatchIpcHandlers();
+  registerHistoryIpcHandlers();
 }

@@ -246,16 +246,22 @@ describe('lesiones', () => {
       }
     }
 
-    const conHistorial = db
-      .select()
-      .from(playersTable)
-      .all()
-      .filter((row) => row.injuryDaysLeft > 0);
+    const fichas = db.select().from(playersTable).all();
+    const enfermeria = fichas.filter((row) => row.injuryDaysLeft > 0);
 
     // No es una liga de cristal ni una de hierro: al acabar la temporada hay
     // gente en la enfermería, pero no media liga.
-    expect(conHistorial.length).toBeGreaterThan(0);
-    expect(conHistorial.length).toBeLessThan(40);
+    //
+    // Se mide en **proporción y con banda ancha** a propósito. Cada partida
+    // sortea los ids de sus partidos (`randomUUID`), y de ahí sale la semilla
+    // del motor: dos siembras del mismo dataset juegan temporadas distintas, y
+    // eso es lo que se quiere —dos partidas nuevas del mismo club no pueden ser
+    // calcadas—. Así que aquí no hay un número que clavar; lo que se comprueba
+    // es el orden de magnitud. Con un número fijo el test fallaba de higos a
+    // brevas sin que nada se hubiera roto.
+    const proporcion = enfermeria.length / fichas.length;
+    expect(enfermeria.length).toBeGreaterThan(0);
+    expect(proporcion).toBeLessThan(0.02);
   });
 });
 

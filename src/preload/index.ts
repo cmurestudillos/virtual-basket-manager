@@ -22,7 +22,14 @@ import type {
   SeasonSummary,
   StandingEntry
 } from '@shared/contracts/season.contract';
-import type { MatchApi, MatchState } from '@shared/contracts/match.contract';
+import type { HistoryApi, HistoryView } from '@shared/contracts/history.contract';
+import type {
+  LiveOrderResult,
+  LiveTacticsPatch,
+  LiveTick,
+  MatchApi,
+  MatchState
+} from '@shared/contracts/match.contract';
 import type {
   RotationApi,
   SaveRotationRequest,
@@ -215,7 +222,28 @@ const match: MatchApi = {
   advancePeriod: (gameId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.matchAdvancePeriod, gameId) as Promise<MatchState>,
   get: (gameId: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.matchGet, gameId) as Promise<MatchState | null>
+    ipcRenderer.invoke(IPC_CHANNELS.matchGet, gameId) as Promise<MatchState | null>,
+  snapshot: (gameId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.matchSnapshot, gameId) as Promise<MatchState | null>,
+  advancePossession: (gameId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.matchAdvancePossession, gameId) as Promise<LiveTick>,
+  substitute: (gameId: string, outgoingId: string, incomingId: string) =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.matchSubstitute,
+      gameId,
+      outgoingId,
+      incomingId
+    ) as Promise<LiveOrderResult>,
+  callTimeout: (gameId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.matchTimeout, gameId) as Promise<LiveOrderResult>,
+  setLiveTactics: (gameId: string, patch: LiveTacticsPatch) =>
+    ipcRenderer.invoke(IPC_CHANNELS.matchLiveTactics, gameId, patch) as Promise<LiveOrderResult>,
+  setAutoRotation: (gameId: string, enabled: boolean) =>
+    ipcRenderer.invoke(IPC_CHANNELS.matchAutoRotation, gameId, enabled) as Promise<LiveOrderResult>
+};
+
+const history: HistoryApi = {
+  get: () => ipcRenderer.invoke(IPC_CHANNELS.historyGet) as Promise<HistoryView>
 };
 
 export const api = {
@@ -233,7 +261,8 @@ export const api = {
   staff,
   youth,
   market,
-  match
+  match,
+  history
 };
 
 contextBridge.exposeInMainWorld('api', api);

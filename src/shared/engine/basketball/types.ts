@@ -60,6 +60,7 @@ export type GameEventType =
   | 'foul'
   | 'foulOut'
   | 'substitution'
+  | 'timeout'
   | 'periodStart'
   | 'periodEnd';
 
@@ -89,6 +90,35 @@ export interface PeriodScore {
   home: number;
   away: number;
 }
+
+/** Un convocado visto desde el banquillo, mientras el partido está en juego. */
+export interface LivePlayer {
+  playerId: string;
+  onCourt: boolean;
+  /** El hueco que ocupa ahora, que no tiene por qué ser su posición natural. */
+  playedPosition: Position;
+  fouls: number;
+  fouledOut: boolean;
+  /** Frescura 0-100: lo que le queda en las piernas ahora mismo. */
+  freshness: number;
+  secondsPlayed: number;
+  points: number;
+}
+
+/** El banquillo de un equipo durante el partido: lo que el entrenador mira para decidir. */
+export interface LiveBench {
+  teamId: string;
+  timeoutsLeft: number;
+  /** Si la rotación sigue en manos del motor. */
+  autoRotation: boolean;
+  players: LivePlayer[];
+}
+
+/**
+ * Respuesta a una orden del entrenador. El «no» lleva siempre su motivo: una
+ * orden que se pierde en silencio es peor que una rechazada.
+ */
+export type OrderResult = { ok: true } | { ok: false; reason: string };
 
 export interface TeamGameResult {
   teamId: string;

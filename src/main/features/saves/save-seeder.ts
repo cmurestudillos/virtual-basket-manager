@@ -52,7 +52,7 @@ function freeAgentNationalities(dataset: Dataset, managedTeamId: string): string
 export function seedSave(
   db: SaveDatabase,
   dataset: Dataset,
-  options: { managedTeamId: string; managerName: string }
+  options: { managedTeamId: string; managerName: string; dismissalEnabled?: boolean }
 ): void {
   // Todo en una transacción: una partida a medio sembrar es peor que ninguna.
   db.transaction((tx) => {
@@ -222,7 +222,8 @@ export function seedSave(
         managerName: options.managerName,
         // 1 de septiembre del año en que arranca la temporada: pretemporada.
         currentDate: new Date(Date.UTC(dataset.seasonStartYear, 8, 1)),
-        seasonNumber: 1
+        seasonNumber: 1,
+        dismissalEnabled: options.dismissalEnabled ?? true
       })
       .run();
   });

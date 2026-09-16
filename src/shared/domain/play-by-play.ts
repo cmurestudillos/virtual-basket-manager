@@ -18,7 +18,15 @@ export type PlaySide = 'home' | 'away';
 
 /** Qué clase de jugada es: decide cómo se pinta y qué filtra «sólo canastas». */
 export type PlayKind =
-  'score' | 'miss' | 'rebound' | 'turnover' | 'foul' | 'substitution' | 'run' | 'period';
+  | 'score'
+  | 'miss'
+  | 'rebound'
+  | 'turnover'
+  | 'foul'
+  | 'substitution'
+  | 'timeout'
+  | 'run'
+  | 'period';
 
 export interface PlayLine {
   period: number;
@@ -325,6 +333,18 @@ export function narrateGame(events: readonly GameEvent[], context: NarrationCont
           side,
           kind: 'substitution',
           text: `Cambio en ${teamName(side)}: ${changes.join(', ')}`,
+          points: 0,
+          ...score
+        });
+        break;
+      }
+
+      case 'timeout': {
+        const side = sideOf(event);
+        push(event, {
+          side,
+          kind: 'timeout',
+          text: `Tiempo muerto, lo pide ${teamName(side)}`,
           points: 0,
           ...score
         });

@@ -32,7 +32,11 @@ const TYPES: readonly GameEventType[] = [
   'foulOut',
   'substitution',
   'periodStart',
-  'periodEnd'
+  'periodEnd',
+  // Los tipos nuevos van **al final**: la posición en esta lista es lo que se
+  // guarda, así que colarlo en medio le cambiaría el significado a todas las
+  // retransmisiones ya guardadas.
+  'timeout'
 ];
 
 /** `[cuarto, reloj, tipo, lado, jugador, segundo jugador, puntos]`; -1 es «nadie». */

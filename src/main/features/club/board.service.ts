@@ -214,6 +214,9 @@ export class BoardService {
   /** ¿Sigues siendo el entrenador? */
   isDismissed(): boolean {
     const repository = new ClubRepository(this.resolveDb());
+    if (!repository.dismissalEnabled()) {
+      return false;
+    }
     const teamId = repository.managedTeamId();
     return teamId ? (repository.findBoard(teamId)?.dismissed ?? false) : false;
   }
@@ -236,7 +239,12 @@ export class BoardService {
     repository.upsertBoard({
       ...next,
       // A cero se acabó: no hay segunda oportunidad a mitad de temporada.
-      dismissed: next.confidence <= DISMISSAL_CONFIDENCE
+      //
+      // Salvo que la partida se juegue sin despido, y entonces el consejo se
+      // queda en lo que es: una opinión. La confianza sigue bajando —el
+      // objetivo tiene que seguir significando algo, y de ella salen cosas que
+      // no son el despido— pero nadie te echa.
+      dismissed: repository.dismissalEnabled() && next.confidence <= DISMISSAL_CONFIDENCE
     });
   }
 }

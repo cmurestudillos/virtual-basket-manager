@@ -65,7 +65,8 @@ export class SavesService {
     const db = getSaveDatabase(filePath);
     seedSave(db, dataset, {
       managedTeamId: validated.teamId,
-      managerName: validated.managerName
+      managerName: validated.managerName,
+      dismissalEnabled: validated.dismissalEnabled
     });
 
     const now = new Date();

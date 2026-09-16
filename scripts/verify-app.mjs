@@ -215,6 +215,58 @@ console.log('url tras avanzar:', page.url());
 await page.screenshot({ path: `${SHOTS}/13-previa.png` });
 
 /**
+ * El primer cuarto se **dirige en vivo**: es el único modo en el que el partido
+ * se juega mientras se mira, así que es donde se comprueba que el banquillo
+ * responde —cambio, tiempo muerto y pizarra— y que el reloj corre de verdad.
+ */
+await page.getByRole('button', { name: 'Dirigir en vivo' }).click();
+await page.waitForTimeout(4000);
+const enMarcha = await page.locator('section').first().innerText();
+console.log('en vivo:', enMarcha.split('\n').join(' '));
+console.log('jugadas en vivo:', await page.locator('ol li').count());
+await page.screenshot({ path: `${SHOTS}/13b-en-vivo.png` });
+
+// Un cambio: se señala a uno de pista y se pulsa a uno del banquillo.
+const enPista = page.locator('button', { hasText: /\d+f/ }).first();
+await enPista.click();
+await page.waitForTimeout(300);
+const banquillo = page.locator('button', { hasText: /Entra por|\d+f/ });
+await banquillo.nth(5).click();
+await page.waitForTimeout(600);
+console.log('tras el cambio:', await page.locator('ol li').first().innerText());
+
+// Tiempo muerto y cambio de defensa, las otras dos decisiones del directo.
+await page.getByRole('button', { name: /^Tiempo muerto/ }).click();
+await page.waitForTimeout(600);
+await page.locator('select').first().selectOption({ index: 1 });
+await page.waitForTimeout(600);
+await page.screenshot({ path: `${SHOTS}/13c-banquillo-en-vivo.png` });
+
+// La pausa tiene que parar el reloj de verdad.
+await page.getByRole('button', { name: 'Pausa' }).click();
+const relojPausado = await page.locator('section').first().innerText();
+await page.waitForTimeout(1500);
+const relojDespues = await page.locator('section').first().innerText();
+console.log('pausa efectiva:', relojPausado === relojDespues);
+await page.getByRole('button', { name: 'Reanudar' }).click();
+
+await page.getByRole('button', { name: 'Saltar al final del cuarto' }).click();
+await page.waitForTimeout(1500);
+const finCuarto = await page.locator('section').first().innerText();
+console.log('fin del 1er cuarto en vivo:', finCuarto.split('\n').slice(0, 5).join(' '));
+await page.screenshot({ path: `${SHOTS}/13d-fin-cuarto-vivo.png` });
+
+// Y el resto del partido, simulado: los dos modos conviven en el mismo partido.
+// «Simular el resto» juega el cuarto siguiente y lo deja retransmitiéndose, así
+// que hay que saltarlo antes de volver a buscar el botón de jugar.
+await page.getByRole('button', { name: 'Simular el resto' }).click();
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Saltar al final del cuarto' }).click();
+await page.waitForTimeout(800);
+const trasSimular = await page.locator('section').first().innerText();
+console.log('tras simular el resto:', trasSimular.split('\n').slice(0, 4).join(' '));
+
+/**
  * Cada cuarto se retransmite con el reloj corriendo. El primero se deja correr
  * un rato para ver la retransmisión en marcha —reloj, marcador parcial y
  * jugadas entrando—; el resto se salta al final, que es lo que hace quien sólo
@@ -236,8 +288,8 @@ async function playQuarter(watchLive) {
   return true;
 }
 
-for (let quarter = 1; quarter <= 4; quarter += 1) {
-  if (!(await playQuarter(quarter === 1))) break;
+for (let quarter = 3; quarter <= 4; quarter += 1) {
+  if (!(await playQuarter(quarter === 3))) break;
   const scoreboard = await page.locator('section').first().innerText();
   console.log(`tras el cuarto ${quarter}:`, scoreboard.split('\n').slice(0, 5).join(' '));
   await page.screenshot({ path: `${SHOTS}/14-cuarto-${quarter}.png` });
@@ -354,6 +406,27 @@ await page.waitForTimeout(1500);
 const ascensos = await page.locator('tbody tr').first().innerText();
 console.log('líder de la segunda:', ascensos.split('\n').join(' · '));
 await page.screenshot({ path: `${SHOTS}/22b-ascensos.png` });
+
+// El historial, que sólo tiene algo que contar con una temporada terminada.
+await page.getByRole('link', { name: 'Historial' }).click();
+await page.waitForTimeout(1800);
+const historial = await page.locator('tbody tr').first().innerText();
+console.log('temporadas en el historial:', await page.locator('tbody tr').count());
+console.log('última temporada:', historial.split('\n').join(' · '));
+await page.screenshot({ path: `${SHOTS}/23b-historial.png` });
+
+await page.getByRole('button', { name: 'Palmarés' }).click();
+await page.waitForTimeout(1000);
+const vitrina = await page.locator('main li, main p').first().innerText();
+console.log('vitrina:', vitrina.split('\n').join(' · '));
+await page.screenshot({ path: `${SHOTS}/23c-palmares.png` });
+
+await page.getByRole('button', { name: 'Récords' }).click();
+await page.waitForTimeout(1000);
+console.log('récords:', await page.locator('main li').count());
+const mejorMarca = await page.locator('main li').first().innerText();
+console.log('mejor marca:', mejorMarca.split('\n').join(' · '));
+await page.screenshot({ path: `${SHOTS}/23d-records.png` });
 
 // Con la temporada entera jugada hay desgaste y enfermería de verdad.
 await page.getByRole('link', { name: 'Entrenamiento' }).click();
