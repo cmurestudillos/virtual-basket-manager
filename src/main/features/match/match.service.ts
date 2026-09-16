@@ -14,6 +14,7 @@ import {
 import type { Position } from '@shared/domain/positions';
 import type {
   BoxScoreLine,
+  CourtEvent,
   LiveBenchPlayer,
   LiveOrderResult,
   LiveTacticsPatch,
@@ -73,6 +74,8 @@ interface LiveSession {
    * antes para contarse bien— y de aquí sale lo que todavía no ha visto.
    */
   deliveredLines: number;
+  /** Y cuántas jugadas sin narrar, para la pista. */
+  deliveredEvents: number;
 }
 
 const sessions = new Map<string, LiveSession>();
@@ -94,7 +97,7 @@ export class MatchService {
       ruleset: repository.rulesetForGame(game.id),
       neutralVenue: game.neutralVenue
     });
-    sessions.set(gameId, { simulation, deliveredLines: 0 });
+    sessions.set(gameId, { simulation, deliveredLines: 0, deliveredEvents: 0 });
 
     return toMatchState(db, repository, game, simulation.result, simulation.isFinished);
   }
@@ -281,6 +284,8 @@ export class MatchService {
     const all = narrate(repository, game, result.events, regulationPeriods);
     const lines = all.slice(session.deliveredLines);
     session.deliveredLines = all.length;
+    const events = toCourtEvents(result.events.slice(session.deliveredEvents), game);
+    session.deliveredEvents = result.events.length;
 
     const managedTeamId = repository.userTeamFor(game);
     const side = managedSideOf(game, managedTeamId);
@@ -298,6 +303,7 @@ export class MatchService {
       homeScore: result.home.score,
       awayScore: result.away.score,
       lines,
+      events,
       periodEnded,
       finished: simulation.isFinished,
       bench: bench ? toBenchPlayers(repository, bench, managedTeamId as string) : null,
@@ -352,7 +358,8 @@ export class MatchService {
       finished: true,
       managedSide: managedSideOf(game, managedTeamId),
       scouting: scoutRival(db, repository, game, managedTeamId),
-      playByPlay: events ? narrate(repository, game, events, regulationPeriods) : null
+      playByPlay: events ? narrate(repository, game, events, regulationPeriods) : null,
+      courtEvents: events ? toCourtEvents(events, game) : null
     };
   }
 
@@ -585,8 +592,27 @@ function toMatchState(
     finished,
     managedSide: managedSideOf(game, managedTeamId),
     scouting: scoutRival(db, repository, game, managedTeamId),
-    playByPlay: narrate(repository, game, result.events, regulationPeriods)
+    playByPlay: narrate(repository, game, result.events, regulationPeriods),
+    courtEvents: toCourtEvents(result.events, game)
   };
+}
+
+/** Las jugadas del motor con los equipos traducidos a lados, para la pista. */
+function toCourtEvents(events: readonly GameEvent[], game: GameRow): CourtEvent[] {
+  return events.map((event) => ({
+    period: event.period,
+    clockSeconds: event.clockSeconds,
+    type: event.type,
+    side:
+      event.teamId === game.homeTeamId ? 'home' : event.teamId === game.awayTeamId ? 'away' : null,
+    playerId: event.playerId,
+    secondaryPlayerId: event.secondaryPlayerId ?? null,
+    shotType: event.shotType ?? null,
+    points: event.points ?? 0,
+    homeScore: event.homeScore,
+    awayScore: event.awayScore,
+    ...(event.lineups ? { lineups: event.lineups } : {})
+  }));
 }
 
 /** La retransmisión se guarda sólo si juega el usuario; ver `games.playByPlay`. */

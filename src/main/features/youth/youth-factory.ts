@@ -1,5 +1,5 @@
 import { randomUUID } from 'node:crypto';
-import { randomName } from '@shared/domain/names';
+import { randomNameFor } from '@shared/domain/names';
 import { generateProspect } from '@shared/domain/youth';
 import type { Rng } from '@shared/engine/basketball/rng';
 import type { NewPlayerRow } from '../../database/schema/save';
@@ -27,7 +27,7 @@ export function buildYouthPlayers(input: IntakeInput): NewPlayerRow[] {
 
   for (let index = 0; index < input.count; index += 1) {
     const prospect = generateProspect(input.level, input.rng);
-    const { firstName, lastName } = randomName(input.rng);
+    const { firstName, lastName } = randomNameFor(input.nationality, input.rng);
 
     rows.push({
       id: randomUUID(),

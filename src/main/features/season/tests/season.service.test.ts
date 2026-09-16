@@ -87,7 +87,15 @@ describe('SeasonService', () => {
     // sacar quién asciende—, las tres competiciones europeas, de 120 partidos
     // de fase de liga cada una, y la clasificación para el Mundial: cinco
     // grupos de cuatro a ida y vuelta.
-    expect(db.select().from(gamesTable).all()).toHaveLength(306 * 2 + 120 * 3 + 5 * 12);
+    const nationalGames = new NationalService(() => db)
+      .seasonIds(1)
+      .reduce(
+        (sum, seasonId) =>
+          sum + db.select().from(gamesTable).where(eq(gamesTable.seasonId, seasonId)).all().length,
+        0
+      );
+    expect(nationalGames % 12).toBe(0);
+    expect(db.select().from(gamesTable).all()).toHaveLength(306 * 2 + 120 * 3 + nationalGames);
   });
 
   it('no vuelve a generar el calendario en llamadas siguientes', () => {

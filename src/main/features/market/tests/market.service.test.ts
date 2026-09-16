@@ -573,13 +573,42 @@ describe('liga americana: tope salarial blando', () => {
     expect(expensive.accepted).toBe(false);
     expect(expensive.reason).toContain('tope salarial');
 
+    // El tope se mueve con la nómina de la liga: se vuelve a leer tras el cambio.
+    const capNow = market.getStatus().salaryCap!;
     const minimum = market.offer({
       playerId: agent.id,
       feeCents: 0,
-      wageCents: Math.max(MIN_WAGE_CENTS, cap.minimumCents),
+      wageCents: Math.max(MIN_WAGE_CENTS, capNow.minimumCents),
       years: 1
     });
     expect(minimum.reason).not.toContain('tope salarial');
+  });
+
+  it('en verano, la IA por encima del umbral recorta nómina sin bajar del mínimo', () => {
+    openNbaSave();
+    const cap = market.getStatus().salaryCap!;
+    const rival = 'usa-1-2';
+    // Un rival muy por encima del umbral, con todos cobrando de más.
+    db.update(playersTable)
+      .set({ wageCents: Math.ceil((cap.taxLineCents * 2) / roster(rival).length) })
+      .where(eq(playersTable.teamId, rival))
+      .run();
+
+    const before = new Set(roster(rival).map((player) => player.id));
+    const payrollBefore = roster(rival).reduce((sum, player) => sum + player.wageCents, 0);
+
+    market.processOffseason(new Date(Date.UTC(2026, 6, 1)));
+
+    // Se va quien cobraba de más, hasta bajar del umbral o quedarse en la
+    // plantilla mínima; lo que ficha después para completar son mínimos.
+    const kept = roster(rival).filter((player) => before.has(player.id));
+    const payroll = roster(rival).reduce((sum, player) => sum + player.wageCents, 0);
+    expect(kept.length).toBeLessThan(before.size);
+    expect(payroll).toBeLessThan(payrollBefore);
+    expect(
+      kept.reduce((sum, player) => sum + player.wageCents, 0) <= cap.taxLineCents * 1.3 ||
+        kept.length <= MIN_ROSTER
+    ).toBe(true);
   });
 
   it('pasarse del umbral se paga como impuesto de lujo al cerrar la temporada', () => {

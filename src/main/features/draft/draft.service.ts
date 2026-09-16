@@ -6,12 +6,14 @@ import {
   DRAFT_ROUNDS,
   draftOrder,
   generateDraftProspect,
+  luxuryTaxCents,
+  luxuryTaxLineCents,
   overallPick,
   rookieContractYears,
   rookieWageCents,
   salaryCapCents
 } from '@shared/domain/nba';
-import { randomName } from '@shared/domain/names';
+import { randomNameFor } from '@shared/domain/names';
 import { MAX_ROSTER } from '@shared/domain/youth';
 import { computeStandings } from '@shared/domain/standings';
 import { createRng, seedFromString } from '@shared/engine/basketball/rng';
@@ -344,6 +346,21 @@ export class DraftService {
     repository.resolvePick(pick.id, player.id, false);
   }
 
+  /** Lo que le cuesta al usuario la elección que tiene en el reloj. */
+  private pickCost(competitionId: string, teamId: string, pick: number): DraftView['userPickCost'] {
+    const cap = this.salaryCap(competitionId);
+    const payroll = new MarketRepository(this.resolveDb()).seasonWagesCents(teamId);
+    const wage = rookieWageCents(pick, cap);
+    const taxLine = luxuryTaxLineCents(cap);
+    return {
+      rookieWageCents: wage,
+      payrollCents: payroll,
+      payrollAfterCents: payroll + wage,
+      taxLineCents: taxLine,
+      projectedTaxCents: luxuryTaxCents(payroll + wage, taxLine)
+    };
+  }
+
   /** El tope de la liga: la nómina media de sus equipos. */
   private salaryCap(competitionId: string): number {
     const db = this.resolveDb();
@@ -423,6 +440,10 @@ export class DraftService {
       rosterFull: userTeamId
         ? new MarketRepository(db).countRoster(userTeamId) >= MAX_ROSTER
         : false,
+      userPickCost:
+        onTheClock?.isUser && userTeamId
+          ? this.pickCost(competition.id, userTeamId, onTheClock.pick)
+          : null,
       picks: pickViews,
       prospects
     };
@@ -435,7 +456,7 @@ function prospectRow(
   rng: ReturnType<typeof createRng>,
   season: SeasonRow
 ): NewPlayerRow {
-  const { firstName, lastName } = randomName(rng);
+  const { firstName, lastName } = randomNameFor(prospect.nationality, rng);
   const referenceYear = season.startYear + 1;
   return {
     id: randomUUID(),

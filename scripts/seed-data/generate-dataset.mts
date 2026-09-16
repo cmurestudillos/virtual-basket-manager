@@ -80,25 +80,68 @@ const SPANISH_CITIES = [
  * El reparto no es uniforme a propósito: hay muchos más estadounidenses sueltos
  * por las ligas del mundo que lituanos.
  */
-const NATIONALITIES = [
-  'ESP',
-  'ESP',
-  'USA',
-  'USA',
-  'USA',
-  'USA',
-  'SRB',
-  'LTU',
-  'FRA',
-  'ITA',
-  'GRE',
-  'SEN',
-  'ARG',
-  'BRA',
-  'TUR',
-  'GER',
-  'AUS',
-  'CRO'
+/**
+ * De dónde vienen los extranjeros de una plantilla, con su peso: muchos
+ * americanos, bastantes de las canteras fuertes de Europa y de África, y un
+ * goteo del resto del mundo. Casi todos estos países no tienen liga propia en
+ * el juego, pero sí jugadores repartidos por las que hay —como en la realidad—
+ * y, si juntan doce, selección.
+ */
+const FOREIGN_NATIONALITIES: [string, number][] = [
+  ['USA', 12],
+  ['SRB', 4],
+  ['FRA', 4],
+  ['LTU', 3],
+  ['CRO', 3],
+  ['GRE', 3],
+  ['ESP', 3],
+  ['ARG', 3],
+  ['BRA', 3],
+  ['SEN', 3],
+  ['NGR', 3],
+  ['AUS', 3],
+  ['CAN', 3],
+  ['ITA', 2],
+  ['GER', 2],
+  ['TUR', 2],
+  ['SLO', 2],
+  ['MNE', 2],
+  ['BIH', 2],
+  ['CMR', 2],
+  ['MLI', 2],
+  ['PUR', 2],
+  ['DOM', 2],
+  ['GEO', 2],
+  ['LAT', 2],
+  ['POL', 2],
+  ['CZE', 2],
+  ['UKR', 2],
+  ['GBR', 2],
+  ['VEN', 2],
+  ['SSD', 2],
+  ['JPN', 2],
+  ['CHN', 2],
+  ['PHI', 2],
+  ['NZL', 2],
+  ['FIN', 1],
+  ['MKD', 1],
+  ['POR', 1],
+  ['HUN', 1],
+  ['MEX', 1],
+  ['URU', 1],
+  ['CIV', 1],
+  ['EGY', 1],
+  ['TUN', 1],
+  ['CPV', 1],
+  ['ANG', 1],
+  ['KOR', 1],
+  ['IRI', 1],
+  ['JOR', 1],
+  ['LBN', 1],
+  ['ISR', 1],
+  ['BEL', 1],
+  ['NED', 1],
+  ['CHI', 1]
 ];
 
 /** Altura media y dispersión por posición, en centímetros. */
@@ -227,6 +270,11 @@ interface DatasetPlayer {
 }
 
 const rng = createRng(SEED);
+/**
+ * Los nombres van con su propio azar: así ampliar o corregir las listas de
+ * nombres no mueve ni una media del mundo.
+ */
+const nameRng = createRng(SEED + 1);
 
 const competitions: DatasetCompetition[] = [];
 const teams: DatasetTeam[] = [];
@@ -407,13 +455,19 @@ function buildRoster(team: DatasetTeam): void {
  * que es como se reparte cualquier plantilla europea de verdad.
  */
 function nationalityFor(team: DatasetTeam): string {
-  const roll = rng.int(0, NATIONALITIES.length - 1);
-  return roll < NATIONALITIES.length / 2 ? team.country : (NATIONALITIES[roll] as string);
+  if (rng.chance(0.5)) {
+    return team.country;
+  }
+  const foreign = FOREIGN_NATIONALITIES.filter(([code]) => code !== team.country);
+  return rng.weighted(
+    foreign.map(([code]) => code),
+    foreign.map(([, weight]) => weight)
+  );
 }
 
 function uniqueName(flag: string, used: Set<string>): { firstName: string; lastName: string } {
   for (let attempt = 0; attempt < 40; attempt += 1) {
-    const name = randomNameFor(flag, rng);
+    const name = randomNameFor(flag, nameRng);
     const key = `${name.firstName} ${name.lastName}`;
     if (!used.has(key)) {
       used.add(key);
@@ -423,8 +477,8 @@ function uniqueName(flag: string, used: Set<string>): { firstName: string; lastN
 
   // Con doce fichas por vestuario esto no debería pasar, pero prefiero un
   // segundo apellido a un bucle infinito.
-  const first = randomNameFor(flag, rng);
-  const second = randomNameFor(flag, rng);
+  const first = randomNameFor(flag, nameRng);
+  const second = randomNameFor(flag, nameRng);
   const name = { firstName: first.firstName, lastName: `${first.lastName}-${second.lastName}` };
   used.add(`${name.firstName} ${name.lastName}`);
   return name;

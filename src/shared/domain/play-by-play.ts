@@ -362,7 +362,7 @@ export function narrateGame(events: readonly GameEvent[], context: NarrationCont
  * buscar la primera que todavía no ha pasado.
  */
 export function visibleLineCount(
-  lines: readonly PlayLine[],
+  lines: readonly { period: number; clockSeconds: number }[],
   period: number,
   clockSeconds: number
 ): number {

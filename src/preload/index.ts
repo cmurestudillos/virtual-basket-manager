@@ -132,7 +132,12 @@ const players: PlayersApi = {
 };
 
 const gameState: GameStateApi = {
-  get: () => ipcRenderer.invoke(IPC_CHANNELS.gameStateGet) as Promise<ManagedTeamState | null>
+  get: () => ipcRenderer.invoke(IPC_CHANNELS.gameStateGet) as Promise<ManagedTeamState | null>,
+  setManagerNationality: (code: string) =>
+    ipcRenderer.invoke(
+      IPC_CHANNELS.gameStateSetManagerNationality,
+      code
+    ) as Promise<ManagedTeamState | null>
 };
 
 const season: SeasonApi = {

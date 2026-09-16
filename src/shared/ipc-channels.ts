@@ -18,6 +18,7 @@ export const IPC_CHANNELS = {
   playersListByTeam: 'players:listByTeam',
   playersGet: 'players:get',
   gameStateGet: 'gameState:get',
+  gameStateSetManagerNationality: 'gameState:setManagerNationality',
   seasonGetCurrent: 'season:getCurrent',
   seasonGetStandings: 'season:getStandings',
   seasonListLeagues: 'season:listLeagues',

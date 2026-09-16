@@ -1,6 +1,6 @@
 import { randomUUID } from 'node:crypto';
 import { DEFAULT_TACTICS } from '@shared/domain/tactics';
-import { randomName } from '@shared/domain/names';
+import { randomNameFor } from '@shared/domain/names';
 import { resolveActiveCountries } from '@shared/domain/simulation-scope';
 import { STAFF_ROLES, staffLevelForReputation } from '@shared/domain/staff';
 import { createRng, seedFromString } from '@shared/engine/basketball/rng';
@@ -180,7 +180,7 @@ export function seedSave(
           .values({
             id: randomUUID(),
             teamId: team.id,
-            ...randomName(rng),
+            ...randomNameFor(team.country, rng),
             role,
             // El cuerpo técnico es de casa: la mayoría de los clubes lo forma.
             nationality: team.country,
@@ -223,7 +223,10 @@ export function seedSave(
         .values({
           id: randomUUID(),
           teamId: null,
-          ...randomName(marketRng),
+          ...randomNameFor(
+            FREE_STAFF_NATIONALITIES[index % FREE_STAFF_NATIONALITIES.length] as string,
+            marketRng
+          ),
           role: STAFF_ROLES[marketRng.int(0, STAFF_ROLES.length - 1)] as string,
           nationality: FREE_STAFF_NATIONALITIES[index % FREE_STAFF_NATIONALITIES.length] as string,
           level: marketRng.int(1, 5)

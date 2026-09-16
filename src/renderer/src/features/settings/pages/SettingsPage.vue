@@ -23,8 +23,17 @@ import {
   WINDOW_RESOLUTIONS,
   type WindowResolution
 } from '@shared/domain/window-resolution';
-import { AVATAR_CREDITS, AppAvatar, AppButton, AppPageHeader, AppPanel } from '@renderer/shared/ui';
+import {
+  AVATAR_CREDITS,
+  AppAvatar,
+  AppButton,
+  AppFlag,
+  AppPageHeader,
+  AppPanel
+} from '@renderer/shared/ui';
 import { useUpdates } from '@renderer/features/updates/useUpdates';
+import { useGameStateStore } from '@renderer/shared/game-state.store';
+import { NATION_NAMES } from '@shared/domain/national-teams';
 
 const router = useRouter();
 const version = __APP_VERSION__;
@@ -33,6 +42,17 @@ const resolution = ref<WindowResolution>(DEFAULT_WINDOW_RESOLUTION);
 const ruleset = ref<RulesetMode>(DEFAULT_RULESET_MODE);
 const saved = ref<string | null>(null);
 const updates = useUpdates();
+const gameState = useGameStateStore();
+/** Con una partida cargada, el entrenador también se ajusta aquí. */
+const nationalityOptions = Object.entries(NATION_NAMES).sort((a, b) =>
+  a[1].localeCompare(b[1], 'es')
+);
+
+async function chooseNationality(code: string): Promise<void> {
+  await window.api.gameState.setManagerNationality(code);
+  await gameState.refresh();
+  saved.value = `Tu entrenador ahora es de ${NATION_NAMES[code] ?? code}.`;
+}
 
 /** Lo que se lee del estado de la actualización, en una frase. */
 function updateText(): string {
@@ -106,6 +126,23 @@ function back(): void {
     >
       {{ saved }}
     </p>
+
+    <AppPanel v-if="gameState.state" title="Tu entrenador" hint="en la partida cargada">
+      <label class="flex items-center gap-3 text-sm" for="manager-nationality-setting">
+        <span class="text-court-300">Nacionalidad</span>
+        <AppFlag :code="gameState.state.managerNationality" size="md" />
+        <select
+          id="manager-nationality-setting"
+          :value="gameState.state.managerNationality"
+          class="rounded border border-court-600 bg-court-900 px-3 py-2"
+          @change="chooseNationality(($event.target as HTMLSelectElement).value)"
+        >
+          <option v-for="[code, name] in nationalityOptions" :key="code" :value="code">
+            {{ name }}
+          </option>
+        </select>
+      </label>
+    </AppPanel>
 
     <AppPanel title="Resolución" hint="se aplica al momento">
       <div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Resolución">
@@ -217,8 +254,8 @@ function back(): void {
           </span>
         </li>
         <li class="text-xs text-court-300">
-          Avatares generados con DiceBear (licencia MIT). Clubes, jugadores y competiciones son
-          inventados.
+          Avatares generados con DiceBear, banderas de flag-icons y pista 3D con three.js (las tres
+          con licencia MIT). Clubes, jugadores y competiciones son inventados.
         </li>
       </ul>
     </AppPanel>
