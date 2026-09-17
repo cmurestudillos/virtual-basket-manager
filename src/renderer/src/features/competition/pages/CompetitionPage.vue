@@ -102,6 +102,24 @@ const tabs = computed(() => [
 const totalRounds = computed(() => selectedLeague.value?.totalRounds || 34);
 const roundDate = computed(() => fixtures.value[0]?.scheduledOn ?? null);
 
+/**
+ * Quién descansa en la jornada que se mira: en una liga de número impar, el
+ * equipo de la tabla que no sale en ningún partido. En una par no descansa nadie.
+ */
+const restingTeams = computed(() => {
+  if (fixtures.value.length === 0) {
+    return [];
+  }
+  const playing = new Set(fixtures.value.flatMap((row) => [row.homeTeamId, row.awayTeamId]));
+  // Al cambiar de liga, la tabla y la jornada se cargan una detrás de otra: si
+  // aún son de ligas distintas, mejor no enseñar nada que enseñar a toda la liga.
+  const inTable = new Set(standings.value.map((row) => row.teamId));
+  if ([...playing].some((teamId) => !inTable.has(teamId))) {
+    return [];
+  }
+  return standings.value.filter((row) => !playing.has(row.teamId));
+});
+
 onMounted(async () => {
   await seasonStore.refresh();
   // Se abre en la jornada en curso, no en la primera: es la que interesa. Y con
@@ -301,6 +319,16 @@ function streakLabel(streak: number): string {
           <span>{{ fixture.awayTeamName }}</span>
         </li>
       </ul>
+
+      <p v-if="restingTeams.length > 0" class="text-sm text-court-300">
+        Descansa:
+        <span
+          v-for="(row, index) in restingTeams"
+          :key="row.teamId"
+          :class="row.isManaged ? 'text-ball-400' : 'text-court-100'"
+          >{{ index > 0 ? ', ' : '' }}{{ row.teamName }}</span
+        >
+      </p>
     </div>
   </div>
 </template>

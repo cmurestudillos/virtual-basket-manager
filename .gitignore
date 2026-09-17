@@ -12,3 +12,5 @@ release-private
 # Dataset REAL: sólo en el PC del autor y en sus copias de seguridad, nunca en
 # el repositorio (es público). Ver docs/DATASET-REAL.md.
 resources/real-data
+# Descargas de las webs de datos reales (caché de los extractores). Tampoco se versionan.
+.real-data-cache

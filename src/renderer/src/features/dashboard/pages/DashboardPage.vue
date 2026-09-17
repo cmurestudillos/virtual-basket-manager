@@ -87,6 +87,25 @@ const nextGameLabel = computed(() => {
   return `${series.roundName} · ${next.seriesGame}º partido (${own}-${rival})`;
 });
 
+/**
+ * La jornada de liga que toca, si el próximo partido del club llega después de
+ * ella. Es la semana de descanso de una liga impar —el club no juega esa
+ * jornada— o, con el partido propio ya jugado, el resto de la jornada por
+ * simular. En los dos casos el partido siguiente todavía no se puede empezar.
+ */
+const roundBeforeNextGame = computed(() => {
+  const round = seasonStore.season?.nextRound;
+  if (stage.value !== 'regular' || !round || unemployed.value) {
+    return null;
+  }
+  const next = seasonStore.nextGame;
+  return !next || next.scheduledOn > round.scheduledOn ? round : null;
+});
+/** Semana de descanso: la jornada se juega sin el club. */
+const restingRound = computed(() =>
+  roundBeforeNextGame.value?.managedRests ? roundBeforeNextGame.value : null
+);
+
 onMounted(async () => {
   if (!gameState.state) {
     await gameState.refresh();
@@ -164,9 +183,22 @@ async function advance(mode: 'day' | 'nextGame'): Promise<void> {
   await reload();
 }
 
-function playNextGame(): void {
+async function playNextGame(): Promise<void> {
+  // Con la jornada de antes a medias, el partido no se puede empezar todavía:
+  // primero se juega lo que queda de ella, igual que con «Ir a la jornada».
+  if (roundBeforeNextGame.value) {
+    const gameId = await seasonStore.advance('nextGame');
+    if (gameId) {
+      await router.push({ name: 'match', params: { gameId } });
+      return;
+    }
+    await reload();
+    if (roundBeforeNextGame.value) {
+      return;
+    }
+  }
   if (seasonStore.nextGame) {
-    void router.push({ name: 'match', params: { gameId: seasonStore.nextGame.gameId } });
+    await router.push({ name: 'match', params: { gameId: seasonStore.nextGame.gameId } });
   }
 }
 
@@ -318,8 +350,28 @@ function fixtureRound(fixture: FixtureEntry): string {
         {{ stage === 'finished' ? 'Temporada terminada' : 'Próximo partido' }}
       </AppSectionTitle>
 
+      <!-- Semana de descanso en una liga impar: la jornada se juega sin el club. -->
+      <div v-if="restingRound" class="mt-3 flex items-center justify-between">
+        <div>
+          <p class="text-xl">Jornada {{ restingRound.round }}: descansas</p>
+          <p class="text-sm text-court-300">
+            {{ formatMatchDate(restingRound.scheduledOn) }}
+            <template v-if="seasonStore.nextGame">
+              · Después: {{ seasonStore.nextGame.homeTeamName }} vs
+              {{ seasonStore.nextGame.awayTeamName }}
+            </template>
+          </p>
+        </div>
+        <div class="flex gap-2">
+          <AppButton :disabled="seasonStore.busy" @click="advance('day')"> Avanzar día </AppButton>
+          <AppButton variant="primary" :disabled="seasonStore.busy" @click="advance('nextGame')">
+            Ir a la jornada
+          </AppButton>
+        </div>
+      </div>
+
       <!-- Hay partido propio pendiente: lo normal durante toda la temporada. -->
-      <div v-if="seasonStore.nextGame" class="mt-3 flex items-center justify-between">
+      <div v-else-if="seasonStore.nextGame" class="mt-3 flex items-center justify-between">
         <div>
           <p class="text-xl">
             {{ seasonStore.nextGame.homeTeamName }}
@@ -335,7 +387,9 @@ function fixtureRound(fixture: FixtureEntry): string {
           <AppButton :disabled="seasonStore.busy" @click="advance('nextGame')">
             Ir a la jornada
           </AppButton>
-          <AppButton variant="primary" @click="playNextGame">Jugar partido</AppButton>
+          <AppButton variant="primary" :disabled="seasonStore.busy" @click="playNextGame">
+            Jugar partido
+          </AppButton>
         </div>
       </div>
 

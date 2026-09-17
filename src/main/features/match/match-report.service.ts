@@ -80,11 +80,12 @@ export class MatchReportService {
     }
 
     const competition = repository.competitionForGame(game.id);
-    const games = sameRound(new SeasonRepository(db), game);
-    const positions =
-      competition?.format === 'league' && !game.seriesId
-        ? standingsPositions(this.resolveDb, competition.id)
-        : new Map<string, number>();
+    const seasonRepository = new SeasonRepository(db);
+    const games = sameRound(seasonRepository, game);
+    const isLeagueRound = competition?.format === 'league' && !game.seriesId;
+    const positions = isLeagueRound
+      ? standingsPositions(this.resolveDb, competition.id)
+      : new Map<string, number>();
     const userTeam = repository.userTeamFor(game);
 
     const entries: RoundResultEntry[] = games.map((row) => ({
@@ -107,9 +108,33 @@ export class MatchReportService {
       roundLabel: roundLabel(repository, game),
       games: entries,
       pending: entries.filter((entry) => !entry.played).length,
+      resting: isLeagueRound
+        ? restingTeams(seasonRepository, game.seasonId, games).map((teamId) => ({
+            teamId,
+            teamName: repository.teamName(teamId),
+            position: positions.get(teamId) ?? null
+          }))
+        : [],
       mvp: roundMvp(db, repository, games)
     };
   }
+}
+
+/**
+ * Los equipos de la liga que no juegan en esa jornada: en una liga impar,
+ * el que descansa. Los equipos salen del calendario de la temporada y no de la
+ * competición, que con los ascensos ya puede tener a otros.
+ */
+function restingTeams(
+  repository: SeasonRepository,
+  seasonId: string,
+  roundGames: readonly GameRow[]
+): string[] {
+  const playing = new Set(roundGames.flatMap((row) => [row.homeTeamId, row.awayTeamId]));
+  const teams = new Set(
+    repository.listRegularGames(seasonId).flatMap((row) => [row.homeTeamId, row.awayTeamId])
+  );
+  return [...teams].filter((teamId) => !playing.has(teamId)).sort();
 }
 
 function previewTeam(

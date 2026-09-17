@@ -195,6 +195,34 @@ describe('simulateGame', () => {
     }
   });
 
+  it('sin recambios, las eliminaciones no dejan la pista vacía ni rompen el partido', () => {
+    // Cinco jugadores y eliminados a la primera falta: los dos equipos se
+    // quedan sin banquillo enseguida. Antes, con la pista vacía, o no había a
+    // quién cargar la falta o nadie anotaba y las prórrogas no acababan.
+    const ruleset = { ...FIBA_RULESET, personalFoulLimit: 1 };
+    for (let index = 0; index < 30; index += 1) {
+      const home = buildTestTeam('local', 60);
+      home.players = home.players.slice(0, 5);
+      const simulation = new GameSimulation({
+        gameId: `sin-banquillo-${index}`,
+        home,
+        away: buildTestTeam('visitante', 60),
+        ruleset
+      });
+      const onCourt = (teamId: string): number =>
+        simulation.liveBench(teamId)?.players.filter((player) => player.onCourt).length ?? 0;
+      // Con un tope de posesiones: si el partido no acabara, que falle y no se cuelgue.
+      for (let guard = 0; !simulation.isFinished && guard < 2_000; guard += 1) {
+        simulation.playPossession();
+        expect(onCourt('local')).toBeGreaterThanOrEqual(2);
+        expect(onCourt('visitante')).toBeGreaterThanOrEqual(2);
+      }
+      expect(simulation.isFinished).toBe(true);
+      const { home: local, away: visitante } = simulation.result;
+      expect(teamPoints(local.boxScores)).not.toBe(teamPoints(visitante.boxScores));
+    }
+  });
+
   it('el mejor equipo gana la clara mayoría de los partidos', () => {
     let mejores = 0;
     for (let index = 0; index < 40; index += 1) {

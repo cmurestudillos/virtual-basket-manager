@@ -46,6 +46,10 @@ describe('coste de una liga', () => {
     expect(estimateLeagueGames({ teams: 18, playoffTeams: 0, playoffSeriesLength: 5 })).toBe(306);
   });
 
+  it('diecisiete equipos, con un descanso por jornada, son 272: 16 partidos por vuelta cada uno', () => {
+    expect(estimateLeagueGames({ teams: 17, playoffTeams: 0, playoffSeriesLength: 5 })).toBe(272);
+  });
+
   it('los playoffs suman, pero menos que su máximo: las series rara vez se juegan enteras', () => {
     const sinPlayoffs = estimateLeagueGames({ teams: 18, playoffTeams: 0, playoffSeriesLength: 5 });
     const conPlayoffs = estimateLeagueGames({ teams: 18, playoffTeams: 8, playoffSeriesLength: 5 });

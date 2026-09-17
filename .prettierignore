@@ -8,3 +8,6 @@ release
 release-private
 resources/real-data
 pnpm-lock.yaml
+.real-data-cache
+# Recortes de HTML de las webs de datos: tienen que quedarse tal y como los sirve la web.
+scripts/real-data/tests/fixtures

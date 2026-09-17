@@ -56,6 +56,18 @@ export class GameAlreadyPlayedError extends Error {
 }
 
 /**
+ * Un partido de liga que se adelanta a su jornada. En una liga impar, la semana
+ * que descansa el club su próximo partido es el de la jornada siguiente, y
+ * jugarlo antes de que se cierre la de ahora descuadraría el calendario.
+ */
+export class EarlierRoundPendingError extends Error {
+  constructor(round: number) {
+    super(`Antes hay que jugar la jornada ${round}`);
+    this.name = 'EarlierRoundPendingError';
+  }
+}
+
+/**
  * Partidos del usuario en curso, uno por partida.
  *
  * Vive en memoria a propósito y no en la base de datos: un partido a medias no
@@ -89,6 +101,7 @@ export class MatchService {
     const db = this.resolveDb();
     const repository = new MatchRepository(db);
     const game = requireUnplayedGame(repository, gameId);
+    requireRoundInTurn(repository, game);
 
     const simulation = new GameSimulation({
       gameId: game.id,
@@ -548,6 +561,20 @@ function requireUnplayedGame(repository: MatchRepository, gameId: string): GameR
     throw new GameAlreadyPlayedError(gameId);
   }
   return game;
+}
+
+/**
+ * Un partido de liga regular sólo se juega con las jornadas anteriores cerradas.
+ * Las eliminatorias, la Copa, Europa y las selecciones van por fecha y no entran.
+ */
+function requireRoundInTurn(repository: MatchRepository, game: GameRow): void {
+  if (game.seriesId !== null || repository.competitionForGame(game.id)?.format !== 'league') {
+    return;
+  }
+  const pendingRound = repository.firstPendingRound(game.seasonId);
+  if (pendingRound !== null && pendingRound < game.round) {
+    throw new EarlierRoundPendingError(pendingRound);
+  }
 }
 
 function toMatchState(

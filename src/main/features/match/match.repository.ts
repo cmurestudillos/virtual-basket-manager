@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNull } from 'drizzle-orm';
 import type { Position } from '@shared/domain/positions';
 import { RULESETS, type Ruleset } from '@shared/domain/rulesets';
 import type { GameResult, PeriodScore } from '@shared/engine/basketball';
@@ -164,6 +164,24 @@ export class MatchRepository {
       .all();
 
     return new Map(rows.map((row) => [row.id, `${row.firstName.charAt(0)}. ${row.lastName}`]));
+  }
+
+  /** La primera jornada de liga regular de una temporada que aún tiene partidos sin jugar. */
+  firstPendingRound(seasonId: string): number | null {
+    const row = this.db
+      .select({ round: gamesTable.round })
+      .from(gamesTable)
+      .where(
+        and(
+          eq(gamesTable.seasonId, seasonId),
+          isNull(gamesTable.seriesId),
+          isNull(gamesTable.homeScore)
+        )
+      )
+      .orderBy(asc(gamesTable.round))
+      .get();
+
+    return row?.round ?? null;
   }
 
   listBoxScores(gameId: string): GamePlayerStatsRow[] {

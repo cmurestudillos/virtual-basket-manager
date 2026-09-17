@@ -69,6 +69,15 @@ export class MarketRepository {
     return this.listRoster(teamId).length;
   }
 
+  /** Equipos de una competición: de ahí sale cuántos partidos se juegan en casa. */
+  countTeamsInCompetition(competitionId: string): number {
+    return this.db
+      .select({ id: teamsTable.id })
+      .from(teamsTable)
+      .where(eq(teamsTable.competitionId, competitionId))
+      .all().length;
+  }
+
   seasonWagesCents(teamId: string): number {
     const row = this.db
       .select({ total: sql<number>`coalesce(sum(${playersTable.wageCents}), 0)` })

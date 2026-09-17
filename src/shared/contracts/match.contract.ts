@@ -270,6 +270,8 @@ export interface RoundResults {
   games: RoundResultEntry[];
   /** Partidos de la jornada que todavía no se han jugado. */
   pending: number;
+  /** Quién descansa esa jornada: sólo pasa en ligas de número impar. */
+  resting: { teamId: string; teamName: string; position: number | null }[];
   /** `null` mientras no se haya jugado ninguno. */
   mvp: RoundMvp | null;
 }
