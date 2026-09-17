@@ -255,7 +255,8 @@ function back(): void {
         </li>
         <li class="text-xs text-court-300">
           Avatares generados con DiceBear, banderas de flag-icons y pista 3D con three.js (las tres
-          con licencia MIT). Clubes, jugadores y competiciones son inventados.
+          con licencia MIT). Tipografía Signika, de The Signika Project Authors (SIL Open Font
+          License 1.1). Clubes, jugadores y competiciones son inventados.
         </li>
       </ul>
     </AppPanel>

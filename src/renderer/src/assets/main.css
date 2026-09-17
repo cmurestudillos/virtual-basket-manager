@@ -33,26 +33,72 @@
   --color-bad-500: #ef4444;
   --color-bad-400: #f87171;
 
-  /* La piel de la retransmisión: la del partido, su previa y la jornada. Sale
-     de International Basketball Manager —cromo morado, rótulos añil y tablas
-     claras— y sólo se usa en esas pantallas; el resto del juego sigue siendo
-     la pista de noche de arriba. */
+  /* La piel del juego: marco oscuro con paneles claros, como International
+     Basketball Manager 23. Se llama `tv` porque nació en la retransmisión del
+     partido (2026-09-16); desde el 2026-09-17 es la de toda la aplicación y la
+     pista de noche de arriba se va retirando pantalla a pantalla. Los valores
+     están medidos en las capturas; ver docs/DESIGN-SYSTEM.md. */
+
+  /* Morados y añiles: rótulos, previa y fondos del partido. */
   --color-tv-950: #0d0726;
   --color-tv-900: #170c42;
   --color-tv-800: #21146a;
   --color-tv-700: #2f2090;
   --color-tv-600: #4b3bb0;
-  --color-tv-paper: #f2f2f6;
-  --color-tv-cell: #e2e2ea;
-  --color-tv-ink: #1c1b2e;
+  /* Rótulo de panel y de tabla: degradado horizontal. */
+  --color-tv-head-from: #160d35;
+  --color-tv-head-to: #1c006d;
+
+  /* Marco. */
+  --color-tv-chrome: #321c5f;
+  --color-tv-chrome-2: #180060;
+  --color-tv-bar: #181818;
+  --color-tv-rail: #171717;
+  --color-tv-footer: #0e0e0e;
+  --color-tv-slab: #1c1c22;
+
+  /* Papel: el cuerpo de los paneles y sus celdas. */
+  --color-tv-paper: #f2f2f2;
+  --color-tv-cell: #e5e5e5;
+  --color-tv-cell-strong: #c9cdd2;
+  --color-tv-box: #b6b9be;
+  --color-tv-ink: #303030;
   --color-tv-muted: #6d6c85;
-  --color-tv-blue: #1d8fff;
-  --color-tv-blue-dim: #3a4f9c;
-  --color-tv-amber: #f6c20f;
-  --color-tv-green: #3bc55a;
-  --color-tv-red: #dc4444;
+
+  /* Lo que se pulsa y lo que es tuyo. */
+  --color-tv-blue: #0090ff;
+  --color-tv-blue-dim: #004880;
+  --color-tv-blue-dim-ink: #8090a8;
+  --color-tv-select: #a6d5fa;
+  --color-tv-cyan: #16cef2;
+
+  /* Estados sobre papel: sube / baja, gana / pierde, zona de playoff / descenso. */
+  --color-tv-green: #00a516;
+  --color-tv-red: #c20000;
+  --color-tv-red-deep: #7f0000;
+  --color-tv-strong: #b2e0b2;
+  --color-tv-amber: #f8b800;
+
+  /* La escala de cualquier valor de 0 a 100 (media, forma, moral, confianza):
+     cuatro tramos, los de IBM: 80 o más, 70-79, 60-69 y por debajo de 60. */
+  --color-tv-rate-top: #50c038;
+  --color-tv-rate-high: #a8d010;
+  --color-tv-rate-mid: #f8b800;
+  --color-tv-rate-low: #e80000;
+
+  /* Estrellas sobre su caja negra. */
+  --color-tv-star-off: #086880;
+  --color-tv-star-box: #181820;
+
+  /* Tarjeta de partido y días de competición en el calendario. */
+  --color-tv-competition: #f06000;
+  --color-tv-competition-deep: #a03800;
+
+  /* Fondo decorativo: menú, asistente y pantallas vacías. */
   --color-tv-magenta: #b8175e;
   --color-tv-orange: #ff6b3d;
+  --color-tv-deco-plum: #850459;
+  --color-tv-deco-petrol: #004e62;
 }
 
 html,
@@ -66,6 +112,7 @@ body {
   background-color: var(--color-court-950);
   color: var(--color-court-100);
   font-family:
+    'Signika',
     'Segoe UI',
     system-ui,
     -apple-system,
