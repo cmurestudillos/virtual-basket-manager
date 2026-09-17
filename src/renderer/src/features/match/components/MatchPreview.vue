@@ -14,11 +14,16 @@ import type {
   MatchScouting
 } from '@shared/contracts/match.contract';
 import type { CourtSide, Kit } from '@shared/domain/court';
-import { POSITION_ABBREVIATIONS, POSITION_LABELS } from '@shared/domain/positions';
-import { AppAvatar, AppFlag } from '@renderer/shared/ui';
-import BroadcastBackdrop from './BroadcastBackdrop.vue';
-import BroadcastButton from './BroadcastButton.vue';
-import TeamBadge from './TeamBadge.vue';
+import {
+  AppAvatar,
+  AppBackdrop,
+  AppButton,
+  AppFlag,
+  AppRing,
+  PlayerName,
+  PositionChip,
+  TeamBadge
+} from '@renderer/shared/ui';
 
 const ArenaBackdrop = defineAsyncComponent(() => import('./ArenaBackdrop.vue'));
 
@@ -46,21 +51,6 @@ function next(): void {
   } else {
     emit('done');
   }
-}
-
-function lastName(name: string): string {
-  const [, ...rest] = name.split(/\s+/);
-  return (rest.length > 0 ? rest.join(' ') : name).toUpperCase();
-}
-
-function firstName(name: string): string {
-  return name.split(/\s+/)[0] ?? '';
-}
-
-/** Anillo de media: verde de pleno a partir de 80, como el de IBM. */
-function ringDash(overall: number): string {
-  const length = 2 * Math.PI * 20;
-  return `${(Math.min(99, overall) / 99) * length} ${length}`;
 }
 
 function figure(averages: MatchPreviewAverages | null, key: keyof MatchPreviewAverages): string {
@@ -94,7 +84,7 @@ function keyPlayerOf(team: MatchPreviewTeam) {
       :away-kit="kits.away"
       @failed="arenaFailed = true"
     />
-    <BroadcastBackdrop v-else class="absolute inset-0" />
+    <AppBackdrop v-else class="absolute inset-0" />
 
     <div class="relative flex h-full flex-col">
       <!-- Cabecera: competición, cruce y pabellón -->
@@ -146,9 +136,9 @@ function keyPlayerOf(team: MatchPreviewTeam) {
           >
             Saltar previa
           </button>
-          <BroadcastButton arrow="single" class="min-w-44" @click="next">
+          <AppButton variant="primary" arrow="single" class="min-w-44" @click="next">
             Continuar
-          </BroadcastButton>
+          </AppButton>
         </div>
       </header>
 
@@ -199,52 +189,10 @@ function keyPlayerOf(team: MatchPreviewTeam) {
                     :size="56"
                   />
                   <div class="min-w-0 flex-1">
-                    <p class="truncate text-sm">{{ firstName(player.playerName) }}</p>
-                    <p class="truncate text-base font-bold">{{ lastName(player.playerName) }}</p>
-                    <span
-                      class="mt-1 inline-block rounded bg-tv-blue px-1.5 text-xs font-bold"
-                      :title="POSITION_LABELS[player.position]"
-                    >
-                      {{ POSITION_ABBREVIATIONS[player.position] }}
-                    </span>
+                    <PlayerName :name="player.playerName" mode="stacked" />
+                    <PositionChip :position="player.position" class="mt-1" />
                   </div>
-                  <svg
-                    viewBox="0 0 48 48"
-                    class="h-14 w-14 shrink-0"
-                    role="img"
-                    :aria-label="`Media ${player.overall}`"
-                  >
-                    <circle
-                      cx="24"
-                      cy="24"
-                      r="20"
-                      fill="rgba(0,0,0,0.55)"
-                      stroke="rgba(255,255,255,0.15)"
-                      stroke-width="5"
-                    />
-                    <circle
-                      cx="24"
-                      cy="24"
-                      r="20"
-                      fill="none"
-                      stroke="var(--color-tv-green)"
-                      stroke-width="5"
-                      stroke-linecap="round"
-                      :stroke-dasharray="ringDash(player.overall)"
-                      transform="rotate(-90 24 24)"
-                    />
-                    <text
-                      x="24"
-                      y="25"
-                      text-anchor="middle"
-                      dominant-baseline="middle"
-                      fill="white"
-                      font-size="15"
-                      font-weight="700"
-                    >
-                      {{ player.overall }}
-                    </text>
-                  </svg>
+                  <AppRing :value="player.overall" label="" :size="56" class="shrink-0" />
                 </li>
               </ul>
             </div>

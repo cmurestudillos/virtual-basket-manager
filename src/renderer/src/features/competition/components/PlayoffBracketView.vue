@@ -1,12 +1,16 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { PlayoffBracket } from '@shared/contracts/season.contract';
-import { AppEmpty, AppSectionTitle } from '@renderer/shared/ui';
+import { AppEmpty, AppPanel } from '@renderer/shared/ui';
+import { useGameStateStore } from '@renderer/shared/game-state.store';
+import BracketColumns from '@renderer/features/competition/components/BracketColumns.vue';
+import ChampionBanner from '@renderer/features/competition/components/ChampionBanner.vue';
 import SeriesCard from '@renderer/features/competition/components/SeriesCard.vue';
 
 /** Liga del cuadro; sin ella, la del club. */
 const props = defineProps<{ competitionId?: string }>();
 
+const store = useGameStateStore();
 const bracket = ref<PlayoffBracket | null>(null);
 const loaded = ref(false);
 
@@ -14,31 +18,40 @@ onMounted(async () => {
   bracket.value = await window.api.season.getPlayoffs(props.competitionId);
   loaded.value = true;
 });
+
+const columns = computed(() =>
+  (bracket.value?.rounds ?? []).map((round) => ({
+    key: round.round,
+    title: round.name,
+    note: round.bestOf === 1 ? 'Partido único' : `Al mejor de ${round.bestOf}`,
+    items: round.series
+  }))
+);
 </script>
 
 <template>
-  <div v-if="loaded" class="flex flex-col gap-6">
-    <AppEmpty v-if="!bracket">
-      El cuadro se monta cuando acabe la liga regular: los ocho primeros se clasifican y el factor
-      cancha va por clasificación.
-    </AppEmpty>
+  <div v-if="loaded" class="flex flex-col gap-4">
+    <AppPanel v-if="!bracket" title="Playoffs">
+      <AppEmpty>
+        El cuadro se monta cuando acabe la liga regular: los ocho primeros se clasifican y el factor
+        cancha va por clasificación.
+      </AppEmpty>
+    </AppPanel>
 
     <template v-else>
-      <p v-if="bracket.championTeamName" class="text-lg">
-        <span class="text-court-300">Campeón:</span>
-        <span class="ml-2 font-semibold text-ball-400">{{ bracket.championTeamName }}</span>
-      </p>
+      <ChampionBanner
+        v-if="bracket.championTeamName"
+        label="Campeón"
+        :team-id="bracket.championTeamId"
+        :team-name="bracket.championTeamName"
+        :mine="bracket.championTeamId === store.state?.teamId"
+      />
 
-      <section v-for="round in bracket.rounds" :key="round.round" class="flex flex-col gap-2">
-        <AppSectionTitle
-          :hint="round.bestOf === 1 ? '· partido único' : `· al mejor de ${round.bestOf}`"
-          >{{ round.name }}</AppSectionTitle
-        >
-
-        <ul class="grid gap-2 md:grid-cols-2">
-          <SeriesCard v-for="series in round.series" :key="series.seriesId" :series="series" />
-        </ul>
-      </section>
+      <BracketColumns :columns="columns" :item-key="(series) => series.seriesId">
+        <template #item="{ item }">
+          <SeriesCard :series="item" />
+        </template>
+      </BracketColumns>
     </template>
   </div>
 </template>

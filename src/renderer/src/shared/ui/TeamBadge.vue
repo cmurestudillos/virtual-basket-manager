@@ -1,16 +1,19 @@
 <script setup lang="ts">
 /**
- * El escudo de un equipo en la retransmisión.
+ * El escudo de un equipo: en la retransmisión, en la barra de arriba del juego
+ * y en el botón de CONTINUAR con el rival que toca.
  *
  * Los clubes no tienen escudo propio —el mundo es inventado y no hay imágenes—,
  * así que se dibuja uno con los colores de su equipación y sus iniciales. Sale
  * siempre igual para el mismo club porque la equipación sale de su id: el
  * jugador aprende a reconocer al rival por el color, como con un escudo de
  * verdad. Una selección lleva su bandera.
+ *
+ * Vive en el kit desde que lo usa el marco (fase 2): nació en `features/match`.
  */
 import { computed } from 'vue';
 import type { Kit } from '@shared/domain/court';
-import { AppFlag } from '@renderer/shared/ui';
+import AppFlag from './AppFlag.vue';
 
 const props = withDefaults(
   defineProps<{ name: string; kit: Kit; nationOf?: string | null; size?: number }>(),

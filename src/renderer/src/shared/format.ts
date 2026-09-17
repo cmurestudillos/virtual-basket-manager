@@ -20,8 +20,9 @@ export function formatGameDate(milliseconds: number): string {
   return DATE.format(new Date(milliseconds));
 }
 
+/** Altura en metros, con la coma decimal: «2,06 m». */
 export function formatHeight(centimetres: number): string {
-  return `${(centimetres / 100).toFixed(2)} m`;
+  return `${(centimetres / 100).toFixed(2).replace('.', ',')} m`;
 }
 
 const MATCH_DATE = new Intl.DateTimeFormat('es-ES', {

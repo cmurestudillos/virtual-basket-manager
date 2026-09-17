@@ -29,10 +29,7 @@ import {
 } from '@shared/domain/court';
 import { formatGameClock, periodName, visibleLineCount } from '@shared/domain/play-by-play';
 import { useSeasonStore } from '@renderer/features/season/season.store';
-import BroadcastBackdrop from '../components/BroadcastBackdrop.vue';
-import BroadcastButton from '../components/BroadcastButton.vue';
-import BroadcastDrawer from '../components/BroadcastDrawer.vue';
-import BroadcastPanel from '../components/BroadcastPanel.vue';
+import { AppBackdrop, AppButton, AppDrawer, AppPanel } from '@renderer/shared/ui';
 import CommentaryCards from '../components/CommentaryCards.vue';
 import FullBoxScore from '../components/FullBoxScore.vue';
 import LiveBench from '../components/LiveBench.vue';
@@ -539,11 +536,11 @@ async function leaveResults(): Promise<void> {
       @done="stage = 'match'"
     />
 
-    <BroadcastBackdrop v-else-if="state && stage === 'results' && results">
+    <AppBackdrop v-else-if="state && stage === 'results' && results">
       <RoundResultsView :results="results" :busy="busy" @continue="leaveResults" />
-    </BroadcastBackdrop>
+    </AppBackdrop>
 
-    <BroadcastBackdrop v-else-if="state && shown">
+    <AppBackdrop v-else-if="state && shown">
       <div class="flex min-h-screen flex-col">
         <MatchScoreboard
           :round-label="state.roundLabel"
@@ -581,66 +578,70 @@ async function leaveResults(): Promise<void> {
           <template #actions>
             <!-- Repetición de un partido ya jugado. -->
             <template v-if="replaying">
-              <BroadcastButton
+              <AppButton
+                variant="primary"
                 arrow="single"
                 @click="playback.paused.value ? playback.resume() : playback.pause()"
               >
                 {{ playback.paused.value ? 'Reanudar' : 'Pausa' }}
-              </BroadcastButton>
-              <BroadcastButton variant="muted" @click="stopReplay">
-                Terminar repetición
-              </BroadcastButton>
+              </AppButton>
+              <AppButton variant="secondary" @click="stopReplay">Terminar repetición</AppButton>
             </template>
 
             <!-- Partido en vivo con el reloj en marcha. -->
             <template v-else-if="inLive && !live.periodEnded.value">
-              <BroadcastButton
+              <AppButton
+                variant="primary"
                 arrow="single"
                 @click="live.paused.value ? live.resume() : live.pause()"
               >
                 {{ live.paused.value ? 'Reanudar' : 'Pausa' }}
-              </BroadcastButton>
-              <BroadcastButton arrow="double" @click="live.skipPeriod">
+              </AppButton>
+              <AppButton variant="primary" arrow="double" @click="live.skipPeriod">
                 Saltar cuarto
-              </BroadcastButton>
+              </AppButton>
             </template>
 
             <!-- Diferido: el cuarto se está retransmitiendo. -->
             <template v-else-if="running">
-              <BroadcastButton arrow="single" disabled>Jugar</BroadcastButton>
-              <BroadcastButton arrow="double" @click="playback.skip">Saltar cuarto</BroadcastButton>
+              <AppButton variant="primary" arrow="single" disabled>Jugar</AppButton>
+              <AppButton variant="primary" arrow="double" @click="playback.skip">
+                Saltar cuarto
+              </AppButton>
             </template>
 
             <!-- Entre cuartos: jugar el siguiente dirigiendo o pasarlo simulado. -->
             <template v-else-if="playable">
-              <BroadcastButton arrow="single" :disabled="busy" @click="playLive">
+              <AppButton variant="primary" arrow="single" :disabled="busy" @click="playLive">
                 Jugar
-              </BroadcastButton>
-              <BroadcastButton
+              </AppButton>
+              <AppButton
+                variant="primary"
                 arrow="double"
                 :disabled="busy"
                 @click="inLive ? leaveLive() : advance()"
               >
                 Pasar cuarto
-              </BroadcastButton>
+              </AppButton>
             </template>
 
             <template v-else-if="state.finished">
-              <BroadcastButton
+              <AppButton
                 v-if="state.managedSide"
+                variant="primary"
                 arrow="single"
                 :disabled="busy"
                 @click="continueToRound"
               >
                 Continuar
-              </BroadcastButton>
-              <BroadcastButton
+              </AppButton>
+              <AppButton
                 v-if="state.playByPlay && state.playByPlay.length > 0"
-                variant="muted"
+                variant="secondary"
                 @click="startReplay()"
               >
                 Ver repetición
-              </BroadcastButton>
+              </AppButton>
             </template>
             <p v-else class="text-sm text-white/70">Partido de otros equipos</p>
           </template>
@@ -738,12 +739,12 @@ async function leaveResults(): Promise<void> {
                 :kits="kits"
                 :regulation-periods="state.regulationPeriods"
               />
-              <BroadcastPanel v-else title="Comentarios">
+              <AppPanel v-else title="Comentarios">
                 <p class="p-3 text-center text-sm text-tv-muted">
                   De los partidos entre otros equipos sólo se guarda el acta: la retransmisión se
                   queda para los tuyos.
                 </p>
-              </BroadcastPanel>
+              </AppPanel>
             </div>
             <TeamBoxCard :lines="shown.away.boxScores" :managed="state.managedSide === 'away'" />
           </div>
@@ -772,7 +773,7 @@ async function leaveResults(): Promise<void> {
 
           <!-- Vista 2D: la pista, con los últimos comentarios al lado. -->
           <div v-else class="grid grid-cols-[minmax(0,2.2fr)_minmax(0,1fr)] gap-4">
-            <BroadcastPanel title="Vista 2D" flush>
+            <AppPanel title="Vista 2D" flush>
               <MatchCourt
                 v-if="courtEvents.length > 0"
                 :events="courtEvents"
@@ -789,7 +790,7 @@ async function leaveResults(): Promise<void> {
                     : 'La pista se mueve en cuanto empiece el partido.'
                 }}
               </p>
-            </BroadcastPanel>
+            </AppPanel>
             <CommentaryCards
               :lines="visibleLines"
               :home-name="state.home.teamName"
@@ -809,37 +810,34 @@ async function leaveResults(): Promise<void> {
           >
             Los mandos del banquillo se usan jugando el cuarto en directo.
           </p>
-          <BroadcastButton
-            variant="muted"
-            class="min-w-56 justify-center"
+          <AppButton
+            variant="secondary"
+            class="min-w-56"
             :disabled="!timeoutEnabled"
             @click="onTimeout"
           >
             Tiempo muerto: {{ inLive ? live.timeoutsLeft.value : '-' }}
-          </BroadcastButton>
-          <BroadcastButton
-            class="min-w-56 justify-center"
+          </AppButton>
+          <AppButton
+            variant="primary"
+            class="min-w-56"
             :disabled="!benchEnabled || !liveTactics"
             @click="drawer = 'tactics'"
           >
             Tácticas
-          </BroadcastButton>
-          <BroadcastButton
-            variant="muted"
-            class="min-w-56 justify-center"
+          </AppButton>
+          <AppButton
+            variant="secondary"
+            class="min-w-56"
             :disabled="!benchEnabled"
             @click="drawer = 'bench'"
           >
             Sustituciones
-          </BroadcastButton>
+          </AppButton>
         </footer>
       </div>
 
-      <BroadcastDrawer
-        v-if="drawer === 'bench' && inLive"
-        title="Sustituciones"
-        @close="drawer = null"
-      >
+      <AppDrawer v-if="drawer === 'bench' && inLive" title="Sustituciones" @close="drawer = null">
         <LiveBench
           :on-court="live.onCourt.value"
           :benched="live.benched.value"
@@ -849,8 +847,8 @@ async function leaveResults(): Promise<void> {
           @substitute="onSubstitute"
           @auto-rotation="onAutoRotation"
         />
-      </BroadcastDrawer>
-      <BroadcastDrawer
+      </AppDrawer>
+      <AppDrawer
         v-if="drawer === 'tactics' && inLive && liveTactics"
         title="Tácticas"
         @close="drawer = null"
@@ -863,7 +861,7 @@ async function leaveResults(): Promise<void> {
           :disabled="live.finished.value"
           @change="onTacticsChange"
         />
-      </BroadcastDrawer>
-    </BroadcastBackdrop>
+      </AppDrawer>
+    </AppBackdrop>
   </div>
 </template>

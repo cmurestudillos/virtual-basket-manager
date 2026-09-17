@@ -7,7 +7,7 @@
 import { computed } from 'vue';
 import type { BoxScoreLine } from '@shared/contracts/match.contract';
 import { percentage } from '@shared/domain/box-score';
-import BroadcastPanel from './BroadcastPanel.vue';
+import { AppPanel } from '@renderer/shared/ui';
 
 const props = defineProps<{
   home: readonly BoxScoreLine[];
@@ -51,7 +51,7 @@ const rows = computed(() => {
 </script>
 
 <template>
-  <BroadcastPanel flush>
+  <AppPanel flush>
     <template #header>
       <span class="grid w-full grid-cols-[1fr_1.4fr_1fr] text-center text-xs">
         <span>Local</span>
@@ -68,5 +68,5 @@ const rows = computed(() => {
         </tr>
       </tbody>
     </table>
-  </BroadcastPanel>
+  </AppPanel>
 </template>

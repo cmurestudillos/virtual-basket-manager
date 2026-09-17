@@ -1,60 +1,64 @@
 <script setup lang="ts">
+/**
+ * El menú de inicio, sobre el fondo morado con franjas: es de las pocas
+ * pantallas que lo llevan (menú, asistente y vacíos). IBM no tiene captura de
+ * su menú; se sigue el asistente de nueva partida: título blanco y botones
+ * grandes azules en mayúsculas.
+ *
+ * Son enlaces y no botones: cada uno abre una ruta, y el arnés los busca así.
+ */
+import { AppBackdrop, AppButton, AppPanel } from '@renderer/shared/ui';
 import { useUpdates } from '@renderer/features/updates/useUpdates';
 
 const version = __APP_VERSION__;
 /** Una versión descargada se anuncia en el menú: es donde se reinicia sin perder nada. */
 const updates = useUpdates();
+
+const ITEMS = [
+  { route: 'new-game', label: 'Nueva partida' },
+  { route: 'saves', label: 'Cargar partida' },
+  { route: 'world-editor', label: 'Editor del mundo' },
+  { route: 'settings', label: 'Ajustes' }
+] as const;
 </script>
 
 <template>
-  <div class="flex h-screen flex-col items-center justify-center gap-10">
-    <div class="text-center">
-      <h1 class="text-5xl font-bold tracking-tight text-ball-500">Triple Manager</h1>
-      <p class="mt-2 text-court-300">Manager de baloncesto</p>
+  <AppBackdrop class="h-screen">
+    <div class="relative flex h-screen flex-col items-center justify-center gap-10 px-4">
+      <div class="text-center">
+        <h1 class="text-6xl font-bold uppercase tracking-wide text-white">Triple Manager</h1>
+        <p class="mt-2 text-lg text-white/80">Manager de baloncesto</p>
+      </div>
+
+      <nav aria-label="Menú principal" class="flex w-80 flex-col gap-3">
+        <RouterLink
+          v-for="item in ITEMS"
+          :key="item.route"
+          :to="{ name: item.route }"
+          class="bg-tv-blue px-8 py-3 text-center text-base font-bold uppercase tracking-wide text-white transition hover:brightness-110"
+        >
+          {{ item.label }}
+        </RouterLink>
+      </nav>
+
+      <div
+        v-if="updates.view.value?.state.status === 'downloaded'"
+        class="w-full max-w-md"
+        role="status"
+      >
+        <AppPanel title="Actualización">
+          <div class="flex items-center justify-between gap-4 text-sm">
+            <span
+              >La versión {{ updates.view.value.state.version }} está lista para instalarse.</span
+            >
+            <AppButton variant="primary" size="sm" @click="updates.install">
+              Reiniciar e instalar
+            </AppButton>
+          </div>
+        </AppPanel>
+      </div>
+
+      <p class="figure absolute bottom-4 text-xs text-white/50">v{{ version }}</p>
     </div>
-
-    <nav class="flex w-64 flex-col gap-3">
-      <RouterLink
-        :to="{ name: 'new-game' }"
-        class="rounded bg-ball-600 px-4 py-3 text-center font-semibold hover:bg-ball-500"
-      >
-        Nueva partida
-      </RouterLink>
-      <RouterLink
-        :to="{ name: 'saves' }"
-        class="rounded border border-court-600 px-4 py-3 text-center hover:bg-court-800"
-      >
-        Cargar partida
-      </RouterLink>
-      <RouterLink
-        :to="{ name: 'world-editor' }"
-        class="rounded border border-court-700 px-4 py-3 text-center text-court-300 hover:bg-court-800"
-      >
-        Editor del mundo
-      </RouterLink>
-      <RouterLink
-        :to="{ name: 'settings' }"
-        class="rounded border border-court-700 px-4 py-3 text-center text-court-300 hover:bg-court-800"
-      >
-        Ajustes
-      </RouterLink>
-    </nav>
-
-    <div
-      v-if="updates.view.value?.state.status === 'downloaded'"
-      class="flex items-center gap-4 rounded border border-ball-500 px-4 py-3 text-sm"
-      role="status"
-    >
-      <span> La versión {{ updates.view.value.state.version }} está lista para instalarse. </span>
-      <button
-        type="button"
-        class="rounded bg-ball-600 px-3 py-1.5 font-semibold hover:bg-ball-500"
-        @click="updates.install"
-      >
-        Reiniciar e instalar
-      </button>
-    </div>
-
-    <p class="absolute bottom-4 text-xs text-court-600">v{{ version }}</p>
-  </div>
+  </AppBackdrop>
 </template>

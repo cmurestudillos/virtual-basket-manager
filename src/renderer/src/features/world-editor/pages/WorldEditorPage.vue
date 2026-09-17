@@ -10,6 +10,10 @@
  *
  * Todo se guarda como diferencia sobre el original, así que restaurar un club o
  * el mundo entero siempre es posible.
+ *
+ * Con la piel de IBM, aunque IBM no tiene nada parecido: barra morada arriba,
+ * paneles claros sobre el fondo liso, campos negros como los de su asistente y
+ * la barra negra de abajo con lo que acaba de pasar y las acciones generales.
  */
 import { computed, onMounted, ref, watch } from 'vue';
 import type {
@@ -19,14 +23,22 @@ import type {
   EditorTeam
 } from '@shared/contracts/world-editor.contract';
 import { ATTRIBUTE_GROUPS, ATTRIBUTE_LABELS, type AttributeKey } from '@shared/domain/attributes';
-import { POSITIONS, POSITION_LABELS } from '@shared/domain/positions';
+import { POSITION_LABELS, POSITIONS, type Position } from '@shared/domain/positions';
+import { countryName } from '@shared/domain/simulation-scope';
+import { toStars } from '@shared/domain/stars';
 import {
   AppAvatar,
   AppButton,
   AppField,
   AppFlag,
-  AppPageHeader,
-  AppPanel
+  AppInput,
+  AppPanel,
+  AppRing,
+  AppSectionTitle,
+  AppSelect,
+  AppStars,
+  PlayerName,
+  PositionChip
 } from '@renderer/shared/ui';
 
 const overview = ref<EditorOverview | null>(null);
@@ -98,6 +110,18 @@ const teamsInLeague = computed(() => {
     .sort((a, b) => b.reputation - a.reputation);
 });
 
+/** El selector negro no tiene grupos: el país va detrás del nombre de la liga. */
+const leagueOptions = computed(() =>
+  leaguesByCountry.value.flatMap(([country, rows]) =>
+    rows.map((row) => ({ id: row.competitionId, label: `${row.name} · ${countryName(country)}` }))
+  )
+);
+
+const positionOptions = POSITIONS.map((position) => ({
+  id: position,
+  label: POSITION_LABELS[position]
+}));
+
 const player = computed<EditorPlayer | null>(
   () => team.value?.players.find((row) => row.playerId === playerId.value) ?? null
 );
@@ -112,6 +136,12 @@ const moveTargets = computed(() =>
           Number(a.competitionId === team.value?.competitionId) || a.name.localeCompare(b.name)
     )
 );
+
+/** «Elegir club…» es la opción vacía: sin club elegido, «Mover» no hace nada. */
+const moveOptions = computed(() => [
+  { id: '', label: 'Elegir club…' },
+  ...moveTargets.value.map((row) => ({ id: row.teamId, label: `${row.name} (${row.rosterSize})` }))
+]);
 
 const editedLabel = computed(() => {
   const view = overview.value;
@@ -270,153 +300,123 @@ function attributeKeys(group: keyof typeof ATTRIBUTE_GROUPS): readonly Attribute
 </script>
 
 <template>
-  <div class="mx-auto flex h-screen max-w-7xl flex-col gap-4 p-8">
-    <header class="flex flex-wrap items-center justify-between gap-4">
-      <AppPageHeader title="Editor del mundo">
-        <span class="text-sm text-court-300">{{ editedLabel }}</span>
-      </AppPageHeader>
-      <div class="flex items-center gap-3">
-        <AppButton
-          size="sm"
-          :variant="confirmResetAll ? 'primary' : 'ghost'"
-          :disabled="busy"
-          @click="resetAll"
-        >
-          {{ confirmResetAll ? 'Confirmar: restaurar todo' : 'Restaurar todo' }}
-        </AppButton>
-        <RouterLink :to="{ name: 'main-menu' }" class="text-sm text-court-300 hover:text-court-100">
-          Volver
-        </RouterLink>
+  <div class="flex h-screen flex-col bg-tv-canvas">
+    <header
+      class="flex h-16 shrink-0 items-center justify-between gap-6 bg-linear-to-r from-tv-chrome to-tv-chrome-2 px-6"
+    >
+      <div class="min-w-0">
+        <h1 class="text-lg font-bold uppercase tracking-wide">Editor del mundo</h1>
+        <p class="truncate text-sm text-white/80">
+          Lo que cambies aquí lo recibirán las <strong>partidas nuevas</strong>. Las que ya has
+          empezado no cambian.
+        </p>
       </div>
+      <p class="shrink-0 text-sm font-bold">{{ editedLabel }}</p>
     </header>
 
-    <p class="rounded border border-court-700 bg-court-900 px-4 py-2 text-sm text-court-300">
-      Lo que cambies aquí lo recibirán las <span class="text-court-100">partidas nuevas</span>. Las
-      que ya has empezado no cambian.
-    </p>
-
-    <div class="grid flex-1 grid-cols-[16rem_1fr] gap-4 overflow-hidden">
+    <main class="grid min-h-0 flex-1 grid-cols-[15rem_minmax(0,1fr)] gap-3 p-4">
       <!-- Ligas y clubes -->
-      <nav class="flex flex-col gap-2 overflow-hidden rounded border border-court-700 p-3">
-        <input
-          id="editor-search"
-          v-model="search"
-          type="search"
-          placeholder="Buscar club o ciudad"
-          class="rounded border border-court-600 bg-court-900 px-3 py-1.5 text-sm"
-        />
-        <select
-          id="editor-league"
-          v-model="league"
-          class="rounded border border-court-600 bg-court-900 px-2 py-1.5 text-sm"
-          :disabled="search.trim().length > 0"
+      <nav aria-label="Clubes" class="flex min-h-0 flex-col">
+        <AppPanel
+          title="Clubes"
+          :hint="String(teamsInLeague.length)"
+          scroll
+          flush
+          class="min-h-0 flex-1"
         >
-          <optgroup v-for="[country, rows] in leaguesByCountry" :key="country" :label="country">
-            <option v-for="row in rows" :key="row.competitionId" :value="row.competitionId">
-              {{ row.name }}
-            </option>
-          </optgroup>
-        </select>
-        <ul class="flex-1 overflow-auto text-sm">
-          <li v-for="row in teamsInLeague" :key="row.teamId">
-            <button
-              type="button"
-              class="flex w-full items-center justify-between gap-2 rounded px-2 py-1.5 text-left hover:bg-court-800"
-              :class="row.teamId === team?.teamId ? 'bg-court-800 text-ball-400' : ''"
-              @click="selectTeam(row.teamId)"
-            >
-              <span class="truncate">
-                <span v-if="row.edited" class="mr-1 text-ball-500" title="Con cambios">●</span>
-                {{ row.name }}
-              </span>
-              <span class="text-xs text-court-600">{{ row.reputation }}</span>
-            </button>
-          </li>
-        </ul>
+          <div class="sticky top-0 z-10 flex flex-col gap-2 bg-tv-paper p-2">
+            <AppInput
+              id="editor-search"
+              v-model="search"
+              type="search"
+              placeholder="Buscar club o ciudad"
+              aria-label="Buscar club o ciudad"
+            />
+            <AppSelect
+              id="editor-league"
+              v-model="league"
+              :options="leagueOptions"
+              label="Liga"
+              :disabled="search.trim().length > 0"
+            />
+          </div>
+          <ul class="flex flex-col gap-[3px] px-2 pb-2 text-sm">
+            <li v-for="row in teamsInLeague" :key="row.teamId">
+              <button
+                type="button"
+                class="flex w-full items-center justify-between gap-2 px-2 py-1.5 text-left text-tv-ink transition-colors"
+                :class="
+                  row.teamId === team?.teamId
+                    ? 'bg-tv-select font-bold'
+                    : 'bg-tv-cell hover:bg-tv-cell-strong'
+                "
+                @click="selectTeam(row.teamId)"
+              >
+                <span class="truncate">
+                  <span v-if="row.edited" class="mr-1 text-tv-blue-ink" title="Con cambios">●</span>
+                  {{ row.name }}
+                </span>
+                <span class="figure text-xs font-normal text-tv-muted">{{ row.reputation }}</span>
+              </button>
+            </li>
+          </ul>
+        </AppPanel>
       </nav>
 
-      <div v-if="team" class="flex flex-col gap-4 overflow-auto pr-1">
-        <p
-          v-if="message"
-          class="rounded border px-3 py-2 text-sm"
-          :class="message.ok ? 'border-good-500 text-good-400' : 'border-warn-500 text-warn-400'"
-          role="status"
-        >
-          {{ message.text }}
-        </p>
-
+      <div v-if="team" class="flex min-h-0 flex-col gap-3 overflow-auto">
         <!-- El club -->
-        <AppPanel :title="team.name" :hint="`${team.competitionName} · ${team.country}`">
+        <AppPanel
+          :title="team.name"
+          :hint="`${team.competitionName} · ${countryName(team.country)}`"
+        >
           <template #actions>
-            <AppButton
-              v-if="team.edited"
-              size="sm"
-              variant="ghost"
-              :disabled="busy"
-              @click="resetTeam"
-            >
+            <AppButton v-if="team.edited" size="sm" :disabled="busy" @click="resetTeam">
               Restaurar club
             </AppButton>
           </template>
-          <div class="grid grid-cols-2 gap-3 lg:grid-cols-4">
+          <div class="grid grid-cols-4 gap-3">
             <AppField label="Nombre">
-              <input id="team-name" v-model="teamDraft.name" class="editor-input" maxlength="60" />
+              <AppInput id="team-name" v-model="teamDraft.name" maxlength="60" />
             </AppField>
             <AppField label="Abreviatura" hint="2 a 4 letras">
-              <input
-                id="team-short"
-                v-model="teamDraft.shortName"
-                class="editor-input"
-                maxlength="4"
-              />
+              <AppInput id="team-short" v-model="teamDraft.shortName" maxlength="4" />
             </AppField>
             <AppField label="Ciudad">
-              <input id="team-city" v-model="teamDraft.city" class="editor-input" maxlength="60" />
+              <AppInput id="team-city" v-model="teamDraft.city" maxlength="60" />
             </AppField>
             <AppField label="Pabellón">
-              <input
-                id="team-pavilion"
-                v-model="teamDraft.pavilionName"
-                class="editor-input"
-                maxlength="60"
-              />
+              <AppInput id="team-pavilion" v-model="teamDraft.pavilionName" maxlength="60" />
             </AppField>
             <AppField label="Aforo" hint="1.000 a 30.000">
-              <input
+              <AppInput
                 id="team-capacity"
                 v-model="teamDraft.pavilionCapacity"
                 type="number"
                 min="1000"
                 max="30000"
-                class="editor-input"
               />
             </AppField>
             <AppField label="Reputación" hint="1 a 100: fichajes, taquilla y exigencia">
-              <input
+              <AppInput
                 id="team-reputation"
                 v-model="teamDraft.reputation"
                 type="number"
                 min="1"
                 max="100"
-                class="editor-input"
               />
             </AppField>
             <AppField label="Presupuesto (€)">
-              <input
-                id="team-budget"
-                v-model="teamDraft.budgetEuros"
-                type="number"
-                min="0"
-                class="editor-input"
-              />
+              <AppInput id="team-budget" v-model="teamDraft.budgetEuros" type="number" min="0" />
             </AppField>
-          </div>
-          <div class="mt-3 flex justify-end">
-            <AppButton variant="primary" :disabled="busy" @click="saveTeam">Guardar club</AppButton>
+            <div class="flex items-end justify-end">
+              <AppButton variant="primary" :disabled="busy" @click="saveTeam"
+                >Guardar club</AppButton
+              >
+            </div>
           </div>
         </AppPanel>
 
-        <div class="grid gap-4 xl:grid-cols-[1fr_1.2fr]">
+        <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start gap-3">
           <!-- La plantilla -->
           <AppPanel title="Plantilla" :hint="`${team.players.length} jugadores`" flush>
             <table class="data-table">
@@ -433,20 +433,22 @@ function attributeKeys(group: keyof typeof ATTRIBUTE_GROUPS): readonly Attribute
                   v-for="row in team.players"
                   :key="row.playerId"
                   class="cursor-pointer"
-                  :class="row.playerId === playerId ? 'bg-court-800' : ''"
+                  :class="row.playerId === playerId ? 'is-selected' : ''"
                   @click="playerId = row.playerId"
                 >
-                  <td>
-                    <span class="inline-flex items-center gap-2">
-                      <AppAvatar kind="player" :seed="row.playerId" />
-                      <span v-if="row.edited" class="text-ball-500" title="Con cambios">●</span>
+                  <td class="max-w-0">
+                    <span class="flex min-w-0 items-center gap-2">
+                      <AppAvatar kind="player" :seed="row.playerId" :size="24" />
+                      <span v-if="row.edited" class="text-tv-blue-ink" title="Con cambios">●</span>
                       <AppFlag :code="row.nationality" />
-                      {{ row.firstName }} {{ row.lastName }}
+                      <PlayerName :first="row.firstName" :last="row.lastName" />
                     </span>
                   </td>
-                  <td class="text-ball-400">{{ row.position }}</td>
+                  <td><PositionChip :position="row.position as Position" /></td>
                   <td class="numeric">{{ row.age }}</td>
-                  <td class="numeric font-semibold">{{ row.overall }}</td>
+                  <td class="numeric is-key py-0.5">
+                    <AppRing :value="row.overall" :size="28" />
+                  </td>
                 </tr>
               </tbody>
             </table>
@@ -454,102 +456,98 @@ function attributeKeys(group: keyof typeof ATTRIBUTE_GROUPS): readonly Attribute
 
           <!-- El jugador -->
           <AppPanel v-if="player" :title="`${player.firstName} ${player.lastName}`">
-            <div class="grid grid-cols-2 gap-3 lg:grid-cols-3">
+            <div class="grid grid-cols-3 gap-3">
               <AppField label="Nombre">
-                <input
-                  id="player-first"
-                  v-model="playerDraft.firstName"
-                  class="editor-input"
-                  maxlength="60"
-                />
+                <AppInput id="player-first" v-model="playerDraft.firstName" maxlength="60" />
               </AppField>
               <AppField label="Apellido">
-                <input
-                  id="player-last"
-                  v-model="playerDraft.lastName"
-                  class="editor-input"
-                  maxlength="60"
-                />
+                <AppInput id="player-last" v-model="playerDraft.lastName" maxlength="60" />
               </AppField>
               <AppField label="Nacionalidad" hint="Código de tres letras">
-                <input
-                  id="player-nationality"
-                  v-model="playerDraft.nationality"
-                  class="editor-input uppercase"
-                  maxlength="3"
-                />
+                <span class="flex items-center gap-2">
+                  <AppInput
+                    id="player-nationality"
+                    v-model="playerDraft.nationality"
+                    class="w-full uppercase"
+                    maxlength="3"
+                  />
+                  <AppFlag :code="playerDraft.nationality.toUpperCase()" size="md" />
+                </span>
               </AppField>
               <AppField label="Posición">
-                <select id="player-position" v-model="playerDraft.position" class="editor-input">
-                  <option v-for="position in POSITIONS" :key="position" :value="position">
-                    {{ POSITION_LABELS[position] }}
-                  </option>
-                </select>
+                <AppSelect
+                  id="player-position"
+                  v-model="playerDraft.position"
+                  :options="positionOptions"
+                  class="min-w-0"
+                >
+                  <template #leading>
+                    <PositionChip :position="playerDraft.position as Position" />
+                  </template>
+                </AppSelect>
               </AppField>
               <AppField label="Altura (cm)">
-                <input
+                <AppInput
                   id="player-height"
                   v-model="playerDraft.heightCm"
                   type="number"
                   min="160"
                   max="240"
-                  class="editor-input"
                 />
               </AppField>
               <AppField label="Potencial" hint="1 a 99: su techo">
-                <input
-                  id="player-potential"
-                  v-model="playerDraft.potential"
-                  type="number"
-                  min="1"
-                  max="99"
-                  class="editor-input"
-                />
+                <span class="flex items-center gap-2">
+                  <AppInput
+                    id="player-potential"
+                    v-model="playerDraft.potential"
+                    type="number"
+                    min="1"
+                    max="99"
+                    class="w-16"
+                  />
+                  <AppStars :value="toStars(Number(playerDraft.potential))" label="Potencial" />
+                </span>
               </AppField>
             </div>
 
-            <div class="mt-4 grid grid-cols-1 gap-x-6 gap-y-3 sm:grid-cols-2">
-              <fieldset
+            <div class="mt-3 grid grid-cols-2 gap-x-3 gap-y-3">
+              <div
                 v-for="(_, group) in ATTRIBUTE_GROUPS"
                 :key="group"
-                class="flex flex-col gap-1"
+                role="group"
+                :aria-labelledby="`attr-group-${group}`"
+                class="flex flex-col gap-[3px]"
               >
-                <legend class="mb-1 text-xs uppercase tracking-wide text-court-300">
+                <AppSectionTitle :id="`attr-group-${group}`" size="xs">
                   {{ GROUP_LABELS[group] }}
-                </legend>
+                </AppSectionTitle>
                 <label
                   v-for="key in attributeKeys(group)"
                   :key="key"
-                  class="flex items-center justify-between gap-2 text-sm"
+                  class="flex items-center justify-between gap-2 bg-tv-cell py-0.5 pl-2 pr-0.5 text-sm"
                 >
-                  <span class="text-court-300">{{ ATTRIBUTE_LABELS[key] }}</span>
-                  <input
+                  <span>{{ ATTRIBUTE_LABELS[key] }}</span>
+                  <AppInput
                     :id="`attr-${key}`"
                     v-model="playerDraft.attributes[key]"
                     type="number"
                     min="1"
                     max="99"
-                    class="editor-input w-16 text-right"
+                    dense
+                    class="figure w-16 text-right"
                   />
                 </label>
-              </fieldset>
+              </div>
             </div>
 
             <div
-              class="mt-4 flex flex-wrap items-end justify-between gap-3 border-t border-court-700 pt-3"
+              class="mt-3 flex flex-wrap items-end justify-between gap-3 border-t border-tv-box pt-3"
             >
               <div class="flex items-end gap-2">
                 <AppField label="Pasar a otra plantilla">
-                  <select id="player-move" v-model="moveTo" class="editor-input">
-                    <option value="" disabled>Elegir club…</option>
-                    <option v-for="row in moveTargets" :key="row.teamId" :value="row.teamId">
-                      {{ row.name }} ({{ row.rosterSize }})
-                    </option>
-                  </select>
+                  <AppSelect id="player-move" v-model="moveTo" :options="moveOptions" />
                 </AppField>
-                <AppButton variant="secondary" :disabled="busy || !moveTo" @click="movePlayer">
-                  Mover
-                </AppButton>
+                <AppButton :disabled="busy || !moveTo" @click="movePlayer">Mover</AppButton>
               </div>
               <AppButton variant="primary" :disabled="busy" @click="savePlayer">
                 Guardar jugador
@@ -558,21 +556,35 @@ function attributeKeys(group: keyof typeof ATTRIBUTE_GROUPS): readonly Attribute
           </AppPanel>
         </div>
       </div>
-    </div>
+    </main>
+
+    <footer
+      class="flex h-[55px] shrink-0 items-center justify-between gap-4 border-t border-white/10 bg-tv-footer px-4"
+    >
+      <p v-if="message" class="flex min-w-0 items-center gap-2 text-sm text-white" role="status">
+        <span
+          aria-hidden="true"
+          class="h-2.5 w-2.5 shrink-0"
+          :class="message.ok ? 'bg-tv-green' : 'bg-tv-amber'"
+        ></span>
+        <span class="truncate">{{ message.text }}</span>
+      </p>
+      <span v-else></span>
+      <div class="flex shrink-0 items-center gap-3">
+        <AppButton
+          :variant="confirmResetAll ? 'danger' : 'secondary'"
+          :disabled="busy"
+          @click="resetAll"
+        >
+          {{ confirmResetAll ? 'Confirmar: restaurar todo' : 'Restaurar todo' }}
+        </AppButton>
+        <RouterLink
+          :to="{ name: 'main-menu' }"
+          class="inline-flex min-w-32 items-center justify-center bg-tv-blue-dim px-4 py-2 text-sm font-bold uppercase tracking-wide text-white transition hover:bg-tv-700"
+        >
+          Volver
+        </RouterLink>
+      </div>
+    </footer>
   </div>
 </template>
-
-<style scoped>
-.editor-input {
-  border-radius: 0.25rem;
-  border: 1px solid var(--color-court-600);
-  background-color: var(--color-court-900);
-  padding: 0.35rem 0.6rem;
-  font-size: 0.875rem;
-  color: var(--color-court-100);
-}
-.editor-input:focus-visible {
-  outline: 2px solid var(--color-ball-500);
-  outline-offset: 1px;
-}
-</style>

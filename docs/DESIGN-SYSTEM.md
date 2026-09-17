@@ -3,11 +3,11 @@
 Lo que se ve y con qué se monta. Vive en `src/renderer/src/shared/ui/` y se
 mira entero abriendo el juego en **`#/estilo`**.
 
-> **En transición (desde el 2026-09-17).** El juego pasa entero a la piel de
+> **Piel de IBM 23 (desde el 2026-09-17).** El juego entero lleva la piel de
 > International Basketball Manager 23: marco oscuro con paneles claros. Este
-> documento describe **la piel nueva**, que es la que manda. Hasta que acabe la
-> migración queda código de la piel vieja («pista de noche», `court-*` y
-> `ball-*`); ver [Migración](#migración) para saber qué falta.
+> documento describe esa piel, que es la que manda. La de antes («pista de
+> noche», `court-*` y `ball-*`) ya no existe; lo que falta son las pantallas
+> nuevas de la fase 5 (ver [Migración](#migración)).
 
 No se inventó de cero: salió de contar lo que ya estaba escrito a mano en las
 pantallas. Esas cuentas son la justificación de cada pieza, así que se dejan
@@ -71,17 +71,20 @@ Tailwind 4 para que sean utilidades (`bg-tv-paper`) y no cadenas sueltas. Se
 llama **`tv-*`** porque nació en la retransmisión del partido; no se renombró
 al extenderla porque ya se usaba unas 150 veces y el nombre no molesta.
 
-| Grupo       | Tokens                                                                  | Para qué                                                              |
-| ----------- | ----------------------------------------------------------------------- | --------------------------------------------------------------------- |
-| Marco       | `tv-chrome`, `tv-chrome-2`, `tv-bar`, `tv-rail`, `tv-footer`, `tv-slab` | Barra superior (degradado), sección, lateral, acciones, inputs negros |
-| Rótulos     | `tv-head-from` → `tv-head-to`; `tv-950` … `tv-600`                      | Cabecera de panel y de tabla; morados de la previa y el partido       |
-| Papel       | `tv-paper`, `tv-cell`, `tv-cell-strong`, `tv-box`, `tv-ink`, `tv-muted` | Cuerpo del panel, celda, columna destacada, caja de cifra, texto      |
-| Interacción | `tv-blue`, `tv-blue-dim` + `tv-blue-dim-ink`, `tv-select`, `tv-cyan`    | Botón y enlace; botón apagado; **lo tuyo**; chip de posición          |
-| Estados     | `tv-green`, `tv-red`, `tv-red-deep`, `tv-strong`, `tv-amber`            | Sube / baja, gana / pierde, descenso, atributo fuerte, aviso          |
-| Escala      | `tv-rate-top`, `tv-rate-high`, `tv-rate-mid`, `tv-rate-low`             | Cualquier valor de 0 a 100 (ver [Tonos](#tonos))                      |
-| Estrellas   | `tv-amber`, `tv-star-off`, `tv-star-box`                                | Llenas, vacías y su caja negra                                        |
-| Competición | `tv-competition` → `tv-competition-deep`                                | Tarjeta de partido y días de partido en el calendario                 |
-| Fondo       | `tv-deco-plum`, `tv-deco-petrol`, `tv-magenta`, `tv-orange`             | Fondo con franjas: sólo menú, asistente y pantallas vacías            |
+| Grupo       | Tokens                                                                               | Para qué                                                                                         |
+| ----------- | ------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------ |
+| Marco       | `tv-chrome`, `tv-chrome-2`, `tv-bar`, `tv-rail`, `tv-footer`, `tv-slab`, `tv-canvas` | Barra superior (degradado), sección, lateral, acciones, inputs negros, fondo liso de la pantalla |
+| Rótulos     | `tv-head-from` → `tv-head-to`; `tv-950` … `tv-600`                                   | Cabecera de panel y de tabla; morados de la previa y el partido                                  |
+| Papel       | `tv-paper`, `tv-cell`, `tv-cell-strong`, `tv-box`, `tv-ink`, `tv-muted`              | Cuerpo del panel, celda, columna destacada, caja de cifra, texto                                 |
+| Interacción | `tv-blue`, `tv-blue-dim` + `tv-blue-dim-ink`, `tv-select`, `tv-cyan`, `tv-step`      | Botón y enlace; botón apagado; **lo tuyo**; chip de posición; paso no actual del asistente       |
+| Estados     | `tv-green`, `tv-red`, `tv-red-deep`, `tv-strong`, `tv-amber`                         | Sube / baja, gana / pierde, descenso, atributo fuerte, aviso                                     |
+| Letra       | `tv-blue-ink`, `tv-green-ink`, `tv-amber-ink`                                        | Texto de color sobre papel (sin medir: los de arriba, oscurecidos)                               |
+| Ánimo       | `tv-mood-great`, `-good`, `-normal`, `-low`, `-bad`                                  | Los cinco niveles de `MoodIcon`                                                                  |
+| Escala      | `tv-rate-top`, `tv-rate-high`, `tv-rate-mid`, `tv-rate-low`                          | Cualquier valor de 0 a 100 (ver [Tonos](#tonos))                                                 |
+| Estrellas   | `tv-amber`, `tv-star-off`, `tv-star-box`                                             | Llenas, vacías y su caja negra                                                                   |
+| Competición | `tv-competition` → `tv-competition-deep`                                             | Tarjeta de partido y días de partido en el calendario                                            |
+| Correo      | `tv-mail-from` → `tv-mail-to`                                                        | Rótulo azul del correo: la única cabecera que no es añil                                         |
+| Fondo       | `tv-deco-plum`, `tv-deco-petrol`, `tv-magenta`, `tv-orange`                          | Fondo con franjas: sólo menú, asistente y pantallas vacías                                       |
 
 - **El texto sobre papel** es `tv-ink`; sobre el marco, blanco. Las cifras de
   las tablas van en negro: sólo llevan color los deltas, lo que está en
@@ -146,30 +149,78 @@ traduciendo una diferencia por su signo.
 
 ## Las piezas
 
-| Componente        | Para qué                                                              |
-| ----------------- | --------------------------------------------------------------------- |
-| `AppPageHeader`   | Título de pantalla y, a su lado, el dato que dice dónde estás         |
-| `AppPanel`        | El panel: rótulo añil y cuerpo claro; `scroll` para tablas largas     |
-| `AppSectionTitle` | El apartado dentro de una pantalla                                    |
-| `AppStat`         | Una cifra en su caja, con la etiqueta arriba                          |
-| `AppButton`       | `primary`, `secondary`, `ghost`, `danger` × `sm`, `md`, `lg`          |
-| `AppTabs`         | `underline` dentro de una pantalla, `pills` para elegir entre iguales |
-| `AppMeter`        | Barra de 0 a 100 con su número                                        |
-| `AppBadge`        | Etiqueta pequeña con tono                                             |
-| `AppField`        | Etiqueta, control y explicación                                       |
-| `AppEmpty`        | Lo que se enseña cuando todavía no hay nada                           |
-| `AppRing`         | El 0-100 en anillo con la escala de cuatro tramos                     |
-| `AppStars`        | Estrellas en su caja negra: potencial, pabellón, reputación           |
-| `AppSegmented`    | Dos o tres opciones excluyentes, todas a la vista                     |
-| `AppScale`        | Deslizador con los extremos con nombre                                |
+Cada componente dice en su comentario sobre qué fondo va: casi todos, sobre
+papel; `AppPageHeader` y las pestañas `underline`, sobre el marco oscuro.
+
+| Componente        | Para qué                                                                           |
+| ----------------- | ---------------------------------------------------------------------------------- |
+| `AppPageHeader`   | Título de pantalla y, a su lado, el dato que dice dónde estás (sobre el marco)     |
+| `AppPanel`        | El panel: rótulo añil y cuerpo claro; `hint`, `actions`, hueco `header`, `scroll`  |
+| `AppSectionTitle` | El subrótulo añil de un apartado dentro de un panel                                |
+| `AppStat`         | Una cifra grande en su caja gris, con la etiqueta arriba                           |
+| `AppButton`       | `primary`, `secondary`, `ghost`, `danger` × `sm`, `md`, `lg`; galón con `arrow`    |
+| `AppTabs`         | `underline` en la barra de sección, `pills` para elegir entre iguales              |
+| `AppMeter`        | Barra de 0 a 100 con su número                                                     |
+| `AppBadge`        | Etiqueta pequeña rellena, con tono                                                 |
+| `AppField`        | Etiqueta, control y explicación                                                    |
+| `AppEmpty`        | Lo que se enseña cuando todavía no hay nada                                        |
+| `AppRing`         | El 0-100 en anillo con la escala de cuatro tramos; `unknown` para «sin ojear»      |
+| `AppStars`        | Estrellas (y medias) en su caja negra: potencial, pabellón, reputación             |
+| `AppSegmented`    | Dos o tres opciones excluyentes, todas a la vista                                  |
+| `AppScale`        | Deslizador con los extremos con nombre                                             |
+| `AppSelect`       | El selector negro de los filtros                                                   |
+| `AppInput`        | La caja de texto negra: filtros, nombres, cifras; `dense` para ir en un rótulo     |
+| `AppCheckbox`     | La casilla de borde azul que se rellena al marcarla; hereda el color de la letra   |
+| `AppStepper`      | «−», la cifra en su caja negra y «+»: minutos de la rotación, precio de la entrada |
+| `AppPager`        | Flechas azules «< >» con el texto en medio: jornada, semana, página                |
+| `AppModal`        | Diálogo con rótulo añil y botones abajo; foco, Escape y `role="dialog"`            |
+| `TeamBadge`       | Escudo dibujado con la equipación y las iniciales; bandera si es selección         |
+| `FixtureCard`     | La tarjeta naranja de un partido; `featured` es el PRÓXIMO PARTIDO del inicio      |
+| `LeaderCard`      | El líder de una estadística: cara, nombre, partidos y la cifra en su caja gris     |
+| `AppAvatar`       | La cara de un jugador o un técnico, generada a partir de una semilla               |
+| `AppFlag`         | La bandera de un país por su código de tres letras                                 |
+| `AppDrawer`       | Cajón lateral encima de la pantalla: los mandos del banquillo                      |
+| `AppBackdrop`     | El fondo morado con franjas, todo CSS: menú, asistente, vacíos y el partido        |
+| `PositionChip`    | El puesto en su chip cian: B, E, A, AP, P                                          |
+| `PlayerName`      | «Nombre APELLIDO», «N. APELLIDO» o en dos líneas                                   |
+| `MoodIcon`        | El ánimo en cinco niveles, con flecha y color                                      |
+| `AttributeGrid`   | Atributos en números grandes, en columnas, con los fuertes en verde claro          |
+| `KeyValueList`    | La tabla clave-valor de una ficha                                                  |
+
+Las **estrellas** de un valor de 0 a 100 —potencial, reputación de un club, de
+una selección o del entrenador— se cuentan siempre con `toStars()`
+(`src/shared/domain/stars.ts`): una cada veinte puntos, a la media más cercana.
+Antes cada pantalla dividía por veinte por su cuenta.
+
+`AttributeGrid` da por fuerte lo que está en el tramo alto de la escala (80 o
+más), la misma frontera que pinta de verde el anillo. IBM no resalta por un
+número fijo —en una misma ficha marca un 77 y no un 83—, sino por lo que pesa en
+el puesto; como el juego no tiene ese dato, cada atributo puede decir `strong` a
+mano.
 
 Fuera del kit quedan dos cosas a propósito:
 
 - **`.data-table`**, en `main.css`. Es CSS y no componente porque una tabla de
   datos cambia demasiado de una pantalla a otra —columnas, celdas con enlace,
   filas con color— y envolverla en un componente obligaría a un `slot` por
-  columna. La clase da lo que sí es común: cabecera pegada, altura de fila y
-  cifras alineadas a la derecha con `numeric`.
+  columna. La clase da lo que sí es común: cabecera añil pegada, celdas grises
+  separadas por huecos de 3 px, cifras alineadas a la derecha con `numeric` y
+  unas pocas clases con significado:
+
+  | Clase                    | Dónde | Qué hace                                     |
+  | ------------------------ | ----- | -------------------------------------------- |
+  | `is-mine`, `is-selected` | `tr`  | Lo tuyo o lo elegido: la fila en `tv-select` |
+  | `is-key`                 | `td`  | La columna que manda o por la que se ordena  |
+  | `zone-up`, `zone-down`   | `td`  | Marca de zona: playoff o ascenso, descenso   |
+
+  Los rótulos de columna se alinean como sus celdas (a la izquierda, o a la
+  derecha con `numeric`) y no centrados como en IBM: con cifras de distinta
+  longitud, centradas no cuadran.
+
+  Va en la capa `components` de Tailwind, así que **una utilidad puesta en la
+  celda manda** sobre el aspecto de serie: `py-0.5` para una fila con anillo,
+  `whitespace-normal` para un texto largo. Hasta el 2026-09-17 estaba fuera de
+  las capas y esas utilidades no hacían nada.
 
   **`numeric` va en la cabecera y en las celdas de la columna, las dos.** Hasta
   el 2026-09-16 no bastaba: la regla de `thead th` pesaba más que `.numeric` y
@@ -178,15 +229,163 @@ Fuera del kit quedan dos cosas a propósito:
   `.data-table th.numeric` tiene la especificidad que hace falta, y el arnés de
   auditoría que lo destapó comparó columna a columna 23 tablas del juego.
 
-- **`SeriesCard`**, en la feature de competición. Se comparte entre el cuadro
-  nacional y el europeo, pero sabe de eliminatorias: eso es dominio del juego,
-  no del kit.
+- **Las piezas de competición**, en `features/competition/`. Se comparten
+  entre la liga, la Copa, Europa, los playoffs y las selecciones, pero saben de
+  clasificaciones y eliminatorias: eso es dominio del juego, no del kit.
+
+  | Pieza               | Qué hace                                                                                       |
+  | ------------------- | ---------------------------------------------------------------------------------------------- |
+  | `StandingsTable`    | La clasificación: puesto con barra de zona, escudo y cifras; `full`, `division`, `nationOf`    |
+  | `standing-zones.ts` | Qué barra lleva cada zona: play-in en ámbar y, con playoffs en la misma tabla, ascenso en cian |
+  | `GameRow`           | Un partido en una línea: jornada de liga, Copa y grupos de selecciones                         |
+  | `MatchupCard`       | Un cruce de cuadro: dos equipos con su cifra en caja; el que pasa, en verde                    |
+  | `SeriesCard`        | Una eliminatoria de playoffs o de Europa: `MatchupCard` con los partidos debajo                |
+  | `BracketColumns`    | El cuadro en columnas, una por ronda; el cruce lo pinta quien lo usa                           |
+  | `ChampionBanner`    | La franja del campeón encima del cuadro                                                        |
+  | `BestTeamsPanel`    | Mejor ataque, mejor defensa y rachas, al lado de la clasificación                              |
+  | `RoundMvpPanel`     | El MVP de la jornada, al lado de los resultados                                                |
+
+- **Otras piezas de feature** que se parecen al kit y no lo son: `MailPanel` y
+  `MailRow` (el correo, con su rótulo azul), `WizardSteps` (los puntos del
+  asistente de nueva partida), `MinutesBar` (la barra segmentada de minutos de
+  la rotación), `PanelMore` (el «+» de los paneles del inicio) y
+  `ConfidenceRings` (las tres confianzas de IBM en anillos —directiva, afición
+  y jugadores—, en el inicio y en Finanzas; la de los jugadores es la moral
+  media de la plantilla, `squadMorale()`, y la que no tiene dato no se pinta).
 
 Las piezas del partido con prefijo `Broadcast` (`BroadcastPanel`,
 `BroadcastButton`, `BroadcastBackdrop`, `BroadcastDrawer`) nacieron en
 `features/match` cuando esa piel era sólo del partido. Con la piel en todo el
-juego, **pasan al kit** o se funden con sus equivalentes (`AppPanel`,
-`AppButton`).
+juego **ya no existen** (fase 1): el panel y el botón se fundieron con
+`AppPanel` y `AppButton`, y el fondo y el cajón pasaron al kit como
+`AppBackdrop` y `AppDrawer`. `TeamBadge` pasó al kit en la fase 2, cuando lo
+empezó a usar el marco (el escudo del club y el del rival en CONTINUAR).
+
+**Lo que cuesta dinero y no tiene vuelta atrás se confirma con `AppModal`**:
+rescindir un contrato pregunta lo mismo desde la ficha del jugador y desde el
+mercado.
+
+`AppModal` admite `dismissible` a falso para los avisos que se van solos (el
+avance de días): sin «✕», y ni Escape ni pulsar fuera lo cierran.
+
+## El marco del juego
+
+Todo lo que va dentro de una partida se pinta en `layouts/DefaultLayout.vue`,
+con las piezas en `features/app-shell/components/`. No van en el kit porque
+saben del juego —la partida cargada, el calendario, las rutas— y sólo existe un
+marco.
+
+```
+┌───────────────────────────────────────────────────────────┐  72 px  GameTopBar
+│ escudo · equipo y caja · entrenador · fecha · CONTINUAR   │
+├────┬──────────────────────────────────────────────────────┤  50 px  SectionBar
+│    │ SECCIÓN | pestañas                         controles │
+│ 48 ├──────────────────────────────────────────────────────┤
+│ px │ la pantalla, con su scroll, sobre `tv-canvas`        │
+│    ├──────────────────────────────────────────────────────┤  55 px  ActionBar
+│    │                                           acciones   │  (sólo si hay)
+└────┴──────────────────────────────────────────────────────┘
+GameRail
+```
+
+| Pieza              | Qué hace                                                                                                                                                                                                                  |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GameTopBar`       | Degradado `tv-chrome` → negro → `tv-chrome-2`. Escudo en bloque blanco sesgado, equipo y caja, entrenador (cara, bandera y, en carrera, reputación en estrellas), fecha y día con la temporada, «Avanzar día» y CONTINUAR |
+| `GameRail`         | `tv-rail`, 48 px. Un icono por sección con `aria-label` y etiqueta al pasar por encima; la activa con barra azul. Correo lleva los no leídos. Abajo, Ajustes y Salir al menú                                              |
+| `SectionBar`       | `tv-bar`, 50 px. TÍTULO de la sección, raya y pestañas (enlaces del router con el aspecto de `AppTabs` `underline`); con una sola pantalla no hay pestañas                                                                |
+| `ActionBar`        | `tv-footer`, 55 px, botones a la derecha. Oculta si la pantalla no le mete nada. No es un `<footer>`: las pantallas tienen el suyo                                                                                        |
+| `AdvanceDaysModal` | «Avance de días»: el mes con hoy recuadrado, el próximo partido con su rival y qué se simula. Sale si el avance tarda más de 350 ms                                                                                       |
+| `GameIcon`         | Los iconos del marco, a trazo, dibujados aquí. Nunca los de IBM                                                                                                                                                           |
+
+Dentro del marco la pantalla va sobre **`tv-canvas`**, liso: el fondo con franjas
+es sólo del menú, el asistente y los vacíos (decisión 11). El marco no se
+desplaza; sólo la zona de la pantalla. Probado en 1280×720.
+
+### Secciones
+
+Están en `features/app-shell/sections.ts`, que es el único sitio donde se
+decide la navegación: cada sección tiene icono, título y pestañas (rutas), y
+puede reclamar rutas sin pestaña (`also`). Añadir Calendario o Ranking de
+entrenadores (fase 5) es una entrada más y un icono en `GameIcon`.
+
+| Icono       | Pestañas                                                               |
+| ----------- | ---------------------------------------------------------------------- |
+| Inicio      | —                                                                      |
+| Correo      | —                                                                      |
+| Equipo      | Plantilla, Alineación, Entrenamiento, Cantera (y la ficha del jugador) |
+| Competición | Competiciones, Estadísticas                                            |
+| Mercado     | —                                                                      |
+| Club        | Finanzas, Historial                                                    |
+| Selecciones | —                                                                      |
+
+Ajustes y Salir al menú van abajo y salen del marco. El partido, el menú,
+nueva partida, partidas, ajustes, el editor y `#/estilo` siguen fuera de él.
+
+### Lo que una pantalla pone en las barras
+
+Con **`<Teleport defer>`** a huecos con id que pintan las barras, envuelto en
+dos componentes:
+
+```vue
+<PageToolbar>                 <!-- a la derecha de la barra de sección -->
+  <AppSelect v-model="liga" :options="ligas" />
+</PageToolbar>
+<PageToolbar place="tabs">    <!-- detrás de las pestañas de la sección -->
+  <AppTabs v-model="vista" :options="vistas" />
+</PageToolbar>
+<PageActions>                 <!-- la barra de abajo, que aparece -->
+  <AppButton variant="primary" @click="guardar">Guardar</AppButton>
+</PageActions>
+```
+
+Se eligió `Teleport` y no `meta` de ruta con slots porque lo que va en la barra
+es de la pantalla —usa su estado y sus funciones— y así se escribe junto al
+resto de su plantilla. `PageActions` se apunta en un contador que provee el
+layout (`page-chrome.ts`): con cero, la barra de acciones no se ve (`v-show`, no
+`v-if`, para que el destino exista). Fuera del marco los dos pintan su contenido
+donde están.
+
+### CONTINUAR
+
+Un único botón hace avanzar la partida (decisión 4). **Qué** hace se decide en
+`features/season/continue-action.ts` —funciones puras, con test— y lo ejecuta
+`features/season/continue.store.ts`; `useContinue` añade la entrada al partido.
+El store también guarda la carrera y el consejo, que el panel del club lee de
+ahí.
+
+| Momento                                        | CONTINUAR hace                                                  |
+| ---------------------------------------------- | --------------------------------------------------------------- |
+| Partido propio pendiente                       | Avanza hasta él y entra en la previa. Lleva el escudo del rival |
+| Semana de descanso (liga impar)                | Juega la jornada sin el club                                    |
+| Sin partido propio (eliminado, sin playoffs)   | Sigue la temporada hasta que cambie la situación                |
+| Temporada terminada con otras ligas por acabar | Las termina                                                     |
+| Todo terminado                                 | Empieza la temporada siguiente                                  |
+| En el paro (carrera), sin selección            | Espera un mes                                                   |
+| Destituido sin selección, o sin partida        | Nada: deshabilitado                                             |
+
+Los cuatro primeros casos son una cadena de `advanceToNextGame`: se repite
+mientras CONTINUAR siga significando lo mismo, y se para en el partido del
+usuario, con un despido, si el reloj no se mueve o si se pulsa «Detener avance».
+Con la jornada anterior a medias, el propio avance la juega antes de llegar al
+partido. Esperar un mes, empezar temporada y avanzar un día son una sola llamada
+al proceso principal y no se pueden detener a medias.
+
+Al lado, pequeño, **«Avanzar día»** (mientras haya calendario con banquillo) y,
+sin club pero con selección, **«Esperar un mes»**. Todo se deshabilita mientras
+hay un avance en curso.
+
+### Tonos y escala en código
+
+Todo en `shared/ui/tones.ts`:
+
+- **Tonos:** `TONE_TEXT`, `TONE_FILL`, `TONE_BORDER` y `TONE_CHIP`, pensados
+  para papel. La letra de color usa las variantes `tv-blue-ink`,
+  `tv-green-ink` y `tv-amber-ink`, que se leen en letra pequeña.
+- **Escala:** `bandForValue(valor)` da el tramo (`top`, `high`, `mid`, `low`),
+  cortando sobre el número ya redondeado. Se pinta con `RATING_FILL` (barras,
+  cajas), `RATING_STROKE` (trazos de SVG; no para letra sobre papel) y
+  `RATING_CHIP` (una cifra en su cajita de color). `toneForLevel()` sale de
+  aquí: bien desde 70, ojo de 60 a 69, mal por debajo.
 
 ### Lo que se trajo de IBM antes de la piel
 
@@ -253,18 +452,25 @@ análisis de las capturas.
 | Fase | Qué                                                                                                                                                                                                                                                              | Estado    |
 | ---- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------- |
 | 0    | Decisiones, letra, colores medidos y este documento                                                                                                                                                                                                              | Hecha     |
-| 1    | Kit en la piel nueva: panel, botón, pestañas, anillo y estrellas, caja de cifra, `.data-table`, tonos de cuatro tramos; piezas nuevas (chip de puesto, moral, nombre de jugador, selector, paginador, lista clave-valor, modal); `Broadcast*` al kit; `#/estilo` | Pendiente |
-| 2    | Marco: cabecera con CONTINUAR, barra de iconos, barra de sección con pestañas, barra de acciones, aviso de avance de días                                                                                                                                        | Pendiente |
-| 3    | Pantallas de más uso: inicio, plantilla, ficha del jugador, alineación, competición                                                                                                                                                                              | Pendiente |
-| 4    | Resto del juego: entrenamiento y cuerpo técnico, cantera, estadísticas, mercado, finanzas, correo y ruedas de prensa, historial, selecciones, cuadros                                                                                                            | Pendiente |
+| 1    | Kit en la piel nueva: panel, botón, pestañas, anillo y estrellas, caja de cifra, `.data-table`, tonos de cuatro tramos; piezas nuevas (chip de puesto, moral, nombre de jugador, selector, paginador, lista clave-valor, modal); `Broadcast*` al kit; `#/estilo` | Hecha     |
+| 2    | Marco: cabecera con CONTINUAR, barra de iconos, barra de sección con pestañas, barra de acciones, aviso de avance de días                                                                                                                                        | Hecha     |
+| 3    | Pantallas de más uso: inicio, plantilla, ficha del jugador, alineación, competición                                                                                                                                                                              | Hecha     |
+| 4    | Resto del juego: entrenamiento y cuerpo técnico, cantera, estadísticas, mercado, finanzas, correo y ruedas de prensa, historial, selecciones, cuadros                                                                                                            | Hecha     |
 | 5    | Pantallas nuevas: calendario mensual, ficha del rival, ranking de entrenadores                                                                                                                                                                                   | Pendiente |
-| 6    | Fuera de la partida y limpieza: menú, asistente de nueva partida, partidas, ajustes, editor; retirar `court-*` y `ball-*`                                                                                                                                        | Pendiente |
+| 6    | Fuera de la partida y limpieza: menú, asistente de nueva partida, partidas, ajustes, editor; retirar `court-*` y `ball-*`                                                                                                                                        | Hecha     |
 
 **De golpe, no por variantes** (decisión del usuario). Las piezas del kit
 cambian de aspecto directamente, sin convivir con la piel vieja, y las fases 1 a
 4 —kit, marco y todas las pantallas del juego— se entregan juntas: a mitad de
 camino la aplicación no se ve bien, así que no se da por buena ninguna fase
 suelta. Así no queda código de transición que luego haya que borrar.
+
+Las fases 3, 4 y 6 se hicieron a la vez el 2026-09-17, por pantallas en
+paralelo, y se integraron al final: el arnés se adaptó al asistente, al selector
+de competición y a la barra de acciones; `FormInput` y `EditorInput` se
+cambiaron por `AppInput`; las estrellas pasaron a `toStars()`; `.data-table`,
+a la capa `components`; y se quitaron los tokens `court-*`, `ball-*`,
+`line-500` y `good`/`warn`/`bad`, que ya no usaba nadie. Queda la fase 5.
 
 ## Cómo no se pudre
 

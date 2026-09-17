@@ -8,8 +8,7 @@ import { computed } from 'vue';
 import type { BoxScoreLine } from '@shared/contracts/match.contract';
 import { POSITION_ABBREVIATIONS } from '@shared/domain/positions';
 import { formatPlayedMinutes } from '@renderer/shared/format';
-import { AppFlag } from '@renderer/shared/ui';
-import BroadcastPanel from './BroadcastPanel.vue';
+import { AppFlag, AppPanel } from '@renderer/shared/ui';
 
 const props = defineProps<{
   teamName: string;
@@ -37,7 +36,7 @@ function fieldGoals(line: BoxScoreLine): string {
 </script>
 
 <template>
-  <BroadcastPanel :title="teamName" flush>
+  <AppPanel :title="teamName" flush>
     <div class="overflow-x-auto">
       <table class="w-full text-sm">
         <thead class="bg-tv-cell text-xs uppercase text-tv-muted">
@@ -132,5 +131,5 @@ function fieldGoals(line: BoxScoreLine): string {
         </tfoot>
       </table>
     </div>
-  </BroadcastPanel>
+  </AppPanel>
 </template>

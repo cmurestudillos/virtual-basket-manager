@@ -1,14 +1,15 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { TONE_FILL, TONE_TEXT, toneForLevel, type Tone } from './tones';
+import { RATING_FILL, TONE_FILL, bandForValue, type Tone } from './tones';
 
 /**
  * Una barra de 0 a 100 con su número al lado: forma física, confianza del
- * consejo, moral, nivel de instalaciones.
+ * consejo, moral, nivel de instalaciones. Va sobre papel.
  *
- * El tono sale del valor por defecto —más es mejor— porque así el jugador
- * aprende a leer el color una vez y le vale para todas las pantallas. Quien
- * necesite otra lectura lo pasa a mano.
+ * El color sale del valor por defecto, con la escala de cuatro tramos de todo
+ * el juego, porque así el jugador aprende a leer el color una vez y le vale
+ * para todas las pantallas. Quien necesite otra lectura pasa un tono a mano.
+ * El número va siempre en negro: el color ya lo lleva la barra.
  */
 
 const props = withDefaults(
@@ -19,17 +20,19 @@ const props = withDefaults(
 const percent = computed(() =>
   Math.max(0, Math.min(100, (props.value / (props.max || 100)) * 100))
 );
-const tone = computed(() => props.tone ?? toneForLevel(percent.value));
+const fill = computed(() =>
+  props.tone ? TONE_FILL[props.tone] : RATING_FILL[bandForValue(percent.value)]
+);
 </script>
 
 <template>
   <div class="flex items-center gap-2">
-    <span v-if="label" class="text-xs text-court-300">{{ label }}</span>
-    <div class="h-1.5 flex-1 overflow-hidden rounded-full bg-court-800">
-      <div class="h-full rounded-full" :class="TONE_FILL[tone]" :style="{ width: `${percent}%` }" />
+    <span v-if="label" class="w-24 shrink-0 truncate text-xs font-semibold uppercase">
+      {{ label }}
+    </span>
+    <div class="h-2 flex-1 overflow-hidden bg-tv-cell-strong">
+      <div class="h-full" :class="fill" :style="{ width: `${percent}%` }" />
     </div>
-    <span class="figure w-8 text-right text-xs" :class="TONE_TEXT[tone]">{{
-      Math.round(value)
-    }}</span>
+    <span class="figure w-8 text-right text-sm font-bold text-tv-ink">{{ Math.round(value) }}</span>
   </div>
 </template>

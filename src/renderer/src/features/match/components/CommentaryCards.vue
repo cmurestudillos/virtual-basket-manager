@@ -15,7 +15,7 @@
 import { computed, nextTick, ref } from 'vue';
 import type { Kit } from '@shared/domain/court';
 import { formatGameClock, periodName, type PlayLine } from '@shared/domain/play-by-play';
-import BroadcastPanel from './BroadcastPanel.vue';
+import { AppPanel } from '@renderer/shared/ui';
 
 const props = withDefaults(
   defineProps<{
@@ -97,7 +97,7 @@ function tone(line: PlayLine): 'good' | 'bad' | 'plain' {
 </script>
 
 <template>
-  <BroadcastPanel flush>
+  <AppPanel flush>
     <template #header>
       <span class="flex w-full items-center justify-between gap-2">
         <span>Comentarios</span>
@@ -169,5 +169,5 @@ function tone(line: PlayLine): 'good' | 'bad' | 'plain' {
         </ol>
       </section>
     </div>
-  </BroadcastPanel>
+  </AppPanel>
 </template>

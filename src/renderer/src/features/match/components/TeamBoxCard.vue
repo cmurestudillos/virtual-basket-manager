@@ -12,8 +12,7 @@ import { computed } from 'vue';
 import type { BoxScoreLine } from '@shared/contracts/match.contract';
 import { shirtNumbers } from '@shared/domain/court';
 import { POSITION_ABBREVIATIONS, POSITION_LABELS } from '@shared/domain/positions';
-import { AppAvatar, AppFlag } from '@renderer/shared/ui';
-import BroadcastPanel from './BroadcastPanel.vue';
+import { AppAvatar, AppFlag, AppPanel } from '@renderer/shared/ui';
 
 const props = defineProps<{
   lines: readonly BoxScoreLine[];
@@ -40,7 +39,7 @@ const featured = computed(() => {
 
 <template>
   <div class="flex min-w-0 flex-col gap-3">
-    <BroadcastPanel flush>
+    <AppPanel flush>
       <template #header>
         <span class="grid w-full grid-cols-[2.25rem_2.25rem_1fr_repeat(4,2.75rem)] gap-1 text-xs">
           <span></span>
@@ -93,7 +92,7 @@ const featured = computed(() => {
       <p v-if="starters.length === 0 && bench.length === 0" class="p-4 text-center text-sm">
         Sin convocados.
       </p>
-    </BroadcastPanel>
+    </AppPanel>
 
     <!-- El jugador del partido de este equipo. -->
     <section

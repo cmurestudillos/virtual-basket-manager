@@ -1,11 +1,47 @@
 <script setup lang="ts">
+/**
+ * Nueva partida, como asistente por pasos (decisión del 2026-09-17), a imagen
+ * del de IBM (130904–130945): fondo con franjas, barra de arriba con el título
+ * del paso y los puntos de progreso, y Atrás / Siguiente abajo.
+ *
+ * Tiene los pasos que el juego ya tenía en una sola pantalla, y ni uno más:
+ *
+ * 1. **Equipo**: la liga, la tabla de clubes y la ficha del elegido.
+ * 2. **Entrenador**: nombre, nacionalidad, modo carrera, despido y selección.
+ * 3. **Ligas**: qué países se juegan y lo que cuesta simularlos.
+ * 4. **Resumen**: todo lo elegido, el nombre de la partida y empezar.
+ *
+ * El club va primero, al revés que en IBM, porque las ligas dependen de él: su
+ * país se juega siempre, y los atajos «Sólo el mío» y «Su continente» salen de
+ * ahí. El estado vive entero en esta página; los pasos sólo lo enseñan.
+ */
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { CatalogLeague, CatalogScope, CatalogTeam } from '@shared/contracts/teams.contract';
+import { matchKits } from '@shared/domain/court';
 import { estimateSeconds, formatEstimate } from '@shared/domain/simulation-scope';
 import { NATION_NAMES } from '@shared/domain/national-teams';
+import { toStars } from '@shared/domain/stars';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
-import { AppButton, AppFlag, AppPageHeader } from '@renderer/shared/ui';
+import {
+  AppBackdrop,
+  AppBadge,
+  AppButton,
+  AppEmpty,
+  AppField,
+  AppFlag,
+  AppInput,
+  AppPanel,
+  AppRing,
+  AppSectionTitle,
+  AppSelect,
+  AppStars,
+  AppStat,
+  KeyValueList,
+  TeamBadge,
+  type KeyValueItem
+} from '@renderer/shared/ui';
+import WizardSteps from '../components/WizardSteps.vue';
 
 const router = useRouter();
 const store = useGameStateStore();
@@ -68,6 +104,66 @@ onMounted(async () => {
   league.value = leagues.value.find((row) => row.isHome)?.competitionId ?? null;
 });
 
+// ---------------------------------------------------------------------------
+// Los pasos
+// ---------------------------------------------------------------------------
+
+const STEPS = [
+  {
+    id: 'team',
+    label: 'Equipo',
+    title: 'Escoger equipo',
+    subtitle: 'Elige el club que vas a dirigir'
+  },
+  {
+    id: 'manager',
+    label: 'Entrenador',
+    title: 'Crear entrenador',
+    subtitle: 'Quién eres y qué clase de partida quieres jugar'
+  },
+  {
+    id: 'scope',
+    label: 'Ligas',
+    title: 'Ligas que se juegan',
+    subtitle: 'Qué parte del mundo se simula cada temporada'
+  },
+  {
+    id: 'summary',
+    label: 'Resumen',
+    title: 'Resumen',
+    subtitle: 'Repasa la partida y ponle nombre'
+  }
+] as const;
+const LAST_STEP = STEPS.length - 1;
+
+const step = ref(0);
+const currentStep = computed(() => STEPS[step.value] ?? STEPS[0]);
+
+/** Si cada paso tiene lo que necesita para seguir: las mismas condiciones que `canCreate`. */
+const stepReady = computed(() => [
+  Boolean(selectedTeamId.value),
+  managerName.value.trim().length > 0,
+  true,
+  canCreate.value
+]);
+
+/** Hasta dónde se puede saltar con los puntos: hasta el primer paso a medias. */
+const reachableStep = computed(() => {
+  let last = 0;
+  while (last < LAST_STEP && stepReady.value[last]) {
+    last += 1;
+  }
+  return last;
+});
+
+function goTo(index: number): void {
+  step.value = Math.max(0, Math.min(index, reachableStep.value));
+}
+
+// ---------------------------------------------------------------------------
+// Paso 1: equipo
+// ---------------------------------------------------------------------------
+
 /**
  * El catálogo son trescientos y pico clubes de catorce países: sin filtrar por
  * liga y poder escribir el nombre, elegir equipo es recorrer una lista infinita.
@@ -86,11 +182,119 @@ const visibleTeams = computed(() => {
   });
 });
 
-/** El país de la liga del club elegido: ese se juega sí o sí. */
-const managedCountry = computed(() => {
-  const competitionId = selectedTeam.value?.competitionId;
-  return leagues.value.find((row) => row.competitionId === competitionId)?.country ?? null;
+/** Las ligas agrupadas por país, que es como las busca el que elige. */
+const leaguesByCountry = computed(() => {
+  const grouped = new Map<string, CatalogLeague[]>();
+  for (const row of leagues.value) {
+    const rows = grouped.get(row.country);
+    if (rows) {
+      rows.push(row);
+    } else {
+      grouped.set(row.country, [row]);
+    }
+  }
+  return [...grouped.entries()];
 });
+
+/** El escudo sale de la equipación, que sale del id: el mismo que se verá en la partida. */
+const kitOf = (teamId: string) => matchKits(teamId, '').home;
+
+const selectedLeague = computed(() =>
+  leagues.value.find((row) => row.competitionId === selectedTeam.value?.competitionId)
+);
+
+/** El puesto del club elegido en su liga por reputación: dice si se elige un favorito. */
+const reputationRank = computed(() => {
+  const team = selectedTeam.value;
+  if (!team) return null;
+  const rivals = teams.value
+    .filter((row) => row.competitionId === team.competitionId)
+    .sort((a, b) => b.reputation - a.reputation);
+  return { rank: rivals.findIndex((row) => row.id === team.id) + 1, of: rivals.length };
+});
+
+const teamFacts = computed<KeyValueItem[]>(() => {
+  const team = selectedTeam.value;
+  if (!team) return [];
+  const rank = reputationRank.value;
+  return [
+    { id: 'city', label: 'Ciudad', value: team.city },
+    { id: 'country', label: 'País', value: selectedLeague.value?.countryName ?? team.country },
+    { id: 'competition', label: 'Competición', value: team.competitionName },
+    {
+      id: 'tier',
+      label: 'División',
+      value: selectedLeague.value ? `${selectedLeague.value.tier}.ª división` : null
+    },
+    { id: 'reputation', label: 'Reputación' },
+    {
+      id: 'rank',
+      label: 'En su liga',
+      value: rank ? `${rank.rank}.º de ${rank.of} por reputación` : null
+    }
+  ];
+});
+
+function chooseTeam(teamId: string): void {
+  selectedTeamId.value = teamId;
+}
+
+// ---------------------------------------------------------------------------
+// Paso 2: entrenador
+// ---------------------------------------------------------------------------
+
+/** El selector negro trabaja con cadenas: la vacía es «la del club». */
+const nationalityChoice = computed({
+  get: () => managerNationality.value ?? '',
+  set: (value: string) => {
+    managerNationality.value = value || null;
+  }
+});
+
+const nationalityChoices = computed(() => {
+  const clubCountry = selectedTeam.value?.country;
+  const clubNation = clubCountry ? NATION_NAMES[clubCountry] : undefined;
+  return [
+    { id: '', label: clubNation ? `La del club (${clubNation})` : 'La del club' },
+    ...nationalityOptions.map(([code, name]) => ({ id: code, label: name }))
+  ];
+});
+
+const nationalChoice = computed({
+  get: () => nationalTeam.value ?? '',
+  set: (value: string) => {
+    nationalTeam.value = value || null;
+  }
+});
+
+const nationChoices = computed(() => [
+  { id: '', label: 'Ninguna' },
+  ...scope.value.nations.map((nation) => ({
+    id: nation.code,
+    label: `${nation.name} · ${nation.rank}ª del mundo`
+  }))
+]);
+
+/** Las dos partidas que hay: el despido acaba la partida o la convierte en carrera. */
+const GAME_MODES = [
+  {
+    career: false,
+    label: 'Dirigir un club',
+    hint: 'Tu club es la partida: si el consejo te destituye, se acaba.'
+  },
+  {
+    career: true,
+    label: 'Modo carrera',
+    hint: 'Si te destituyen no se acaba la partida: buscas otro banquillo y sigues.'
+  }
+] as const;
+
+// ---------------------------------------------------------------------------
+// Paso 3: ligas que se juegan
+// ---------------------------------------------------------------------------
+
+/** El país de la liga del club elegido: ese se juega sí o sí. */
+const managedCountry = computed(() => selectedLeague.value?.country ?? null);
 
 const activeCountries = computed(() => {
   const codes = new Set(chosenCountries.value);
@@ -139,18 +343,52 @@ const scopeGames = computed(() => {
   return domestic + continental + scope.value.nationalGames;
 });
 
-/** Las ligas agrupadas por país, que es como las busca el que elige. */
-const leaguesByCountry = computed(() => {
-  const grouped = new Map<string, CatalogLeague[]>();
-  for (const row of leagues.value) {
-    const rows = grouped.get(row.country);
-    if (rows) {
-      rows.push(row);
-    } else {
-      grouped.set(row.country, [row]);
+const scopeEstimate = computed(() => formatEstimate(estimateSeconds(scopeGames.value)));
+
+// ---------------------------------------------------------------------------
+// Paso 4: resumen
+// ---------------------------------------------------------------------------
+
+const summaryItems = computed<KeyValueItem[]>(() => {
+  const team = selectedTeam.value;
+  const nationality = managerNationality.value ?? team?.country ?? null;
+  const countries = scope.value.countries
+    .filter((row) => isActive(row.code))
+    .map((row) => row.name)
+    .join(', ');
+  return [
+    { id: 'team', label: 'Club', value: team?.name ?? null },
+    { id: 'competition', label: 'Competición', value: team?.competitionName ?? null },
+    { id: 'manager', label: 'Entrenador', value: managerName.value.trim() || null },
+    {
+      id: 'nationality',
+      label: 'Nacionalidad',
+      value: nationality ? (NATION_NAMES[nationality] ?? nationality) : null
+    },
+    {
+      id: 'mode',
+      label: 'Tipo de partida',
+      value: careerMode.value ? 'Modo carrera' : 'Dirigir un club'
+    },
+    {
+      id: 'dismissal',
+      label: 'Despido',
+      value: dismissalEnabled.value ? 'El consejo puede despedirte' : 'Nadie te despide'
+    },
+    {
+      id: 'national',
+      label: 'Selección',
+      value: nationalTeam.value
+        ? (NATION_NAMES[nationalTeam.value] ?? nationalTeam.value)
+        : 'Ninguna'
+    },
+    { id: 'countries', label: 'Ligas que se juegan', value: countries || null },
+    {
+      id: 'cost',
+      label: 'Simulación',
+      value: `unos ${scopeGames.value.toLocaleString('es-ES')} partidos, ≈ ${scopeEstimate.value} al año`
     }
-  }
-  return [...grouped.entries()];
+  ];
 });
 
 async function create(): Promise<void> {
@@ -184,230 +422,408 @@ async function create(): Promise<void> {
 </script>
 
 <template>
-  <div class="mx-auto flex h-screen max-w-5xl flex-col gap-6 p-8">
-    <header class="flex items-center justify-between">
-      <AppPageHeader title="Nueva partida" />
-      <RouterLink :to="{ name: 'main-menu' }" class="text-sm text-court-300 hover:text-court-100">
-        Volver
-      </RouterLink>
-    </header>
-
-    <div class="grid flex-1 grid-cols-[14rem_1fr_18rem] gap-6 overflow-hidden">
-      <nav class="flex flex-col overflow-hidden rounded border border-court-700">
-        <h2 class="border-b border-court-700 bg-court-900 px-4 py-2 text-sm text-court-300">
-          Ligas
-        </h2>
-        <div class="flex-1 overflow-auto p-2 text-sm">
-          <AppButton
-            variant="ghost"
-            size="sm"
-            block
-            class="text-left"
-            :class="league === null ? 'bg-court-800 text-ball-400' : ''"
-            @click="league = null"
-          >
-            Todo el mundo
-          </AppButton>
-
-          <div v-for="[country, rows] in leaguesByCountry" :key="country" class="mt-3">
-            <p class="px-2 text-xs uppercase tracking-wide text-court-600">
-              {{ rows[0]?.countryName ?? country }}
-            </p>
-            <AppButton
-              v-for="row in rows"
-              :key="row.competitionId"
-              variant="ghost"
-              size="sm"
-              block
-              class="text-left"
-              :class="league === row.competitionId ? 'bg-court-800 text-ball-400' : ''"
-              @click="league = row.competitionId"
-            >
-              {{ row.name }}
-              <span class="text-xs text-court-600">· {{ row.teams }}</span>
-            </AppButton>
-          </div>
+  <AppBackdrop class="h-screen">
+    <div class="flex h-screen flex-col">
+      <!-- Barra de arriba: el paso, sus puntos y lo ya elegido. -->
+      <header
+        class="grid h-16 shrink-0 grid-cols-[minmax(0,1fr)_auto_minmax(0,1fr)] items-center gap-6 bg-linear-to-r from-tv-chrome to-tv-chrome-2 px-6"
+      >
+        <div class="min-w-0">
+          <h1 class="truncate text-lg font-bold uppercase tracking-wide">
+            {{ currentStep.title }}
+          </h1>
+          <p class="truncate text-sm text-white/80">{{ currentStep.subtitle }}</p>
         </div>
-      </nav>
-
-      <section class="flex flex-col overflow-hidden rounded border border-court-700">
-        <div class="flex items-center gap-3 border-b border-court-700 bg-court-900 px-4 py-2">
-          <h2 class="text-sm text-court-300">Elige equipo</h2>
-          <span class="text-xs text-court-600"
-            >{{ visibleTeams.length }} de {{ teams.length }}</span
-          >
-          <input
-            v-model="search"
-            type="search"
-            placeholder="Buscar club o ciudad…"
-            class="ml-auto w-56 rounded border border-court-600 bg-court-950 px-2 py-1 text-sm"
-          />
-        </div>
-        <div class="flex-1 overflow-auto">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th>Equipo</th>
-                <th>Ciudad</th>
-                <th>Competición</th>
-                <th class="numeric">Reputación</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="team in visibleTeams"
-                :key="team.id"
-                class="cursor-pointer"
-                :class="{ 'bg-court-800 text-ball-400': team.id === selectedTeamId }"
-                @click="selectedTeamId = team.id"
-              >
-                <td>{{ team.name }}</td>
-                <td class="text-court-300">{{ team.city }}</td>
-                <td class="text-court-300">{{ team.competitionName }}</td>
-                <td class="numeric">{{ team.reputation }}</td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-
-      <aside class="flex flex-col gap-4 overflow-auto rounded border border-court-700 p-4">
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="text-court-300">Tu nombre</span>
-          <input
-            v-model="managerName"
-            type="text"
-            maxlength="60"
-            class="rounded border border-court-600 bg-court-900 px-3 py-2"
-          />
-        </label>
-
-        <label class="flex flex-col gap-1 text-sm" for="manager-nationality">
-          <span class="text-court-300">Tu nacionalidad</span>
-          <span class="flex items-center gap-2">
-            <AppFlag :code="managerNationality ?? selectedTeam?.country" size="md" />
-            <select
-              id="manager-nationality"
-              v-model="managerNationality"
-              class="flex-1 rounded border border-court-600 bg-court-900 px-3 py-2"
-            >
-              <option :value="null">La del club</option>
-              <option v-for="[code, name] in nationalityOptions" :key="code" :value="code">
-                {{ name }}
-              </option>
-            </select>
-          </span>
-        </label>
-
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="text-court-300">Nombre de la partida</span>
-          <input
-            v-model="saveName"
-            type="text"
-            maxlength="60"
-            :placeholder="selectedTeam?.name ?? ''"
-            class="rounded border border-court-600 bg-court-900 px-3 py-2"
-          />
-        </label>
-
-        <label class="flex cursor-pointer items-start gap-2 text-sm">
-          <input v-model="careerMode" type="checkbox" class="mt-1" />
-          <span>
-            <span>Modo carrera</span>
-            <span class="block text-xs text-court-300">
-              Si te destituyen no se acaba la partida: buscas otro banquillo y sigues.
+        <WizardSteps :steps="STEPS" :current="step" :reachable="reachableStep" @go="goTo" />
+        <div v-if="selectedTeam" class="flex min-w-0 items-center justify-end gap-3">
+          <span class="flex min-w-0 flex-col text-right">
+            <span class="truncate font-bold">{{ selectedTeam.name }}</span>
+            <span v-if="managerName.trim()" class="truncate text-sm text-white/80">
+              {{ managerName.trim() }}
             </span>
           </span>
-        </label>
+          <TeamBadge :name="selectedTeam.name" :kit="kitOf(selectedTeam.id)" :size="40" />
+        </div>
+      </header>
 
-        <label class="flex cursor-pointer items-start gap-2 text-sm">
-          <input v-model="dismissalEnabled" type="checkbox" class="mt-1" />
-          <span>
-            <span>El consejo puede despedirte</span>
-            <span class="block text-xs text-court-300">
-              {{
-                careerMode
-                  ? 'Sin despido tampoco hay carrera que hacer: nadie te echa de tu club.'
-                  : 'Desactívalo para que la partida no se acabe aunque el consejo pierda la paciencia.'
-              }}
-            </span>
-          </span>
-        </label>
+      <main class="min-h-0 flex-1 p-4">
+        <!-- 1. Equipo -->
+        <div
+          v-if="step === 0"
+          class="grid h-full min-h-0 grid-cols-[13rem_minmax(0,1fr)_19rem] gap-3"
+        >
+          <nav aria-label="Ligas" class="flex min-h-0 flex-col">
+            <AppPanel title="Ligas" scroll flush class="min-h-0 flex-1">
+              <div class="flex flex-col gap-[3px] p-2 text-sm">
+                <button
+                  type="button"
+                  class="block w-full px-2 py-1.5 text-left transition-colors"
+                  :class="
+                    league === null
+                      ? 'bg-tv-select font-bold'
+                      : 'bg-tv-cell hover:bg-tv-cell-strong'
+                  "
+                  :aria-pressed="league === null"
+                  @click="league = null"
+                >
+                  Todo el mundo
+                </button>
 
-        <label class="flex flex-col gap-1 text-sm" for="national-team">
-          <span class="text-court-300">Selección (opcional)</span>
-          <span class="flex items-center gap-2">
-            <AppFlag :code="nationalTeam" size="md" />
-            <select
-              id="national-team"
-              v-model="nationalTeam"
-              class="flex-1 rounded border border-court-600 bg-court-900 px-3 py-2"
-            >
-              <option :value="null">Ninguna</option>
-              <option v-for="nation in scope.nations" :key="nation.code" :value="nation.code">
-                {{ nation.name }} · {{ nation.rank }}ª del mundo
-              </option>
-            </select>
-          </span>
-          <span class="text-xs text-court-300">
-            La diriges a la vez que el club: convocas en noviembre, febrero y verano, y juegas la
-            clasificación y el Mundial.
-          </span>
-        </label>
+                <template v-for="[country, rows] in leaguesByCountry" :key="country">
+                  <AppSectionTitle size="xs" class="mt-2">
+                    {{ rows[0]?.countryName ?? country }}
+                  </AppSectionTitle>
+                  <button
+                    v-for="row in rows"
+                    :key="row.competitionId"
+                    type="button"
+                    class="block w-full px-2 py-1.5 text-left transition-colors"
+                    :class="
+                      league === row.competitionId
+                        ? 'bg-tv-select font-bold'
+                        : 'bg-tv-cell hover:bg-tv-cell-strong'
+                    "
+                    :aria-pressed="league === row.competitionId"
+                    @click="league = row.competitionId"
+                  >
+                    {{ row.name }}
+                    <span class="text-xs font-normal text-tv-muted">· {{ row.teams }}</span>
+                  </button>
+                </template>
+              </div>
+            </AppPanel>
+          </nav>
 
-        <fieldset class="flex flex-col gap-2 text-sm">
-          <legend class="text-court-300">Ligas que se juegan</legend>
-          <p class="text-xs text-court-300">
-            Cada país añade su calendario, sus playoffs, sus ascensos y su copa. El resto del mundo
-            sigue existiendo, pero sus ligas no se disputan.
-          </p>
-          <div class="flex flex-wrap gap-1">
-            <AppButton size="sm" variant="ghost" @click="choosePreset('mine')"
-              >Sólo el mío</AppButton
-            >
-            <AppButton size="sm" variant="ghost" @click="choosePreset('continent')">
-              Su continente
-            </AppButton>
-            <AppButton size="sm" variant="ghost" @click="choosePreset('world')">Todos</AppButton>
-          </div>
-          <ul class="flex flex-col gap-1">
-            <li v-for="country in scope.countries" :key="country.code">
-              <label
-                class="flex items-center gap-2"
-                :class="country.code === managedCountry ? 'cursor-default' : 'cursor-pointer'"
+          <AppPanel
+            title="Equipos"
+            :hint="`${visibleTeams.length} de ${teams.length}`"
+            scroll
+            flush
+            class="min-h-0"
+          >
+            <template #actions>
+              <AppInput
+                v-model="search"
+                type="search"
+                dense
+                placeholder="Buscar club o ciudad…"
+                aria-label="Buscar club o ciudad"
+                class="w-48"
+              />
+            </template>
+            <table class="data-table">
+              <thead>
+                <tr>
+                  <th>Equipo</th>
+                  <th>Ciudad</th>
+                  <th>Competición</th>
+                  <th class="numeric">Reputación</th>
+                </tr>
+              </thead>
+              <tbody>
+                <tr
+                  v-for="team in visibleTeams"
+                  :key="team.id"
+                  class="cursor-pointer"
+                  :class="{ 'is-selected': team.id === selectedTeamId }"
+                  tabindex="0"
+                  @click="chooseTeam(team.id)"
+                  @keydown.enter.prevent="chooseTeam(team.id)"
+                >
+                  <td class="py-1">
+                    <span class="flex items-center gap-2">
+                      <TeamBadge :name="team.name" :kit="kitOf(team.id)" :size="22" />
+                      <span class="truncate font-semibold">{{ team.name }}</span>
+                    </span>
+                  </td>
+                  <td>{{ team.city }}</td>
+                  <td>{{ team.competitionName }}</td>
+                  <td class="numeric is-key">{{ team.reputation }}</td>
+                </tr>
+              </tbody>
+            </table>
+          </AppPanel>
+
+          <AppPanel :title="selectedTeam?.name ?? 'Tu club'" scroll class="min-h-0">
+            <AppEmpty v-if="!selectedTeam">
+              Elige un club en la tabla para ver su ficha. Puedes filtrar por liga o buscarlo por su
+              nombre o su ciudad.
+            </AppEmpty>
+            <div v-else class="flex flex-col gap-3">
+              <div class="flex items-center justify-around bg-tv-cell py-3">
+                <TeamBadge :name="selectedTeam.name" :kit="kitOf(selectedTeam.id)" :size="80" />
+                <AppRing :value="selectedTeam.reputation" label="Reputación" :size="72" />
+              </div>
+              <KeyValueList :items="teamFacts">
+                <template #value="{ item }">
+                  <template v-if="item.id === 'country'">
+                    {{ item.value }} <AppFlag :code="selectedTeam.country" />
+                  </template>
+                  <AppStars
+                    v-else-if="item.id === 'reputation'"
+                    :value="toStars(selectedTeam.reputation)"
+                    label="Reputación"
+                  />
+                  <template v-else>{{ item.value ?? '-' }}</template>
+                </template>
+              </KeyValueList>
+            </div>
+          </AppPanel>
+        </div>
+
+        <!-- 2. Entrenador -->
+        <div
+          v-else-if="step === 1"
+          class="mx-auto grid h-full max-h-full max-w-5xl grid-cols-2 content-start gap-3 overflow-auto"
+        >
+          <div class="flex flex-col gap-3">
+            <AppPanel title="Nuevo entrenador">
+              <div class="flex flex-col gap-3">
+                <AppSectionTitle>Escribe tu nombre</AppSectionTitle>
+                <AppField label="Nombre">
+                  <AppInput
+                    id="manager-name"
+                    v-model="managerName"
+                    type="text"
+                    maxlength="60"
+                    placeholder="Introduce tu nombre"
+                  />
+                </AppField>
+                <AppSectionTitle>Nacionalidad</AppSectionTitle>
+                <AppSelect
+                  id="manager-nationality"
+                  v-model="nationalityChoice"
+                  :options="nationalityChoices"
+                  label="Tu nacionalidad"
+                >
+                  <template #leading>
+                    <AppFlag :code="managerNationality ?? selectedTeam?.country" size="md" />
+                  </template>
+                </AppSelect>
+              </div>
+            </AppPanel>
+
+            <AppPanel title="Selección" hint="opcional">
+              <AppField
+                label="Selección nacional"
+                hint="La diriges a la vez que el club: convocas en noviembre, febrero y verano, y juegas la clasificación y el Mundial."
               >
+                <AppSelect id="national-team" v-model="nationalChoice" :options="nationChoices">
+                  <template #leading>
+                    <AppFlag v-if="nationalTeam" :code="nationalTeam" size="md" />
+                  </template>
+                </AppSelect>
+              </AppField>
+            </AppPanel>
+          </div>
+
+          <AppPanel title="Tipo de partida">
+            <div class="flex flex-col gap-3">
+              <div role="radiogroup" aria-label="Tipo de partida" class="grid grid-cols-2 gap-3">
+                <button
+                  v-for="mode in GAME_MODES"
+                  :key="mode.label"
+                  type="button"
+                  role="radio"
+                  :aria-checked="careerMode === mode.career"
+                  class="flex flex-col border-[3px] text-left text-tv-ink transition-colors"
+                  :class="
+                    careerMode === mode.career
+                      ? 'border-tv-blue bg-tv-select'
+                      : 'border-transparent bg-tv-cell hover:bg-tv-cell-strong'
+                  "
+                  @click="careerMode = mode.career"
+                >
+                  <span
+                    class="bg-linear-to-r from-tv-head-from to-tv-head-to px-3 py-1.5 text-center text-sm font-bold uppercase tracking-wide text-white"
+                    >{{ mode.label }}</span
+                  >
+                  <span class="p-3 text-sm">{{ mode.hint }}</span>
+                </button>
+              </div>
+
+              <label class="flex cursor-pointer items-start gap-3 bg-tv-cell p-3 text-sm">
                 <input
+                  v-model="dismissalEnabled"
                   type="checkbox"
-                  :checked="isActive(country.code)"
-                  :disabled="country.code === managedCountry"
-                  @change="toggleCountry(country.code)"
+                  class="mt-0.5 h-4 w-4 shrink-0 accent-tv-blue"
                 />
-                <span class="flex-1">
-                  {{ country.name }}
-                  <span v-if="country.code === managedCountry" class="text-xs text-ball-400">
-                    · tu club
+                <span>
+                  <span class="font-bold">El consejo puede despedirte</span>
+                  <span class="block text-xs text-tv-muted">
+                    {{
+                      careerMode
+                        ? 'Sin despido tampoco hay carrera que hacer: nadie te echa de tu club.'
+                        : 'Desactívalo para que la partida no se acabe aunque el consejo pierda la paciencia.'
+                    }}
                   </span>
                 </span>
-                <span class="text-xs tabular-nums text-court-600">
-                  {{ formatEstimate(estimateSeconds(country.games)) }}
-                </span>
               </label>
-            </li>
-          </ul>
-          <p class="text-xs text-court-300">
-            {{ activeCountries.size }} {{ activeCountries.size === 1 ? 'país' : 'países' }} · unos
-            {{ scopeGames.toLocaleString('es-ES') }} partidos y
-            <span class="text-court-100">≈ {{ formatEstimate(estimateSeconds(scopeGames)) }}</span>
-            de simulación por temporada, competiciones continentales y selecciones incluidas.
-          </p>
-        </fieldset>
+            </div>
+          </AppPanel>
+        </div>
 
-        <p v-if="error" class="text-sm text-ball-400">{{ error }}</p>
+        <!-- 3. Ligas que se juegan -->
+        <div
+          v-else-if="step === 2"
+          class="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_18rem] gap-3"
+        >
+          <AppPanel
+            title="Países"
+            :hint="`${activeCountries.size} de ${scope.countries.length}`"
+            scroll
+            flush
+            class="min-h-0"
+          >
+            <template #actions>
+              <AppButton size="sm" @click="choosePreset('mine')">Sólo el mío</AppButton>
+              <AppButton size="sm" @click="choosePreset('continent')">Su continente</AppButton>
+              <AppButton size="sm" @click="choosePreset('world')">Todos</AppButton>
+            </template>
+            <div
+              class="sticky top-0 z-10 grid grid-cols-[1.25rem_12rem_minmax(0,1fr)_7rem] gap-3 bg-linear-to-r from-tv-head-from to-tv-head-to px-3 py-2 text-xs font-bold uppercase tracking-wide text-white"
+              aria-hidden="true"
+            >
+              <span></span>
+              <span>País</span>
+              <span>Ligas</span>
+              <span class="text-right">Simulación</span>
+            </div>
+            <ul class="flex flex-col gap-[3px] p-[3px]">
+              <li v-for="country in scope.countries" :key="country.code">
+                <label
+                  class="grid grid-cols-[1.25rem_12rem_minmax(0,1fr)_7rem] items-center gap-3 px-3 py-2 text-sm transition-colors"
+                  :class="[
+                    isActive(country.code) ? 'bg-tv-select' : 'bg-tv-cell hover:bg-tv-cell-strong',
+                    country.code === managedCountry ? 'cursor-default' : 'cursor-pointer'
+                  ]"
+                >
+                  <input
+                    type="checkbox"
+                    class="h-4 w-4 accent-tv-blue"
+                    :checked="isActive(country.code)"
+                    :disabled="country.code === managedCountry"
+                    @change="toggleCountry(country.code)"
+                  />
+                  <span class="flex items-center gap-2 font-semibold">
+                    {{ country.name }}
+                    <AppBadge v-if="country.code === managedCountry">tu club</AppBadge>
+                  </span>
+                  <span class="truncate text-tv-muted">
+                    {{ country.leagues.map((row) => row.name).join(' · ') }}
+                    <template v-if="country.hasCup"> · Copa</template>
+                  </span>
+                  <span class="figure text-right text-tv-muted">
+                    {{ formatEstimate(estimateSeconds(country.games)) }}
+                  </span>
+                </label>
+              </li>
+            </ul>
+          </AppPanel>
 
-        <AppButton variant="primary" class="mt-auto" :disabled="!canCreate" @click="create">
+          <aside class="flex min-h-0 flex-col gap-3 overflow-auto">
+            <AppPanel title="Tiempo de simulación">
+              <div class="flex flex-col gap-3">
+                <div class="grid grid-cols-2 gap-3">
+                  <AppStat label="Países" size="md">{{ activeCountries.size }}</AppStat>
+                  <AppStat label="Partidos" size="md">
+                    {{ scopeGames.toLocaleString('es-ES') }}
+                  </AppStat>
+                </div>
+                <AppStat label="Simulación">≈ {{ scopeEstimate }}</AppStat>
+                <p class="bg-tv-cell p-3 text-center text-xs text-tv-muted">
+                  {{ activeCountries.size }} {{ activeCountries.size === 1 ? 'país' : 'países' }} ·
+                  unos {{ scopeGames.toLocaleString('es-ES') }} partidos y
+                  <span class="font-bold text-tv-ink">≈ {{ scopeEstimate }}</span>
+                  de simulación por temporada, competiciones continentales y selecciones incluidas.
+                </p>
+              </div>
+            </AppPanel>
+            <AppPanel title="Qué se juega">
+              <p class="text-sm">
+                Cada país añade su calendario, sus playoffs, sus ascensos y su copa. El resto del
+                mundo sigue existiendo, pero sus ligas no se disputan.
+              </p>
+            </AppPanel>
+          </aside>
+        </div>
+
+        <!-- 4. Resumen -->
+        <div
+          v-else
+          class="mx-auto grid h-full max-h-full max-w-5xl grid-cols-[minmax(0,1fr)_22rem] content-start gap-3 overflow-auto"
+        >
+          <AppPanel title="Tu partida">
+            <KeyValueList :items="summaryItems">
+              <template #value="{ item }">
+                <template v-if="item.id === 'team' && selectedTeam">
+                  {{ item.value }}
+                  <TeamBadge :name="selectedTeam.name" :kit="kitOf(selectedTeam.id)" :size="22" />
+                </template>
+                <template v-else-if="item.id === 'nationality'">
+                  {{ item.value ?? '-' }}
+                  <AppFlag :code="managerNationality ?? selectedTeam?.country" />
+                </template>
+                <template v-else-if="item.id === 'national' && nationalTeam">
+                  {{ item.value }} <AppFlag :code="nationalTeam" />
+                </template>
+                <template v-else>{{ item.value ?? '-' }}</template>
+              </template>
+            </KeyValueList>
+          </AppPanel>
+
+          <AppPanel title="Nombre de la partida">
+            <div class="flex flex-col gap-3">
+              <AppField
+                label="Nombre"
+                hint="Así la verás al cargarla. Si lo dejas en blanco, se llama como el club."
+              >
+                <AppInput
+                  id="save-name"
+                  v-model="saveName"
+                  type="text"
+                  maxlength="60"
+                  :placeholder="selectedTeam?.name ?? ''"
+                />
+              </AppField>
+              <p v-if="error" role="alert" class="bg-tv-cell p-3 text-sm font-semibold text-tv-red">
+                {{ error }}
+              </p>
+            </div>
+          </AppPanel>
+        </div>
+      </main>
+
+      <!-- Barra de abajo: volver y seguir. -->
+      <footer
+        class="flex h-[55px] shrink-0 items-center justify-between gap-3 border-t border-white/10 bg-tv-footer px-4"
+      >
+        <AppButton v-if="step === 0" class="min-w-32" @click="router.push({ name: 'main-menu' })">
+          Volver
+        </AppButton>
+        <AppButton v-else class="min-w-32" @click="step -= 1">Atrás</AppButton>
+
+        <AppButton
+          v-if="step < LAST_STEP"
+          variant="primary"
+          arrow="single"
+          class="min-w-44"
+          :disabled="!stepReady[step]"
+          @click="goTo(step + 1)"
+        >
+          Siguiente
+        </AppButton>
+        <AppButton
+          v-else
+          variant="primary"
+          arrow="single"
+          class="min-w-44"
+          :disabled="!canCreate"
+          @click="create"
+        >
           {{ creating ? 'Creando…' : 'Empezar' }}
         </AppButton>
-      </aside>
+      </footer>
     </div>
-  </div>
+  </AppBackdrop>
 </template>

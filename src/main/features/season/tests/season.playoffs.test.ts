@@ -356,7 +356,9 @@ describe('playoffs', () => {
     expect(segundaAlCierre[17]?.zone).toBeNull();
   });
 
-  it('arranca la temporada siguiente con calendario nuevo', () => {
+  // Montar la temporada siguiente de todo el mundo tarda: solo, unos 20 s; con la
+  // suite entera en paralelo pasaba de los 30 s por defecto sin que nada fallara.
+  it('arranca la temporada siguiente con calendario nuevo', { timeout: 90_000 }, () => {
     // La temporada puede haber acabado con el consejo harto —los resultados
     // dependen de la semilla de cada partida— y a un destituido no le dejan
     // empezar otra. Aquí interesa el calendario, así que se le devuelve la

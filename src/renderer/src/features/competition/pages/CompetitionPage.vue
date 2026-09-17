@@ -1,15 +1,33 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import type { FixtureEntry, LeagueEntry, StandingEntry } from '@shared/contracts/season.contract';
-import { STANDING_ZONE_LABELS, type StandingZone } from '@shared/domain/promotion';
-import { AppButton, AppPageHeader, AppTabs } from '@renderer/shared/ui';
-import { useSeasonStore } from '@renderer/features/season/season.store';
-import { formatMatchDate } from '@renderer/shared/format';
-import PlayoffBracketView from '@renderer/features/competition/components/PlayoffBracketView.vue';
-import CupBracketView from '@renderer/features/competition/components/CupBracketView.vue';
-import ContinentalView from '@renderer/features/competition/components/ContinentalView.vue';
-import DraftBoard from '@renderer/features/competition/components/DraftBoard.vue';
+import type { RoundMvp } from '@shared/contracts/match.contract';
+import { STANDING_ZONE_LABELS } from '@shared/domain/promotion';
 import { CONFERENCE_LABELS, type Conference } from '@shared/domain/nba';
+import { formatMatchDate } from '@renderer/shared/format';
+import { AppEmpty, AppFlag, AppPager, AppPanel, AppSelect, AppTabs } from '@renderer/shared/ui';
+import { useSeasonStore } from '@renderer/features/season/season.store';
+import PageToolbar from '@renderer/features/app-shell/components/PageToolbar.vue';
+import { zoneSwatchClass, zonesIn } from '@renderer/features/competition/standing-zones';
+import BestTeamsPanel from '@renderer/features/competition/components/BestTeamsPanel.vue';
+import ContinentalView from '@renderer/features/competition/components/ContinentalView.vue';
+import CupBracketView from '@renderer/features/competition/components/CupBracketView.vue';
+import DraftBoard from '@renderer/features/competition/components/DraftBoard.vue';
+import GameRow from '@renderer/features/competition/components/GameRow.vue';
+import PlayoffBracketView from '@renderer/features/competition/components/PlayoffBracketView.vue';
+import RoundMvpPanel from '@renderer/features/competition/components/RoundMvpPanel.vue';
+import StandingsTable from '@renderer/features/competition/components/StandingsTable.vue';
+
+/**
+ * Competiciones: la clasificación, la jornada, la Copa, Europa, los playoffs y
+ * el draft de la liga que se mire.
+ *
+ * Como IBM, las pestañas de la pantalla van en la barra de sección, detrás de
+ * «Competiciones» y «Estadísticas», y el selector negro de competición a la
+ * derecha. Con 21 ligas en 14 países las filas de pastillas no cabían: el
+ * selector sí. En la Copa se elige país, que es de lo que va una copa; en
+ * Europa, la competición continental (lo pone su propia vista).
+ */
 
 const seasonStore = useSeasonStore();
 
@@ -18,10 +36,11 @@ const tab = ref<Tab>('standings');
 const standings = ref<StandingEntry[]>([]);
 const fixtures = ref<FixtureEntry[]>([]);
 const round = ref(1);
+const roundMvp = ref<RoundMvp | null>(null);
 const leagues = ref<LeagueEntry[]>([]);
 /** División que se está mirando; arranca en la del equipo del usuario. */
 const league = ref<string | null>(null);
-/** País que se está mirando: con varios países jugándose, primero se elige país. */
+/** País que se está mirando: el de la división elegida, o el elegido en la Copa. */
 const country = ref<string | null>(null);
 
 const selectedLeague = computed(() =>
@@ -44,20 +63,8 @@ const standingGroups = computed(() => {
   }));
 });
 
-/** Sólo se pintan las zonas que esa división tiene de verdad. */
-const zonesShown = computed(() => {
-  const seen = new Set<StandingZone>(standings.value.map((row) => row.zone));
-  return (['playoffs', 'playIn', 'promotion', 'relegation'] as const).filter((zone) =>
-    seen.has(zone)
-  );
-});
-
-const ZONE_CLASSES: Record<Exclude<StandingZone, null>, string> = {
-  playoffs: 'border-ball-500',
-  playIn: 'border-sky-500',
-  promotion: 'border-emerald-500',
-  relegation: 'border-red-500'
-};
+/** Sólo se explican las zonas que esa división tiene de verdad. */
+const zonesShown = computed(() => zonesIn(standings.value));
 
 /**
  * Las pestañas de la pantalla.
@@ -66,6 +73,8 @@ const ZONE_CLASSES: Record<Exclude<StandingZone, null>, string> = {
  * pestaña de playoffs siempre vacía sólo confunde.
  */
 const hasPlayoffs = computed(() => (selectedLeague.value?.playoffTeams ?? 0) >= 2);
+const manyCountries = computed(() => new Set(leagues.value.map((row) => row.country)).size > 1);
+
 const countryOptions = computed(() => {
   const seen = new Map<string, string>();
   for (const row of leagues.value) {
@@ -76,18 +85,24 @@ const countryOptions = computed(() => {
   const home = leagues.value.find((row) => row.isManaged)?.country;
   return [...seen.entries()].map(([id, label]) => ({
     id,
-    label,
-    hint: id === home ? ' · tu país' : ''
+    label: id === home ? `${label} · tu país` : label
   }));
 });
+
+/**
+ * Todas las divisiones en un selector. Con varios países, cada una lleva el
+ * suyo detrás: si no cabe se corta por ahí, que es lo que ya dice la bandera.
+ */
 const leagueOptions = computed(() =>
-  leagues.value
-    .filter((row) => row.country === country.value)
-    .map((row) => ({
+  leagues.value.map((row) => {
+    const name = manyCountries.value ? `${row.name} · ${row.countryName}` : row.name;
+    return {
       id: row.competitionId,
-      label: row.name,
-      hint: row.isManaged ? ' · tu liga' : ''
-    }))
+      label: row.isManaged ? `${name} · tu liga` : name,
+      // Cerrado, sólo el nombre de la liga: el país ya lo dice la bandera.
+      short: row.name
+    };
+  })
 );
 
 const tabs = computed(() => [
@@ -101,6 +116,15 @@ const tabs = computed(() => [
 
 const totalRounds = computed(() => selectedLeague.value?.totalRounds || 34);
 const roundDate = computed(() => fixtures.value[0]?.scheduledOn ?? null);
+
+/** Dónde va la liga: lo que antes decía la cabecera, ahora en el rótulo de la tabla. */
+const leagueStatus = computed(() => {
+  const row = selectedLeague.value;
+  if (!row) return '';
+  if (row.stage === 'regular') return `Jornada ${row.currentRound} de ${totalRounds.value}`;
+  if (row.championTeamName) return `Campeón: ${row.championTeamName}`;
+  return 'Playoffs';
+});
 
 /**
  * Quién descansa en la jornada que se mira: en una liga de número impar, el
@@ -139,6 +163,9 @@ watch(round, loadRound);
 watch(league, async () => {
   // Otra liga, otro calendario: se abre en su jornada en curso.
   round.value = selectedLeague.value?.currentRound ?? 1;
+  if (selectedLeague.value) {
+    country.value = selectedLeague.value.country;
+  }
   if (
     (tab.value === 'playoffs' && !hasPlayoffs.value) ||
     (tab.value === 'draft' && !selectedLeague.value?.nbaFormat)
@@ -149,7 +176,7 @@ watch(league, async () => {
   await loadRound();
 });
 
-/** Al cambiar de país se mira su primera división. */
+/** Al cambiar de país (en la Copa) se mira también su primera división. */
 function selectCountry(code: string): void {
   country.value = code;
   league.value =
@@ -162,173 +189,135 @@ async function loadStandings(): Promise<void> {
   standings.value = await window.api.season.getStandings(league.value ?? undefined);
 }
 
+/** Cuenta las cargas de jornada: si se pasan jornadas deprisa, sólo vale la última. */
+let roundRequest = 0;
+
 async function loadRound(): Promise<void> {
-  fixtures.value = await window.api.season.listFixtures(round.value, league.value ?? undefined);
-}
-
-function stepRound(delta: number): void {
-  round.value = Math.min(totalRounds.value, Math.max(1, round.value + delta));
-}
-
-function streakLabel(streak: number): string {
-  if (streak === 0) return '—';
-  return `${streak > 0 ? 'V' : 'D'}${Math.abs(streak)}`;
+  const request = ++roundRequest;
+  const rows = await window.api.season.listFixtures(round.value, league.value ?? undefined);
+  if (request !== roundRequest) return;
+  fixtures.value = rows;
+  // El MVP sale de las actas de la jornada: sin nada jugado, no hay.
+  const played = rows.find((row) => row.played);
+  let mvp: RoundMvp | null = null;
+  if (played) {
+    try {
+      mvp = (await window.api.match.roundResults(played.gameId)).mvp;
+    } catch {
+      // Sin MVP la jornada se lee igual: no merece un error en pantalla.
+    }
+  }
+  if (request === roundRequest) {
+    roundMvp.value = mvp;
+  }
 }
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
-    <AppPageHeader :title="selectedLeague?.name ?? seasonStore.season?.competitionName ?? 'Liga'">
-      <span v-if="selectedLeague?.stage === 'regular'" class="text-sm text-court-300">
-        Jornada {{ selectedLeague.currentRound }} de {{ totalRounds }}
-      </span>
-      <span
-        v-else-if="selectedLeague?.championTeamName && tab !== 'playoffs'"
-        class="text-sm text-court-300"
-      >
-        Campeón: <span class="text-ball-400">{{ selectedLeague.championTeamName }}</span>
-      </span>
-      <span v-else-if="selectedLeague" class="text-sm text-ball-400">Playoffs</span>
-    </AppPageHeader>
+  <!-- El título visible es el de la barra de sección; este es para quien no la ve. -->
+  <h1 class="sr-only">
+    {{ selectedLeague?.name ?? seasonStore.season?.competitionName ?? 'Liga' }}
+  </h1>
 
-    <!-- Con varios países jugándose, primero el país y luego la división. -->
-    <div v-if="countryOptions.length > 1 || leagueOptions.length > 1" class="flex flex-col gap-2">
-      <AppTabs
-        v-if="countryOptions.length > 1"
-        :model-value="country ?? ''"
-        :options="countryOptions"
-        variant="pills"
-        @update:model-value="selectCountry($event)"
-      />
-      <AppTabs
-        v-if="leagueOptions.length > 1 && tab !== 'cup' && tab !== 'continental'"
-        :model-value="league ?? ''"
-        :options="leagueOptions"
-        variant="pills"
-        @update:model-value="league = $event"
-      />
-    </div>
-
+  <PageToolbar place="tabs">
     <AppTabs :model-value="tab" :options="tabs" @update:model-value="tab = $event as Tab" />
+  </PageToolbar>
 
-    <div v-if="tab === 'standings'" class="flex flex-col gap-3">
-      <div
+  <PageToolbar>
+    <AppSelect
+      v-if="tab === 'cup' && countryOptions.length > 1"
+      :model-value="country ?? ''"
+      :options="countryOptions"
+      label="País"
+      @update:model-value="selectCountry($event)"
+    >
+      <template #leading><AppFlag :code="country" /></template>
+    </AppSelect>
+    <AppSelect
+      v-else-if="tab !== 'cup' && tab !== 'continental' && leagueOptions.length > 1"
+      :model-value="league ?? ''"
+      :options="leagueOptions"
+      label="Competición"
+      class="max-w-72 min-w-28!"
+      @update:model-value="league = $event"
+    >
+      <template #leading><AppFlag :code="selectedLeague?.country" /></template>
+    </AppSelect>
+  </PageToolbar>
+
+  <div v-if="tab === 'standings'" class="grid grid-cols-[minmax(0,1fr)_18rem] items-start gap-4">
+    <div class="flex min-w-0 flex-col gap-4">
+      <AppPanel
         v-for="group in standingGroups"
         :key="group.title ?? 'liga'"
-        class="overflow-auto rounded border border-court-700"
+        :title="group.title ?? 'Clasificación'"
+        :hint="leagueStatus"
+        flush
       >
-        <p v-if="group.title" class="border-b border-court-700 bg-court-900 px-4 py-2 text-sm">
-          {{ group.title }}
-        </p>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th class="numeric">#</th>
-              <th>Equipo</th>
-              <th v-if="group.title">División</th>
-              <th class="numeric">J</th>
-              <th class="numeric">G</th>
-              <th class="numeric">P</th>
-              <th class="numeric">PF</th>
-              <th class="numeric">PC</th>
-              <th class="numeric">Dif</th>
-              <th class="numeric">Racha</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in group.rows"
-              :key="row.teamId"
-              :class="row.isManaged ? 'bg-court-800 text-ball-400' : ''"
-            >
-              <td
-                class="numeric border-l-4"
-                :class="row.zone ? ZONE_CLASSES[row.zone] : 'border-transparent'"
-              >
-                {{ row.conferenceRank ?? row.position }}
-              </td>
-              <td>{{ row.teamName }}</td>
-              <td v-if="group.title" class="text-court-300">{{ row.division }}</td>
-              <td class="numeric">{{ row.played }}</td>
-              <td class="numeric font-semibold">{{ row.won }}</td>
-              <td class="numeric">{{ row.lost }}</td>
-              <td class="numeric text-court-300">{{ row.pointsFor }}</td>
-              <td class="numeric text-court-300">{{ row.pointsAgainst }}</td>
-              <td class="numeric" :class="row.pointsDifference >= 0 ? 'text-good-400' : ''">
-                {{ row.pointsDifference > 0 ? '+' : '' }}{{ row.pointsDifference }}
-              </td>
-              <td class="numeric text-court-300">{{ streakLabel(row.streak) }}</td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+        <StandingsTable :rows="group.rows" :division="group.title !== null" full />
+      </AppPanel>
 
-      <ul v-if="zonesShown.length > 0" class="flex gap-4 text-xs text-court-300">
+      <ul v-if="zonesShown.length > 0" class="flex flex-wrap gap-4 text-xs text-white/75">
         <li v-for="zone in zonesShown" :key="zone" class="flex items-center gap-2">
-          <span class="h-3 w-1 rounded-sm border-l-4" :class="ZONE_CLASSES[zone]"></span>
+          <span class="h-3 w-1" :class="zoneSwatchClass(zone, zonesShown)"></span>
           {{ STANDING_ZONE_LABELS[zone] }}
         </li>
       </ul>
     </div>
 
-    <DraftBoard v-else-if="tab === 'draft'" />
+    <BestTeamsPanel :rows="standings" />
+  </div>
 
-    <CupBracketView
-      v-else-if="tab === 'cup'"
-      :key="`cup-${country}`"
-      :country="country ?? undefined"
-    />
+  <DraftBoard v-else-if="tab === 'draft'" />
 
-    <ContinentalView v-else-if="tab === 'continental'" />
+  <CupBracketView
+    v-else-if="tab === 'cup'"
+    :key="`cup-${country}`"
+    :country="country ?? undefined"
+  />
 
-    <PlayoffBracketView
-      v-else-if="tab === 'playoffs'"
-      :key="`playoffs-${league}`"
-      :competition-id="league ?? undefined"
-    />
+  <ContinentalView v-else-if="tab === 'continental'" />
 
-    <div v-else class="flex flex-col gap-3">
-      <div class="flex items-center gap-3">
-        <AppButton size="sm" @click="stepRound(-1)">‹</AppButton>
-        <span class="text-sm">
-          Jornada {{ round }}
-          <span v-if="roundDate" class="text-court-300"> · {{ formatMatchDate(roundDate) }}</span>
+  <PlayoffBracketView
+    v-else-if="tab === 'playoffs'"
+    :key="`playoffs-${league}`"
+    :competition-id="league ?? undefined"
+  />
+
+  <div
+    v-else
+    class="grid items-start gap-4"
+    :class="roundMvp ? 'grid-cols-[minmax(0,1fr)_18rem]' : 'grid-cols-1'"
+  >
+    <AppPanel flush>
+      <template #header>
+        <AppPager v-model="round" :max="totalRounds" label="Jornada">
+          <template #default="{ value }">Jornada {{ value }}</template>
+        </AppPager>
+        <span v-if="roundDate" class="text-xs font-semibold text-white/75">
+          {{ formatMatchDate(roundDate) }}
         </span>
-        <AppButton size="sm" @click="stepRound(1)">›</AppButton>
-      </div>
+      </template>
 
-      <ul class="flex flex-col gap-1">
-        <li
-          v-for="fixture in fixtures"
-          :key="fixture.gameId"
-          class="grid grid-cols-[1fr_6rem_1fr] items-center gap-3 rounded border border-court-700 px-4 py-2 text-sm"
-          :class="fixture.involvesManaged ? 'border-ball-600' : ''"
-        >
-          <span class="text-right">{{ fixture.homeTeamName }}</span>
-          <RouterLink
-            v-if="fixture.played"
-            :to="{ name: 'match', params: { gameId: fixture.gameId } }"
-            class="text-center font-semibold tabular-nums hover:text-ball-400"
-          >
-            {{ fixture.homeScore }} - {{ fixture.awayScore }}
-            <span v-if="fixture.overtimes > 0" class="text-xs text-court-300">
-              ({{ fixture.overtimes }} pr)
-            </span>
-          </RouterLink>
-          <span v-else class="text-center text-court-600">—</span>
-          <span>{{ fixture.awayTeamName }}</span>
-        </li>
+      <AppEmpty v-if="fixtures.length === 0">Esta jornada no tiene partidos.</AppEmpty>
+      <ul v-else class="flex flex-col gap-[3px] p-[3px]">
+        <GameRow v-for="fixture in fixtures" :key="fixture.gameId" :game="fixture" />
       </ul>
 
-      <p v-if="restingTeams.length > 0" class="text-sm text-court-300">
+      <p
+        v-if="restingTeams.length > 0"
+        class="bg-tv-800 px-4 py-2 text-center text-sm text-white/80"
+      >
         Descansa:
         <span
           v-for="(row, index) in restingTeams"
           :key="row.teamId"
-          :class="row.isManaged ? 'text-ball-400' : 'text-court-100'"
-          >{{ index > 0 ? ', ' : '' }}{{ row.teamName }}</span
+          :class="row.isManaged ? 'font-bold text-tv-select' : 'text-white'"
+          >{{ index > 0 ? ', ' : '' }}{{ row.teamName }} ({{ row.position }}º)</span
         >
       </p>
-    </div>
+    </AppPanel>
+
+    <RoundMvpPanel v-if="roundMvp" :mvp="roundMvp" />
   </div>
 </template>

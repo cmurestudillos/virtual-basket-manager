@@ -4,9 +4,15 @@
  *
  * Dos cosas se ajustan y las dos dicen cuándo se notan, porque no se notan igual:
  * la resolución cambia la ventana en el momento, y el reglamento sólo lo recibe
- * la próxima partida que se cree. Debajo van los créditos, que no son un ajuste
+ * la próxima partida que se cree. Al lado van los créditos, que no son un ajuste
  * pero tienen que estar en algún sitio que se pueda encontrar: dos de los
  * estilos de avatar piden atribución.
+ *
+ * Va fuera del marco del juego —se entra desde el menú y desde la partida— y
+ * con la piel de IBM: barra morada arriba, paneles claros sobre el fondo liso y
+ * la barra negra de abajo con «Volver» y la confirmación de lo que se acaba de
+ * cambiar. IBM no tiene captura de sus ajustes; las opciones siguen las de su
+ * asistente (130911): la elegida en azul.
  */
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
@@ -27,9 +33,11 @@ import {
   AVATAR_CREDITS,
   AppAvatar,
   AppButton,
+  AppField,
   AppFlag,
-  AppPageHeader,
-  AppPanel
+  AppPanel,
+  AppSelect,
+  TONE_TEXT
 } from '@renderer/shared/ui';
 import { useUpdates } from '@renderer/features/updates/useUpdates';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
@@ -44,9 +52,9 @@ const saved = ref<string | null>(null);
 const updates = useUpdates();
 const gameState = useGameStateStore();
 /** Con una partida cargada, el entrenador también se ajusta aquí. */
-const nationalityOptions = Object.entries(NATION_NAMES).sort((a, b) =>
-  a[1].localeCompare(b[1], 'es')
-);
+const nationalityOptions = Object.entries(NATION_NAMES)
+  .sort((a, b) => a[1].localeCompare(b[1], 'es'))
+  .map(([code, name]) => ({ id: code, label: name }));
 
 async function chooseNationality(code: string): Promise<void> {
   await window.api.gameState.setManagerNationality(code);
@@ -111,156 +119,168 @@ function back(): void {
 </script>
 
 <template>
-  <div class="mx-auto flex h-screen max-w-3xl flex-col gap-5 overflow-auto p-8">
-    <header class="flex items-center justify-between">
-      <AppPageHeader title="Ajustes" />
-      <button type="button" class="text-sm text-court-300 hover:text-court-100" @click="back">
-        Volver
-      </button>
+  <div class="flex h-screen flex-col bg-tv-canvas">
+    <header
+      class="flex h-16 shrink-0 flex-col justify-center bg-linear-to-r from-tv-chrome to-tv-chrome-2 px-6"
+    >
+      <h1 class="text-lg font-bold uppercase tracking-wide">Ajustes</h1>
+      <p class="text-sm text-white/80">
+        La ventana, el reglamento de las partidas nuevas y los créditos
+      </p>
     </header>
 
-    <p
-      v-if="saved"
-      class="rounded border border-good-500 px-3 py-2 text-sm text-good-400"
-      role="status"
-    >
-      {{ saved }}
-    </p>
+    <main class="min-h-0 flex-1 overflow-auto p-4">
+      <div class="mx-auto grid max-w-6xl grid-cols-2 items-start gap-3">
+        <div class="flex flex-col gap-3">
+          <AppPanel v-if="gameState.state" title="Tu entrenador" hint="en la partida cargada">
+            <AppField label="Nacionalidad">
+              <AppSelect
+                id="manager-nationality-setting"
+                :model-value="gameState.state.managerNationality ?? ''"
+                :options="nationalityOptions"
+                @update:model-value="chooseNationality"
+              >
+                <template #leading>
+                  <AppFlag :code="gameState.state.managerNationality" size="md" />
+                </template>
+              </AppSelect>
+            </AppField>
+          </AppPanel>
 
-    <AppPanel v-if="gameState.state" title="Tu entrenador" hint="en la partida cargada">
-      <label class="flex items-center gap-3 text-sm" for="manager-nationality-setting">
-        <span class="text-court-300">Nacionalidad</span>
-        <AppFlag :code="gameState.state.managerNationality" size="md" />
-        <select
-          id="manager-nationality-setting"
-          :value="gameState.state.managerNationality"
-          class="rounded border border-court-600 bg-court-900 px-3 py-2"
-          @change="chooseNationality(($event.target as HTMLSelectElement).value)"
-        >
-          <option v-for="[code, name] in nationalityOptions" :key="code" :value="code">
-            {{ name }}
-          </option>
-        </select>
-      </label>
-    </AppPanel>
+          <AppPanel title="Resolución" hint="se aplica al momento">
+            <div class="grid grid-cols-4 gap-[3px]" role="radiogroup" aria-label="Resolución">
+              <button
+                v-for="option in WINDOW_RESOLUTIONS"
+                :id="`resolution-${option}`"
+                :key="option"
+                type="button"
+                role="radio"
+                :aria-checked="resolution === option"
+                class="figure px-3 py-2 text-sm font-bold transition-colors"
+                :class="
+                  resolution === option
+                    ? 'bg-tv-blue text-white'
+                    : 'bg-tv-cell text-tv-ink hover:bg-tv-cell-strong'
+                "
+                @click="chooseResolution(option)"
+              >
+                {{ option.replace('x', ' × ') }}
+              </button>
+            </div>
+            <p class="mt-2 text-xs text-tv-muted">
+              Con la ventana maximizada no cambia de tamaño; se aplica al restaurarla o en el
+              próximo arranque.
+            </p>
+          </AppPanel>
 
-    <AppPanel title="Resolución" hint="se aplica al momento">
-      <div class="grid grid-cols-2 gap-2 sm:grid-cols-4" role="radiogroup" aria-label="Resolución">
-        <button
-          v-for="option in WINDOW_RESOLUTIONS"
-          :id="`resolution-${option}`"
-          :key="option"
-          type="button"
-          role="radio"
-          :aria-checked="resolution === option"
-          class="rounded border px-3 py-2 text-sm tabular-nums transition"
-          :class="
-            resolution === option
-              ? 'border-ball-500 bg-court-800 text-court-100'
-              : 'border-court-700 text-court-300 hover:border-court-600'
-          "
-          @click="chooseResolution(option)"
-        >
-          {{ option.replace('x', ' × ') }}
-        </button>
-      </div>
-      <p class="mt-2 text-xs text-court-600">
-        Con la ventana maximizada no cambia de tamaño; se aplica al restaurarla o en el próximo
-        arranque.
-      </p>
-    </AppPanel>
+          <AppPanel title="Reglamento" hint="para las partidas nuevas">
+            <div class="flex flex-col gap-[3px]" role="radiogroup" aria-label="Reglamento">
+              <button
+                v-for="option in RULESET_MODES"
+                :id="`ruleset-${option}`"
+                :key="option"
+                type="button"
+                role="radio"
+                :aria-checked="ruleset === option"
+                class="flex items-start gap-3 px-3 py-2 text-left text-tv-ink transition-colors"
+                :class="ruleset === option ? 'bg-tv-select' : 'bg-tv-cell hover:bg-tv-cell-strong'"
+                @click="chooseRuleset(option)"
+              >
+                <span
+                  aria-hidden="true"
+                  class="mt-0.5 flex h-4 w-4 shrink-0 items-center justify-center rounded-full border-2 border-tv-blue bg-white"
+                >
+                  <span v-if="ruleset === option" class="h-2 w-2 rounded-full bg-tv-blue"></span>
+                </span>
+                <span class="flex flex-col">
+                  <span class="text-sm font-bold">{{ RULESET_MODE_LABELS[option] }}</span>
+                  <span class="text-xs text-tv-muted">{{ RULESET_MODE_HINTS[option] }}</span>
+                </span>
+              </button>
+            </div>
+            <p class="mt-2 text-xs text-tv-muted">
+              Las partidas empezadas siguen con el suyo: cambiar la duración de los cuartos a mitad
+              de temporada mezclaría estadísticas de dos reglamentos.
+            </p>
+          </AppPanel>
+        </div>
 
-    <AppPanel title="Reglamento" hint="para las partidas nuevas">
-      <div class="flex flex-col gap-2" role="radiogroup" aria-label="Reglamento">
-        <button
-          v-for="option in RULESET_MODES"
-          :id="`ruleset-${option}`"
-          :key="option"
-          type="button"
-          role="radio"
-          :aria-checked="ruleset === option"
-          class="flex flex-col rounded border px-3 py-2 text-left transition"
-          :class="
-            ruleset === option
-              ? 'border-ball-500 bg-court-800'
-              : 'border-court-700 hover:border-court-600'
-          "
-          @click="chooseRuleset(option)"
-        >
-          <span class="text-sm" :class="ruleset === option ? 'text-court-100' : 'text-court-300'">
-            {{ RULESET_MODE_LABELS[option] }}
-          </span>
-          <span class="text-xs text-court-600">{{ RULESET_MODE_HINTS[option] }}</span>
-        </button>
-      </div>
-      <p class="mt-2 text-xs text-court-600">
-        Las partidas empezadas siguen con el suyo: cambiar la duración de los cuartos a mitad de
-        temporada mezclaría estadísticas de dos reglamentos.
-      </p>
-    </AppPanel>
-
-    <AppPanel
-      title="Actualizaciones"
-      :hint="`versión ${updates.view.value?.currentVersion ?? version}`"
-    >
-      <div class="flex flex-wrap items-center justify-between gap-3">
-        <p
-          id="updates-status"
-          class="text-sm"
-          :class="updates.view.value?.state.status === 'error' ? 'text-warn-400' : 'text-court-300'"
-        >
-          {{ updateText() }}
-        </p>
-        <span class="flex gap-2">
-          <AppButton
-            v-if="updates.view.value?.state.status === 'downloaded'"
-            variant="primary"
-            @click="updates.install"
+        <div class="flex flex-col gap-3">
+          <AppPanel
+            title="Actualizaciones"
+            :hint="`versión ${updates.view.value?.currentVersion ?? version}`"
           >
-            Reiniciar e instalar
-          </AppButton>
-          <AppButton
-            v-else-if="updates.view.value?.state.status !== 'unsupported'"
-            variant="secondary"
-            :disabled="
-              updates.busy.value ||
-              updates.view.value?.state.status === 'checking' ||
-              updates.view.value?.state.status === 'downloading'
-            "
-            @click="updates.check"
-          >
-            Buscar actualizaciones
-          </AppButton>
-        </span>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+              <p
+                id="updates-status"
+                class="text-sm"
+                :class="updates.view.value?.state.status === 'error' ? TONE_TEXT.warn : ''"
+              >
+                {{ updateText() }}
+              </p>
+              <span class="flex gap-2">
+                <AppButton
+                  v-if="updates.view.value?.state.status === 'downloaded'"
+                  variant="primary"
+                  @click="updates.install"
+                >
+                  Reiniciar e instalar
+                </AppButton>
+                <AppButton
+                  v-else-if="updates.view.value?.state.status !== 'unsupported'"
+                  variant="secondary"
+                  :disabled="
+                    updates.busy.value ||
+                    updates.view.value?.state.status === 'checking' ||
+                    updates.view.value?.state.status === 'downloading'
+                  "
+                  @click="updates.check"
+                >
+                  Buscar actualizaciones
+                </AppButton>
+              </span>
+            </div>
+            <p class="mt-2 text-xs text-tv-muted">
+              Guarda antes de reiniciar: un partido a medio jugar se repite desde el principio.
+            </p>
+          </AppPanel>
+
+          <AppPanel title="Créditos" :hint="`Triple Manager v${version}`">
+            <ul class="flex flex-col text-sm">
+              <li
+                v-for="credit in AVATAR_CREDITS"
+                :key="credit.kind"
+                class="flex items-center gap-3 px-3 py-2 odd:bg-tv-cell"
+              >
+                <AppAvatar :kind="credit.kind" :seed="`creditos-${credit.kind}`" :size="36" />
+                <span class="flex min-w-0 flex-col">
+                  <span>
+                    {{ credit.usedFor }}: <span class="font-bold">{{ credit.title }}</span
+                    >, de
+                    {{ credit.creator }}
+                  </span>
+                  <span class="break-all text-xs text-tv-muted">
+                    {{ credit.license }} · {{ credit.licenseUrl }}
+                  </span>
+                </span>
+              </li>
+              <li class="px-3 py-2 text-xs text-tv-muted odd:bg-tv-cell">
+                Avatares generados con DiceBear, banderas de flag-icons y pista 3D con three.js (las
+                tres con licencia MIT). Tipografía Signika, de The Signika Project Authors (SIL Open
+                Font License 1.1). Clubes, jugadores y competiciones son inventados.
+              </li>
+            </ul>
+          </AppPanel>
+        </div>
       </div>
-      <p class="mt-2 text-xs text-court-600">
-        Guarda antes de reiniciar: un partido a medio jugar se repite desde el principio.
-      </p>
-    </AppPanel>
+    </main>
 
-    <AppPanel title="Créditos">
-      <ul class="flex flex-col gap-3 text-sm">
-        <li v-for="credit in AVATAR_CREDITS" :key="credit.kind" class="flex items-center gap-3">
-          <AppAvatar :kind="credit.kind" :seed="`creditos-${credit.kind}`" :size="36" />
-          <span class="flex flex-col">
-            <span>
-              {{ credit.usedFor }}: <span class="text-court-100">{{ credit.title }}</span
-              >, de
-              {{ credit.creator }}
-            </span>
-            <span class="text-xs text-court-300">
-              {{ credit.license }} · {{ credit.licenseUrl }}
-            </span>
-          </span>
-        </li>
-        <li class="text-xs text-court-300">
-          Avatares generados con DiceBear, banderas de flag-icons y pista 3D con three.js (las tres
-          con licencia MIT). Tipografía Signika, de The Signika Project Authors (SIL Open Font
-          License 1.1). Clubes, jugadores y competiciones son inventados.
-        </li>
-      </ul>
-    </AppPanel>
-
-    <p class="text-center text-xs text-court-600">Triple Manager v{{ version }}</p>
+    <footer
+      class="flex h-[55px] shrink-0 items-center justify-between gap-4 border-t border-white/10 bg-tv-footer px-4"
+    >
+      <p v-if="saved" class="truncate text-sm text-white/80" role="status">{{ saved }}</p>
+      <span v-else></span>
+      <AppButton class="min-w-32" @click="back">Volver</AppButton>
+    </footer>
   </div>
 </template>

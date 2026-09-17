@@ -3,15 +3,28 @@ import { computed, onMounted, ref } from 'vue';
 import { useRoute } from 'vue-router';
 import type { MyNationalTeam } from '@shared/contracts/national.contract';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
+import PageToolbar from '@renderer/features/app-shell/components/PageToolbar.vue';
 import RotationEditor from '@renderer/features/lineup/components/RotationEditor.vue';
 import TacticsBoard from '@renderer/features/lineup/components/TacticsBoard.vue';
-import { AppEmpty, AppFlag, AppTabs, AppPageHeader } from '@renderer/shared/ui';
+import { AppEmpty, AppFlag, AppPanel, AppSegmented, AppTabs } from '@renderer/shared/ui';
+
+/**
+ * La alineación: el quinteto con la rotación y la pizarra. Lo que se decide
+ * aquí es lo que sale a la pista en el próximo partido.
+ *
+ * Las dos vistas son pestañas propias detrás de las de la sección y, si hay
+ * selección, el equipo que se alinea se elige a la derecha de la barra.
+ */
 
 const store = useGameStateStore();
 const route = useRoute();
 
 type Tab = 'rotation' | 'tactics';
 const tab = ref<Tab>('rotation');
+const TABS = [
+  { id: 'rotation', label: 'Quinteto' },
+  { id: 'tactics', label: 'Pizarra' }
+];
 
 /**
  * Con selección hay dos equipos que alinear. Se cambia de uno a otro arriba, y
@@ -58,40 +71,31 @@ const teamId = computed(() =>
 </script>
 
 <template>
-  <div class="flex flex-col gap-4">
-    <AppPageHeader title="Alineación">
-      <span class="text-sm text-court-300">
-        Lo que se decide aquí es lo que sale a la pista en el próximo partido
-      </span>
-    </AppPageHeader>
+  <div class="flex flex-col gap-3">
+    <PageToolbar place="tabs">
+      <span aria-hidden="true" class="my-3 w-px shrink-0 bg-white/30"></span>
+      <AppTabs :model-value="tab" :options="TABS" @update:model-value="tab = $event as Tab" />
+    </PageToolbar>
 
-    <div v-if="teamOptions.length > 1" class="flex items-center gap-3">
-      <AppTabs
+    <PageToolbar v-if="teamOptions.length > 1">
+      <AppFlag v-if="team === 'seleccion' && national" :code="national.code" size="md" />
+      <AppSegmented
         :model-value="team"
         :options="teamOptions"
-        variant="pills"
         @update:model-value="team = $event as Team"
       />
-      <AppFlag v-if="team === 'seleccion' && national" :code="national.code" size="md" />
-    </div>
+    </PageToolbar>
 
-    <AppTabs
-      :model-value="tab"
-      :options="[
-        { id: 'rotation' as Tab, label: 'Rotación' },
-        { id: 'tactics' as Tab, label: 'Pizarra' }
-      ]"
-      @update:model-value="tab = $event as Tab"
-    />
-
-    <p v-if="loaded && team === 'seleccion'" class="text-sm text-court-300">
+    <p v-if="loaded && team === 'seleccion'" class="text-sm text-white/70">
       Juegan los convocados de la ventana que toca; la lista se cambia en Selecciones.
     </p>
 
-    <AppEmpty v-if="loaded && team === 'seleccion' && squadSize < 5">
-      Tu selección todavía no tiene convocados para esta ventana.
-      {{ squadReason ?? '' }}
-    </AppEmpty>
+    <AppPanel v-if="loaded && team === 'seleccion' && squadSize < 5" title="Convocatoria">
+      <AppEmpty>
+        Tu selección todavía no tiene convocados para esta ventana.
+        {{ squadReason ?? '' }}
+      </AppEmpty>
+    </AppPanel>
 
     <template v-else-if="loaded && teamId">
       <RotationEditor v-if="tab === 'rotation'" :key="`rot-${teamId}`" :team-id="teamId" />

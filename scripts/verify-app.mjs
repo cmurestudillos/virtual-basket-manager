@@ -1,3 +1,6 @@
+// `document` y `window` sólo aparecen dentro de funciones que se evalúan en la
+// ventana de la aplicación (`waitForFunction`, `evaluate`), no en Node.
+/* global document, window */
 import { _electron as electron } from 'playwright-core';
 import { execSync } from 'node:child_process';
 import { mkdirSync, rmSync } from 'node:fs';
@@ -66,6 +69,64 @@ await page.waitForTimeout(1500);
 console.log('título:', await page.title());
 await page.screenshot({ path: `${SHOTS}/01-menu.png` });
 
+// --- El marco del juego (fase 2 del estilo IBM) -----------------------------
+//
+// Dentro de la partida se navega con la barra lateral de iconos —que dicen su
+// nombre en `aria-label`— y con las pestañas de la barra de sección. El
+// calendario se mueve con CONTINUAR, arriba a la derecha.
+
+/** Va a una sección por su icono y, si se da, a una de sus pestañas. */
+async function goTo(section, tab) {
+  await page
+    .getByRole('navigation', { name: 'Secciones del juego' })
+    .getByRole('link', { name: section, exact: typeof section === 'string' })
+    .click();
+  // El ratón fuera de la barra lateral: encima de un icono sale su etiqueta, y
+  // taparía la esquina de la pantalla en las capturas.
+  await page.mouse.move(560, 60);
+  await page.waitForTimeout(300);
+  if (tab) {
+    await page
+      .getByRole('navigation', { name: /^Pantallas de/ })
+      .getByRole('link', { name: tab, exact: true })
+      .click();
+  }
+}
+
+/** El botón CONTINUAR de la barra de arriba; su texto dice qué va a hacer. */
+function continuar() {
+  return page.locator('header').getByRole('button', { name: /^Continuar/ });
+}
+
+/** Espera a que acabe lo que haya lanzado CONTINUAR (o sus acciones de al lado). */
+async function waitForAdvance(timeout = 180_000) {
+  await page.waitForTimeout(300);
+  await page.waitForFunction(() => !document.querySelector('header [aria-busy="true"]'), null, {
+    timeout
+  });
+  await page.waitForTimeout(800);
+}
+
+/** La fecha del juego, tal y como la enseña la barra de arriba. */
+async function fechaDelJuego() {
+  return (await page.locator('header time').innerText()).trim();
+}
+
+/** El selector negro de competición de la barra de sección, en Competiciones. */
+function selectorDeCompeticion() {
+  return page.getByRole('combobox', { name: 'Competición', exact: true });
+}
+
+/**
+ * Carga una partida desde «Cargar partida»: se elige la fila y se pulsa CARGAR,
+ * que va debajo de la lista y no en cada fila.
+ */
+async function cargarPartida(nombre) {
+  await page.locator('li', { hasText: nombre }).getByRole('button').click();
+  await page.waitForTimeout(300);
+  await page.getByRole('button', { name: 'Cargar', exact: true }).click();
+}
+
 // La guía de estilo, antes que nada: es la que enseña si alguna pieza del kit
 // se ha roto, y verlo aquí es más barato que cazarlo en la pantalla donde esté
 // escondida.
@@ -74,6 +135,11 @@ await page.goto(`${appUrl}#/estilo`);
 await page.waitForTimeout(1200);
 console.log('guía de estilo:', await page.locator('h1').first().innerText());
 await page.screenshot({ path: `${SHOTS}/01b-guia-de-estilo.png`, fullPage: false });
+// Y el final de la guía, con los campos, las tarjetas de partido y los líderes:
+// la guía se desplaza por dentro, así que una captura de página entera no llega.
+await page.getByText('Sólo agentes libres').scrollIntoViewIfNeeded();
+await page.waitForTimeout(400);
+await page.screenshot({ path: `${SHOTS}/01b2-guia-de-estilo-campos.png` });
 await page.goto(`${appUrl}#/`);
 await page.waitForTimeout(800);
 
@@ -108,28 +174,50 @@ await page.getByText('Nueva partida').click();
 await page.waitForTimeout(1200);
 console.log('equipos en el catálogo:', await page.locator('tbody tr').count());
 
-// El catálogo va por reputación y lo encabezan los clubes de la liga
-// americana, así que sin filtrar el arnés jugaría en otro país cada vez que se
-// toque el dataset. Se filtra por la liga española, que es la que recorren
-// después el resto de pasos.
+/** El «Siguiente» de la barra de abajo del asistente de nueva partida. */
+async function siguientePaso() {
+  await page.getByRole('button', { name: 'Siguiente' }).click();
+  await page.waitForTimeout(800);
+}
+
+// Paso 1, el equipo. El catálogo va por reputación y lo encabezan los clubes de
+// la liga americana, así que sin filtrar el arnés jugaría en otro país cada vez
+// que se toque el dataset. Se filtra por la liga española, que es la que
+// recorren después el resto de pasos.
 await page.getByRole('button', { name: /^Liga Nacional ·/ }).click();
 await page.waitForTimeout(800);
 console.log('equipos tras filtrar:', await page.locator('tbody tr').count());
 await page.locator('tbody tr').nth(3).click();
-await page.locator('aside input').first().fill('Carlos');
+await page.waitForTimeout(400);
+await page.screenshot({ path: `${SHOTS}/02a-nueva-partida-equipo.png` });
+await siguientePaso();
+
+// Paso 2, el entrenador.
+await page.locator('#manager-name').fill('Carlos');
 // Modo carrera: mientras no te echen se juega igual, y deja ver su pestaña.
 await page.getByText('Modo carrera').click();
 // Y la selección española, que se dirige a la vez que el club.
 await page.locator('#national-team').selectOption('ESP');
-// Y Grecia además de España: dos países con calendario, copa y ascensos.
-await page.locator('aside li label', { hasText: 'Grecia' }).click();
+await page.screenshot({ path: `${SHOTS}/02b-nueva-partida-entrenador.png` });
+await siguientePaso();
+
+// Paso 3, las ligas: Grecia además de España, dos países con calendario, copa y ascensos.
+await page.locator('main li label', { hasText: 'Grecia' }).click();
 console.log(
   'coste de la elección:',
   await page.locator('aside p', { hasText: 'por temporada' }).innerText()
 );
 await page.screenshot({ path: `${SHOTS}/02-nueva-partida.png` });
+await siguientePaso();
 
-await page.getByText('Empezar').click();
+// Paso 4, el resumen.
+console.log(
+  'resumen de la partida:',
+  (await page.locator('main dl').first().innerText()).replace(/\n/g, ' · ')
+);
+await page.screenshot({ path: `${SHOTS}/02c-nueva-partida-resumen.png` });
+
+await page.getByRole('button', { name: 'Empezar' }).click();
 await page.waitForTimeout(3000);
 console.log('cabecera:', (await page.locator('header').first().innerText()).replace(/\n/g, ' · '));
 const cabeceraPartida = await page.locator('header').first().innerText();
@@ -137,10 +225,15 @@ console.log(
   'la partida nace del mundo editado:',
   cabeceraPartida.includes('Club Editado del Arnés')
 );
+console.log('continuar dice:', (await continuar().innerText()).replace(/\n/g, ' · '));
+console.log(
+  'barra de acciones sin acciones de la pantalla, oculta:',
+  !(await page.getByRole('toolbar', { name: 'Acciones de la pantalla' }).isVisible())
+);
 
 // --- Ajustes, desde dentro de la partida ------------------------------------
 
-await page.getByRole('link', { name: 'Ajustes' }).click();
+await page.getByRole('link', { name: 'Ajustes', exact: true }).click();
 await page.waitForTimeout(1200);
 await page.locator('#ruleset-fiba').click();
 await page.waitForTimeout(600);
@@ -154,7 +247,7 @@ await page.getByRole('button', { name: 'Volver' }).click();
 await page.waitForTimeout(1200);
 await page.screenshot({ path: `${SHOTS}/03-club.png` });
 
-await page.getByRole('link', { name: 'Plantilla' }).click();
+await goTo('Equipo', 'Plantilla');
 await page.waitForTimeout(1200);
 console.log('jugadores en plantilla:', await page.locator('tbody tr').count());
 await page.screenshot({ path: `${SHOTS}/04-plantilla.png` });
@@ -166,7 +259,11 @@ await page.screenshot({ path: `${SHOTS}/05-ficha.png` });
 
 // --- Fase 2: decisiones del entrenador -------------------------------------
 
-await page.getByRole('link', { name: 'Alineación' }).click();
+// Desde la ficha: el jugador cuenta como Equipo y sus pestañas siguen a la vista.
+await page
+  .getByRole('navigation', { name: /^Pantallas de/ })
+  .getByRole('link', { name: 'Alineación', exact: true })
+  .click();
 await page.waitForTimeout(1200);
 console.log('huecos de la rotación:', await page.locator('tbody tr').count());
 
@@ -188,7 +285,7 @@ await page.waitForTimeout(1200);
 console.log('pizarra guardada:', await page.locator('footer p').first().innerText());
 await page.screenshot({ path: `${SHOTS}/07-pizarra.png` });
 
-await page.getByRole('link', { name: 'Entrenamiento' }).click();
+await goTo('Equipo', 'Entrenamiento');
 await page.waitForTimeout(1200);
 console.log('plantilla en el plan:', await page.locator('tbody tr').count());
 await page.locator('select').first().selectOption('shooting');
@@ -201,37 +298,44 @@ await page.screenshot({ path: `${SHOTS}/08-entrenamiento.png` });
 
 // --- Bloque 2, fase 2: el dinero -------------------------------------------
 
-await page.getByRole('link', { name: 'Finanzas' }).click();
+await goTo('Club', 'Finanzas');
 await page.waitForTimeout(1500);
 const caja = await page.locator('article').first().innerText();
 console.log('caja:', caja.split('\n').join(' · '));
 const consejo = await page.locator('section').first().innerText();
 console.log('consejo:', consejo.split('\n').join(' · '));
+// Las tres confianzas de IBM: directiva, afición y jugadores.
+console.log(
+  'anillos de confianza:',
+  (await page.getByRole('list', { name: 'Confianza' }).locator('li').allInnerTexts())
+    .map((texto) => texto.replace(/\n/g, ' '))
+    .join(' · ')
+);
 
-// Bajar el precio de la entrada tiene que llenar más el pabellón.
-const aforoAntes = (await page.locator('dl dd').nth(3).innerText()).trim();
-await page.locator('input[type="number"]').first().fill('12');
+// Bajar el precio de la entrada tiene que llenar más el pabellón. La fila se
+// busca por su etiqueta y dentro de la pantalla: la cabecera del marco tiene su
+// propia lista de datos y contar `dd` sueltos la mezclaba.
+const asistencia = page
+  .locator('main dl > div', { hasText: 'Próximo partido en casa' })
+  .locator('dd');
+const aforoAntes = (await asistencia.innerText()).trim();
+await page.locator('main input[type="number"]').first().fill('12');
 await page.getByRole('button', { name: 'Guardar' }).click();
 await page.waitForTimeout(1500);
-console.log(
-  'asistencia prevista:',
-  aforoAntes,
-  '->',
-  (await page.locator('dl dd').nth(3).innerText()).trim()
-);
+console.log('asistencia prevista:', aforoAntes, '->', (await asistencia.innerText()).trim());
 console.log('apuntes en el libro:', await page.locator('tbody tr').count());
 await page.screenshot({ path: `${SHOTS}/09-finanzas.png` });
 
 // --- Bloque 2, fase 3: cuerpo técnico y cantera ----------------------------
 
-await page.getByRole('link', { name: 'Entrenamiento' }).click();
+await goTo('Equipo', 'Entrenamiento');
 await page.waitForTimeout(1200);
 await page.getByRole('button', { name: 'Cuerpo técnico' }).click();
 await page.waitForTimeout(1200);
 console.log('técnicos en pantalla:', await page.locator('tbody tr').count());
 await page.screenshot({ path: `${SHOTS}/10-cuerpo-tecnico.png` });
 
-await page.getByRole('link', { name: 'Cantera' }).click();
+await goTo('Equipo', 'Cantera');
 await page.waitForTimeout(1500);
 const cantera = await page.locator('article').first().innerText();
 console.log('cantera:', cantera.split('\n').join(' · '));
@@ -246,7 +350,7 @@ await page.screenshot({ path: `${SHOTS}/11-cantera.png` });
 
 // --- Bloque 3: el mercado --------------------------------------------------
 
-await page.getByRole('link', { name: 'Mercado' }).click();
+await goTo('Mercado');
 await page.waitForTimeout(1500);
 const mercado = await page.locator('h1').first().innerText();
 console.log('mercado:', mercado, '·', await page.locator('tbody tr').count(), 'fichables');
@@ -275,13 +379,24 @@ await page.screenshot({ path: `${SHOTS}/12b-cesiones.png` });
 
 // --- Fase 1: temporada -----------------------------------------------------
 
-await page.getByRole('link', { name: 'Club' }).click();
+await goTo('Inicio');
 await page.waitForTimeout(1200);
 console.log('próximo partido:', await page.locator('section').first().innerText());
 
-// El calendario se para solo en el partido del usuario.
-await page.getByRole('button', { name: 'Ir a la jornada' }).click();
-await page.waitForTimeout(3500);
+// El calendario se para solo en el partido del usuario: CONTINUAR avanza hasta
+// él —pasando por los días con partidos de otras ligas— y entra en la previa.
+console.log('continuar antes del partido:', (await continuar().innerText()).replace(/\n/g, ' · '));
+await continuar().click();
+// Si el avance tarda, sale el aviso de avance de días.
+try {
+  await page.getByRole('dialog', { name: 'Avance de días' }).waitFor({ timeout: 2500 });
+  console.log('aviso de avance de días:', 'sí');
+  await page.screenshot({ path: `${SHOTS}/12c-avance-de-dias.png` });
+} catch {
+  console.log('aviso de avance de días:', 'no hizo falta (avance corto)');
+}
+await page.waitForURL(/#\/game\/match\//, { timeout: 180_000 });
+await page.waitForTimeout(2500);
 console.log('url tras avanzar:', page.url());
 
 /**
@@ -466,7 +581,7 @@ console.log('tras la jornada:', page.url());
 // La bandeja, tras el primer partido: lo que haya pasado desde el principio.
 // El número exacto depende del partido; lo que se comprueba es que abre, que
 // se lee y que el contador del menú baja al marcarlo todo.
-await page.getByRole('link', { name: /^Bandeja/ }).click();
+await goTo(/^Correo/);
 await page.waitForTimeout(1500);
 console.log('avisos en la bandeja:', await page.locator('main li').count());
 const cabeceraBandeja = await page.locator('main header').first().innerText();
@@ -481,39 +596,47 @@ console.log(
   'tras marcar todo:',
   (await page.locator('main header').first().innerText()).replace(/\n/g, ' · ')
 );
+await page.waitForTimeout(600);
+console.log(
+  'icono del correo tras marcar todo:',
+  await page.getByRole('link', { name: /^Correo/ }).getAttribute('aria-label')
+);
 
 // El partido tiene que haberse notado en las piernas de la plantilla.
-await page.getByRole('link', { name: 'Plantilla' }).click();
+await goTo('Equipo', 'Plantilla');
 await page.waitForTimeout(1200);
 const primeraFila = await page.locator('tbody tr').first().innerText();
 console.log('plantilla tras el partido:', primeraFila.split('\n').join(' · '));
 
-await page.getByRole('link', { name: 'Competición' }).click();
+await goTo('Competición', 'Competiciones');
 await page.waitForTimeout(1500);
 console.log('equipos en la clasificación:', await page.locator('tbody tr').count());
-console.log('divisiones:', await page.locator('main nav').nth(1).innerText());
+console.log(
+  'divisiones:',
+  (await selectorDeCompeticion().locator('option').allInnerTexts()).join(' · ')
+);
 await page.screenshot({ path: `${SHOTS}/16-clasificacion.png` });
 
 // La división de al lado: la que decide quién sube el año que viene.
-await page.getByRole('button', { name: /Liga Plata/ }).click();
+await selectorDeCompeticion().selectOption('liga-plata');
 await page.waitForTimeout(1200);
 console.log('equipos en la segunda:', await page.locator('tbody tr').count());
 console.log('zonas:', (await page.locator('main ul li').allInnerTexts()).join(' · '));
 await page.screenshot({ path: `${SHOTS}/16b-segunda-division.png` });
-await page.getByRole('button', { name: /Liga Nacional/ }).click();
+await selectorDeCompeticion().selectOption('liga-nacional');
 await page.waitForTimeout(1000);
 
 // El otro país elegido al crear la partida, con sus dos divisiones.
-await page.getByRole('button', { name: 'Grecia' }).click();
+await selectorDeCompeticion().selectOption('grecia-1');
 await page.waitForTimeout(1200);
 console.log('cabecera en Grecia:', await page.locator('main h1').first().innerText());
 console.log('equipos en la primera griega:', await page.locator('tbody tr').count());
 await page.screenshot({ path: `${SHOTS}/16c-grecia.png` });
-await page.getByRole('button', { name: /^España/ }).click();
+await selectorDeCompeticion().selectOption('liga-nacional');
 await page.waitForTimeout(1000);
 
 // Selecciones: la tuya, con lo que pide la federación, y la clasificación.
-await page.getByRole('link', { name: 'Selecciones' }).click();
+await goTo('Selecciones');
 await page.waitForTimeout(1500);
 const miSeleccion = await page.locator('main section').first().innerText();
 console.log('mi selección:', miSeleccion.split('\n').join(' · '));
@@ -523,7 +646,7 @@ await page.getByRole('button', { name: 'Clasificación', exact: true }).click();
 await page.waitForTimeout(1000);
 console.log('grupos de clasificación:', await page.locator('main table').count());
 await page.screenshot({ path: `${SHOTS}/16e-clasificacion-mundial.png` });
-await page.getByRole('link', { name: 'Competición' }).click();
+await goTo('Competición', 'Competiciones');
 await page.waitForTimeout(1200);
 
 await page.getByRole('button', { name: 'Calendario' }).click();
@@ -542,7 +665,14 @@ await page.screenshot({ path: `${SHOTS}/17b-copa.png` });
 // pantalla tiene que explicarse en vez de quedarse en blanco.
 await page.getByRole('button', { name: 'Continental' }).click();
 await page.waitForTimeout(1500);
-console.log('europa:', (await page.locator('main nav').last().innerText()).replace(/\n/g, ' | '));
+// Con una sola continental no hay selector: se lee lo que diga la pantalla.
+const selectorContinental = page.getByRole('combobox', { name: 'Competición continental' });
+console.log(
+  'europa:',
+  (await selectorContinental.count()) > 0
+    ? (await selectorContinental.locator('option').allInnerTexts()).join(' | ')
+    : (await page.locator('main section').first().innerText()).replace(/\n/g, ' | ')
+);
 await page.screenshot({ path: `${SHOTS}/17c-europa.png` });
 
 await page.getByRole('button', { name: 'Playoffs' }).click();
@@ -552,7 +682,7 @@ await page.screenshot({ path: `${SHOTS}/18-playoffs.png` });
 
 // --- Fase 2: estadísticas de temporada -------------------------------------
 
-await page.getByRole('link', { name: 'Estadísticas' }).click();
+await goTo('Competición', 'Estadísticas');
 await page.waitForTimeout(1500);
 console.log('jugadores con estadística:', await page.locator('tbody tr').count());
 await page.screenshot({ path: `${SHOTS}/19-estadisticas.png` });
@@ -569,16 +699,17 @@ await page.getByRole('link', { name: 'Salir al menú' }).click();
 await page.waitForTimeout(1000);
 await page.getByRole('link', { name: 'Cargar partida' }).click();
 await page.waitForTimeout(1200);
-await page
-  .locator('li', { hasText: 'Temporada terminada' })
-  .getByRole('button', { name: 'Cargar' })
-  .click();
+await cargarPartida('Temporada terminada');
 await page.waitForTimeout(2500);
 const finDeTemporada = await page.locator('section').first().innerText();
 console.log('fin de temporada:', finDeTemporada.split('\n').join(' · '));
 await page.screenshot({ path: `${SHOTS}/21-campeon.png` });
+console.log(
+  'continuar con la temporada terminada:',
+  (await continuar().innerText()).replace(/\n/g, ' · ')
+);
 
-await page.getByRole('link', { name: 'Competición' }).click();
+await goTo('Competición', 'Competiciones');
 await page.waitForTimeout(1800);
 console.log('series en el cuadro:', await page.locator('main li').count());
 await page.screenshot({ path: `${SHOTS}/22-cuadro.png` });
@@ -593,14 +724,14 @@ await page.screenshot({ path: `${SHOTS}/22c-europa.png` });
 // Y la segunda, ya terminada: de sus dos primeros salen los ascendidos.
 await page.getByRole('button', { name: 'Clasificación' }).click();
 await page.waitForTimeout(1200);
-await page.getByRole('button', { name: /Liga Plata/ }).click();
+await selectorDeCompeticion().selectOption('liga-plata');
 await page.waitForTimeout(1500);
 const ascensos = await page.locator('tbody tr').first().innerText();
 console.log('líder de la segunda:', ascensos.split('\n').join(' · '));
 await page.screenshot({ path: `${SHOTS}/22b-ascensos.png` });
 
 // El historial, que sólo tiene algo que contar con una temporada terminada.
-await page.getByRole('link', { name: 'Historial' }).click();
+await goTo('Club', 'Historial');
 await page.waitForTimeout(1800);
 const historial = await page.locator('tbody tr').first().innerText();
 console.log('temporadas en el historial:', await page.locator('tbody tr').count());
@@ -624,16 +755,23 @@ await page.screenshot({ path: `${SHOTS}/23d-records.png` });
 // allí no existe. Sale al final, con la partida de carrera.
 
 // Con la temporada entera jugada hay desgaste y enfermería de verdad.
-await page.getByRole('link', { name: 'Entrenamiento' }).click();
+await goTo('Equipo', 'Entrenamiento');
 await page.waitForTimeout(1500);
 const disponibles = await page.locator('footer').first().innerText();
 console.log('estado de la plantilla en junio:', disponibles.split('\n')[0]);
 await page.screenshot({ path: `${SHOTS}/23-parte-medico.png` });
 
-await page.getByRole('link', { name: 'Club' }).click();
+// Con todo terminado, CONTINUAR empieza la temporada siguiente.
+await goTo('Inicio');
 await page.waitForTimeout(1500);
-await page.getByRole('button', { name: /^Empezar temporada/ }).click();
-await page.waitForTimeout(2500);
+const empezar = await continuar().innerText();
+console.log('continuar para cerrar el año:', empezar.replace(/\n/g, ' · '));
+console.log('continuar empieza temporada:', /Empezar temporada/.test(empezar));
+// Empezar temporada es una sola llamada al proceso principal, y mientras dura
+// Electron no confirma la pulsación: con el plazo de serie (30 s) el clic se da
+// por fallido aunque la temporada se esté creando.
+await continuar().click({ timeout: 180_000 });
+await waitForAdvance();
 const cabecera = await page.locator('header').first().innerText();
 console.log('cabecera tras el salto:', cabecera.replace(/\n/g, ' · '));
 await page.screenshot({ path: `${SHOTS}/24-temporada-siguiente.png` });
@@ -647,10 +785,7 @@ await page.getByRole('link', { name: 'Salir al menú' }).click();
 await page.waitForTimeout(1000);
 await page.getByRole('link', { name: 'Cargar partida' }).click();
 await page.waitForTimeout(1200);
-await page
-  .locator('li', { hasText: 'Carrera sin equipo' })
-  .getByRole('button', { name: 'Cargar' })
-  .click();
+await cargarPartida('Carrera sin equipo');
 await page.waitForTimeout(2500);
 
 const paro = await page.locator('main section').first().innerText();
@@ -664,18 +799,26 @@ await page.screenshot({ path: `${SHOTS}/25-sin-equipo.png` });
 
 // Antes de firmar, se espera un mes: el reloj corre sin banquillo y se abren
 // otros banquillos. La fecha de la cabecera tiene que haber cambiado de mes.
-const fechaAntes = await page.locator('header').first().innerText();
-await page.getByRole('button', { name: 'Esperar un mes' }).click();
-// Un mes de partidos se simula entero: se espera a que desaparezca el aviso.
-await page.getByText('Pasa el mes…').waitFor({ state: 'detached', timeout: 180_000 });
-await page.waitForTimeout(1500);
-const fechaDespues = await page.locator('header').first().innerText();
-console.log(
-  'espera en el paro:',
-  fechaAntes.split('\n').pop(),
-  '->',
-  fechaDespues.split('\n').pop()
-);
+// Sin selección es lo que hace CONTINUAR; con ella, el botón de al lado.
+const fechaAntes = await fechaDelJuego();
+console.log('continuar en el paro:', (await continuar().innerText()).replace(/\n/g, ' · '));
+const esperarAparte = page.getByRole('button', { name: 'Esperar un mes', exact: true });
+if ((await esperarAparte.count()) > 0) {
+  await esperarAparte.click();
+} else {
+  await continuar().click();
+}
+// Un mes de partidos se simula entero: sale el aviso de avance de días.
+try {
+  await page.getByText('Pasa el mes…').waitFor({ timeout: 5000 });
+  console.log('aviso mientras pasa el mes:', 'sí');
+  await page.screenshot({ path: `${SHOTS}/25a-pasa-el-mes.png` });
+} catch {
+  console.log('aviso mientras pasa el mes:', 'no hizo falta (avance corto)');
+}
+await waitForAdvance();
+const fechaDespues = await fechaDelJuego();
+console.log('espera en el paro:', fechaAntes, '->', fechaDespues);
 console.log('ofertas tras esperar:', await page.getByRole('button', { name: 'Firmar' }).count());
 await page.screenshot({ path: `${SHOTS}/25b-tras-esperar.png` });
 
@@ -687,7 +830,7 @@ console.log('tras firmar:', nuevoClub.replace(/\n/g, ' · '));
 await page.screenshot({ path: `${SHOTS}/26-club-nuevo.png` });
 
 // La hoja de servicios tiene que contar ya las dos etapas.
-await page.getByRole('link', { name: 'Historial' }).click();
+await goTo('Club', 'Historial');
 await page.waitForTimeout(1500);
 await page.getByRole('button', { name: 'Carrera' }).click();
 await page.waitForTimeout(1200);
@@ -697,16 +840,18 @@ console.log('etapa en curso:', etapas.split('\n').join(' · '));
 await page.screenshot({ path: `${SHOTS}/27-hoja-de-servicios.png` });
 
 // Y el reloj vuelve a correr: dirigir otra vez es poder jugar otra vez.
-await page.getByRole('link', { name: 'Club' }).click();
+await goTo('Inicio');
 await page.waitForTimeout(1500);
-await page.getByRole('button', { name: 'Avanzar día' }).click();
-await page.waitForTimeout(2500);
+const fechaConBanquillo = await fechaDelJuego();
+await page.getByRole('button', { name: 'Avanzar día', exact: true }).click();
+await waitForAdvance();
 const siguiendo = await page.locator('header').first().innerText();
 console.log('la partida sigue:', siguiendo.replace(/\n/g, ' · '));
+console.log('avanzar día:', fechaConBanquillo, '->', await fechaDelJuego());
 await page.screenshot({ path: `${SHOTS}/28-carrera-en-marcha.png` });
 
 // Y se dimite: dos pasos desde la hoja de servicios, y de vuelta al paro.
-await page.getByRole('link', { name: 'Historial' }).click();
+await goTo('Club', 'Historial');
 await page.waitForTimeout(1500);
 await page.getByRole('button', { name: 'Carrera' }).click();
 await page.waitForTimeout(1000);
@@ -716,6 +861,8 @@ await page.getByRole('button', { name: 'Confirmar dimisión' }).click();
 await page.waitForTimeout(2500);
 const trasDimitir = await page.locator('main section').first().innerText();
 console.log('tras dimitir:', trasDimitir.split('\n').slice(0, 2).join(' · '));
+// CONTINUAR se entera sin volver al club: en el paro vuelve a ser esperar.
+console.log('continuar tras dimitir:', (await continuar().innerText()).replace(/\n/g, ' · '));
 await page.screenshot({ path: `${SHOTS}/28b-dimision.png` });
 
 // --- Prensa: una rueda de prensa esperando --------------------------------
@@ -724,17 +871,19 @@ await page.getByRole('link', { name: 'Salir al menú' }).click();
 await page.waitForTimeout(1000);
 await page.getByRole('link', { name: 'Cargar partida' }).click();
 await page.waitForTimeout(1200);
-await page
-  .locator('li', { hasText: 'Rueda de prensa pendiente' })
-  .getByRole('button', { name: 'Cargar' })
-  .click();
+await cargarPartida('Rueda de prensa pendiente');
 await page.waitForTimeout(2500);
 
-// El contador del menú tiene que avisar antes de entrar.
-const enlaceBandeja = await page.getByRole('link', { name: /^Bandeja/ }).innerText();
-console.log('menú con aviso:', enlaceBandeja.replace(/\n/g, ' '));
+// El contador del icono del correo tiene que avisar antes de entrar.
+const enlaceBandeja = page.getByRole('link', { name: /^Correo/ });
+console.log(
+  'menú con aviso:',
+  await enlaceBandeja.getAttribute('aria-label'),
+  '· en el icono:',
+  (await enlaceBandeja.innerText()).trim()
+);
 
-await page.getByRole('link', { name: /^Bandeja/ }).click();
+await goTo(/^Correo/);
 await page.waitForTimeout(1500);
 await page.locator('main li button', { hasText: 'Rueda de prensa' }).first().click();
 await page.waitForTimeout(1200);
@@ -759,13 +908,10 @@ await page.getByRole('link', { name: 'Salir al menú' }).click();
 await page.waitForTimeout(1000);
 await page.getByRole('link', { name: 'Cargar partida' }).click();
 await page.waitForTimeout(1200);
-await page
-  .locator('li', { hasText: 'Liga americana con draft' })
-  .getByRole('button', { name: 'Cargar' })
-  .click();
+await cargarPartida('Liga americana con draft');
 await page.waitForTimeout(2500);
 
-await page.getByRole('link', { name: 'Competición' }).click();
+await goTo('Competición', 'Competiciones');
 await page.waitForTimeout(1800);
 await page.getByRole('button', { name: 'Clasificación' }).click();
 await page.waitForTimeout(1200);
@@ -789,7 +935,12 @@ console.log(
     .split(String.fromCharCode(10))
     .join(' · ')
 );
-await page.getByRole('button', { name: /^Avanzar/ }).click();
+// El «Avanzar» del draft, no el «Avanzar día» de la barra de arriba: va en la
+// barra de acciones de abajo, con el resto de botones de la pantalla.
+await page
+  .getByRole('toolbar', { name: 'Acciones de la pantalla' })
+  .getByRole('button', { name: /^Avanzar/ })
+  .click();
 await page.waitForTimeout(2500);
 console.log(
   'en el reloj:',
@@ -810,7 +961,7 @@ console.log(
     .join(' · ')
 );
 
-await page.getByRole('link', { name: 'Plantilla' }).click();
+await goTo('Equipo', 'Plantilla');
 await page.waitForTimeout(1500);
 console.log(
   'descontentos en la plantilla:',
@@ -818,13 +969,77 @@ console.log(
 );
 await page.screenshot({ path: `${SHOTS}/34-plantilla-animo.png` });
 
-await page.getByRole('link', { name: 'Mercado' }).click();
+await goTo('Mercado');
 await page.waitForTimeout(1500);
 console.log(
   'mercado NBA:',
   (await page.locator('main header').first().innerText()).split(String.fromCharCode(10)).join(' · ')
 );
 await page.screenshot({ path: `${SHOTS}/35-tope-salarial.png` });
+
+// --- El marco en la ventana mínima ------------------------------------------
+
+// 1280×720 es la resolución más pequeña que se ofrece y bastante más estrecha
+// que las capturas de IBM: la barra de arriba y la lateral tienen que caber.
+await page.getByRole('link', { name: 'Ajustes', exact: true }).click();
+await page.waitForTimeout(1200);
+// Una ventana maximizada no cambia de tamaño al elegir resolución (así lo
+// quiere Ajustes), y en una pasada larga Windows puede haberla maximizado: se
+// restaura antes, o las capturas «a 1280» saldrían a pantalla completa.
+await app.evaluate(({ BrowserWindow }) => {
+  const window = BrowserWindow.getAllWindows()[0];
+  if (window?.isMaximized()) window.unmaximize();
+});
+await page.waitForTimeout(600);
+await page.locator('#resolution-1280x720').click();
+await page.waitForTimeout(1500);
+await page.getByRole('button', { name: 'Volver' }).click();
+await page.waitForTimeout(1500);
+console.log(
+  'ventana mínima:',
+  await page.evaluate(() => `${window.innerWidth}×${window.innerHeight}`),
+  '· se desborda a lo ancho:',
+  await page.evaluate(() => document.documentElement.scrollWidth > window.innerWidth)
+);
+await page.screenshot({ path: `${SHOTS}/36-marco-1280.png` });
+await goTo('Equipo', 'Plantilla');
+await page.waitForTimeout(1500);
+await page.screenshot({ path: `${SHOTS}/36b-plantilla-1280.png` });
+
+/**
+ * Las pantallas más densas, también en la ventana mínima. Además de la captura
+ * se dice si la zona de la pantalla se desborda a lo ancho: el marco no se
+ * desplaza, así que una tabla que no cabe no se nota en la ventana, sino en
+ * `main`.
+ */
+async function enLaVentanaMinima(nombre, captura) {
+  await page.waitForTimeout(1500);
+  const desborda = await page.evaluate(() => {
+    const main = document.querySelector('main');
+    return main ? main.scrollWidth > main.clientWidth : false;
+  });
+  console.log(`${nombre} a 1280×720 · se desborda a lo ancho:`, desborda);
+  await page.screenshot({ path: `${SHOTS}/${captura}.png` });
+}
+
+await page.locator('tbody tr a').first().click();
+await enLaVentanaMinima('ficha', '36c-ficha-1280');
+await goTo('Equipo', 'Alineación');
+await enLaVentanaMinima('alineación', '36d-alineacion-1280');
+await goTo('Equipo', 'Entrenamiento');
+await enLaVentanaMinima('entrenamiento', '36e-entrenamiento-1280');
+await goTo('Competición', 'Competiciones');
+await page.waitForTimeout(1000);
+await page.getByRole('button', { name: 'Clasificación' }).click();
+await enLaVentanaMinima('conferencias', '36f-conferencias-1280');
+await page.getByRole('button', { name: 'Draft' }).click();
+await enLaVentanaMinima('draft', '36g-draft-1280');
+await goTo('Mercado');
+await enLaVentanaMinima('mercado', '36h-mercado-1280');
+await page.getByRole('button', { name: 'Contratos' }).click();
+await enLaVentanaMinima('contratos', '36i-contratos-1280');
+await goTo('Inicio');
+await enLaVentanaMinima('inicio', '36j-inicio-1280');
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);

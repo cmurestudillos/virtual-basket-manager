@@ -15,6 +15,7 @@ import {
   type DefensiveSystem,
   type OffensiveSystem
 } from '@shared/domain/tactics';
+import { AppSelect } from '@renderer/shared/ui';
 
 const props = defineProps<{
   offensiveSystem: OffensiveSystem;
@@ -26,8 +27,9 @@ const props = defineProps<{
 
 const emit = defineEmits<{ change: [patch: LiveTacticsPatch] }>();
 
-const OFFENSES = Object.entries(OFFENSIVE_SYSTEM_LABELS) as [OffensiveSystem, string][];
-const DEFENSES = Object.entries(DEFENSIVE_SYSTEM_LABELS) as [DefensiveSystem, string][];
+/** Las opciones del selector negro, el mismo de la pizarra de antes del partido. */
+const OFFENSES = Object.entries(OFFENSIVE_SYSTEM_LABELS).map(([id, label]) => ({ id, label }));
+const DEFENSES = Object.entries(DEFENSIVE_SYSTEM_LABELS).map(([id, label]) => ({ id, label }));
 
 function slide(key: 'pace' | 'defensiveIntensity', event: Event): void {
   const value = Number((event.target as HTMLInputElement).value);
@@ -40,34 +42,22 @@ function slide(key: 'pace' | 'defensiveIntensity', event: Event): void {
     <p class="text-tv-muted">Los cambios se aplican en la siguiente posesión.</p>
     <label class="flex flex-col gap-1">
       <span class="text-xs font-semibold uppercase tracking-wide">Defensa</span>
-      <select
-        class="border border-tv-cell bg-white px-2 py-1.5"
-        :value="props.defensiveSystem"
+      <AppSelect
+        :model-value="props.defensiveSystem"
+        :options="DEFENSES"
         :disabled="disabled"
-        @change="
-          emit('change', {
-            defensiveSystem: ($event.target as HTMLSelectElement).value
-          })
-        "
-      >
-        <option v-for="[id, label] in DEFENSES" :key="id" :value="id">{{ label }}</option>
-      </select>
+        @update:model-value="emit('change', { defensiveSystem: $event as DefensiveSystem })"
+      />
     </label>
 
     <label class="flex flex-col gap-1">
       <span class="text-xs font-semibold uppercase tracking-wide">Ataque</span>
-      <select
-        class="border border-tv-cell bg-white px-2 py-1.5"
-        :value="props.offensiveSystem"
+      <AppSelect
+        :model-value="props.offensiveSystem"
+        :options="OFFENSES"
         :disabled="disabled"
-        @change="
-          emit('change', {
-            offensiveSystem: ($event.target as HTMLSelectElement).value
-          })
-        "
-      >
-        <option v-for="[id, label] in OFFENSES" :key="id" :value="id">{{ label }}</option>
-      </select>
+        @update:model-value="emit('change', { offensiveSystem: $event as OffensiveSystem })"
+      />
     </label>
 
     <label class="flex flex-col gap-1">
