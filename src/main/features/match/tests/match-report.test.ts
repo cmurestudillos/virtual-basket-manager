@@ -115,6 +115,8 @@ describe('la jornada', () => {
     expect(round.pending).toBe(round.games.length);
     expect(round.mvp).toBeNull();
     expect(round.games.filter((game) => game.involvesManaged)).toHaveLength(1);
+    // Liga de dieciocho: juegan todos, nadie descansa.
+    expect(round.resting).toEqual([]);
   });
 
   it('jugada entera, trae resultados, posiciones y el mejor de la jornada', () => {

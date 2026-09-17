@@ -47,7 +47,10 @@
     "dev:real": "node scripts/real-data/dev-real.mjs",
     "dataset:backup": "node scripts/real-data/backup-real-dataset.mjs backup",
     "dataset:verify": "node scripts/real-data/backup-real-dataset.mjs verify",
-    "dataset:restore": "node scripts/real-data/backup-real-dataset.mjs restore"
+    "dataset:restore": "node scripts/real-data/backup-real-dataset.mjs restore",
+    "real:acb": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/acb.ts",
+    "real:feb": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/feb.ts",
+    "real:build": "tsx --tsconfig tsconfig.node.json scripts/real-data/build-real-dataset.ts"
   },
   "dependencies": {
     "@dicebear/collection": "^9.4.2",

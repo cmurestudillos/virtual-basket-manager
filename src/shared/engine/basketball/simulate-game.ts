@@ -74,6 +74,13 @@ const STEAL_SHARE_OF_TURNOVERS = 0.55;
 const HOME_COURT_MULTIPLIER = 1.025;
 /** Tope de segundas opciones seguidas: evita un bucle si el rebote ofensivo se dispara. */
 const MAX_SECOND_CHANCES = 3;
+/**
+ * Menos jugadores en pista de los que se deja un equipo por eliminaciones. Sin
+ * recambio, el que se elimina con el equipo ya en el mínimo sigue jugando, como
+ * en la NBA. Con la pista vacía no habría a quién cargar las faltas ni quién
+ * anotara, y un empate a esas alturas daría prórrogas sin fin.
+ */
+const MIN_PLAYERS_ON_COURT = 2;
 /** Frescura que se pierde por posesión estando en pista, antes de ajustar por resistencia. */
 const FATIGUE_DRAIN_PER_POSSESSION = 1;
 /** Frescura que se recupera por posesión en el banquillo. */
@@ -1035,7 +1042,9 @@ function commitFoul(context: PossessionContext, fouler: PlayerState, drawer: Pla
   defense.teamFoulsTotal += 1;
   record(context, 'foul', defense, fouler.player.id, drawer.player.id);
 
-  if (fouler.fouls >= ruleset.personalFoulLimit) {
+  // Quien sigue en pista ya eliminado (ver `MIN_PLAYERS_ON_COURT`) no se
+  // elimina otra vez con cada falta.
+  if (fouler.fouls >= ruleset.personalFoulLimit && !fouler.fouledOut) {
     fouler.fouledOut = true;
     record(context, 'foulOut', defense, fouler.player.id);
     const incoming = forceSubstitution(defense, fouler, context.elapsedSeconds);
@@ -1176,8 +1185,11 @@ function forceSubstitution(
   );
   if (!incoming) {
     // Sin recambio, el eliminado abandona la pista igualmente: el equipo juega
-    // con menos, que es lo que dice el reglamento.
-    outgoing.onCourt = false;
+    // con menos, que es lo que dice el reglamento. Salvo que dejara al equipo
+    // por debajo del mínimo: entonces se queda.
+    if (onCourt(team).length > MIN_PLAYERS_ON_COURT) {
+      outgoing.onCourt = false;
+    }
     return null;
   }
   swap(outgoing, incoming, elapsedSeconds);

@@ -22,7 +22,7 @@ import {
 } from './continental';
 import { CUP_TEAMS } from './cup';
 import { buildPlayoffFormat } from './playoffs';
-import { MAX_MATCHDAYS, roundRobinLaps } from './schedule';
+import { MAX_MATCHDAYS, roundRobinLaps, roundsPerLap } from './schedule';
 
 /**
  * Nombre de cada país de liga. Dos no son países: la liga Adriática reúne
@@ -107,8 +107,7 @@ export function estimateLeagueGames(league: LeagueSize): number {
     return 0;
   }
   const laps = roundRobinLaps(league.teams, MAX_MATCHDAYS);
-  const roundsPerLap = league.teams % 2 === 0 ? league.teams - 1 : league.teams;
-  const regular = Math.floor(league.teams / 2) * roundsPerLap * laps;
+  const regular = Math.floor(league.teams / 2) * roundsPerLap(league.teams) * laps;
 
   if (league.playoffTeams < 2) {
     return regular;

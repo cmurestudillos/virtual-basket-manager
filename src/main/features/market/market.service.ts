@@ -37,6 +37,7 @@ import {
   seasonTicketPriceCents
 } from '@shared/domain/attendance';
 import type { Position } from '@shared/domain/positions';
+import { homeGamesPerSeason } from '@shared/domain/schedule';
 import { MAX_ROSTER } from '@shared/domain/youth';
 import { UNHAPPY_MORALE, refusesToRenew, renewalWageFactor } from '@shared/domain/morale';
 import {
@@ -60,8 +61,6 @@ import { MarketRepository } from './market.repository';
 export const MIN_ROSTER = 10;
 /** Y la que la IA considera corta y sale a cubrir en el mercado. */
 const AI_TARGET_ROSTER = 12;
-/** Partidos en casa de una liga de 18 equipos: la mitad de las 34 jornadas. */
-const HOME_GAMES_PER_SEASON = 17;
 
 export class NoManagedTeamError extends Error {
   constructor() {
@@ -262,9 +261,11 @@ export class MarketService {
       ticketPriceCents: team.ticketPriceCents,
       opponentReputation: 50
     });
+    // Los partidos en casa dependen del tamaño de la liga: dieciocho equipos
+    // juegan 17, y una de diecisiete, con sus dos descansos, 16.
     const gate =
       gateRevenueCents(attendance, team.seasonTicketHolders, team.ticketPriceCents) *
-      HOME_GAMES_PER_SEASON;
+      homeGamesPerSeason(repository.countTeamsInCompetition(team.competitionId));
 
     const income =
       seasonTvRightsCents(team.reputation) +

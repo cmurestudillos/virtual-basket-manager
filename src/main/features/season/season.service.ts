@@ -165,8 +165,14 @@ export class SeasonService {
   getCurrent(): SeasonSummary {
     const repository = new SeasonRepository(this.resolveDb());
     const season = this.ensureStage(repository);
-    const competition = repository.competitionOfTeam(this.requireManagedTeam(repository));
+    const managedTeamId = this.requireManagedTeam(repository);
+    const competition = repository.competitionOfTeam(managedTeamId);
     const games = repository.listRegularGames(season.id);
+
+    // La jornada que toca: la primera con partidos sin jugar. En una liga impar
+    // el club puede no tener partido en ella, y entonces descansa.
+    const nextRound = games.find((game) => !isPlayed(game))?.round ?? null;
+    const nextRoundGames = games.filter((game) => game.round === nextRound);
 
     return {
       id: season.id,
@@ -176,6 +182,14 @@ export class SeasonService {
       startYear: season.startYear,
       currentRound: season.currentRound,
       totalRounds: games.reduce((max, game) => Math.max(max, game.round), 0),
+      nextRound:
+        nextRound !== null && nextRoundGames[0]
+          ? {
+              round: nextRound,
+              scheduledOn: nextRoundGames[0].scheduledOn.getTime(),
+              managedRests: !nextRoundGames.some((game) => involves(game, managedTeamId))
+            }
+          : null,
       stage: season.stage as SeasonSummary['stage'],
       pendingLeagues: [
         ...this.unfinishedLeagues(repository, season.seasonNumber).map(

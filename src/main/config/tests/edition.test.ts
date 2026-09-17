@@ -88,8 +88,10 @@ describe('el empaquetado', () => {
 });
 
 interface NamedDataset {
-  teams: { name: string }[];
-  players: { firstName: string; lastName: string; birthDate: string }[];
+  /** Las ligas que ya son reales; el resto del dataset real sigue siendo el ficticio. */
+  realLeagues?: string[];
+  teams: { id: string; name: string; competitionId: string }[];
+  players: { teamId: string; firstName: string; lastName: string; birthDate: string }[];
 }
 
 const REAL = resolve('resources/real-data/dataset.json');
@@ -98,19 +100,29 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
   const load = (path: string): NamedDataset =>
     JSON.parse(readFileSync(path, 'utf8')) as NamedDataset;
   const fictitious = load(resolve('resources/seed-data/dataset.json'));
-  const real = existsSync(REAL) ? load(REAL) : { teams: [], players: [] };
+  const whole = existsSync(REAL) ? load(REAL) : { teams: [], players: [] };
+  // Sólo cuenta lo que viene de las ligas reales: los países que siguen
+  // inventados están en los dos datasets a propósito.
+  const realLeagues = new Set(whole.realLeagues ?? []);
+  const realTeams = whole.teams.filter((team) => realLeagues.has(team.competitionId));
+  const realTeamIds = new Set(realTeams.map((team) => team.id));
+  const realPlayers = whole.players.filter((player) => realTeamIds.has(player.teamId));
+
+  it('dice qué ligas son reales', () => {
+    expect(realLeagues.size).toBeGreaterThan(0);
+  });
 
   it('no comparte ningún club', () => {
-    const realTeams = new Set(real.teams.map((team) => team.name.toLowerCase()));
-    const leaked = fictitious.teams.filter((team) => realTeams.has(team.name.toLowerCase()));
+    const names = new Set(realTeams.map((team) => team.name.toLowerCase()));
+    const leaked = fictitious.teams.filter((team) => names.has(team.name.toLowerCase()));
     expect(leaked.map((team) => team.name)).toEqual([]);
   });
 
   it('no comparte ningún jugador con el mismo nombre y fecha de nacimiento', () => {
     const key = (player: NamedDataset['players'][number]): string =>
       `${player.firstName} ${player.lastName}|${player.birthDate}`.toLowerCase();
-    const realPlayers = new Set(real.players.map(key));
-    const leaked = fictitious.players.filter((player) => realPlayers.has(key(player)));
+    const names = new Set(realPlayers.map(key));
+    const leaked = fictitious.players.filter((player) => names.has(key(player)));
     expect(leaked.map(key)).toEqual([]);
   });
 });

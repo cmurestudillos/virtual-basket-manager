@@ -1,0 +1,226 @@
+import { readFileSync } from 'node:fs';
+import { resolve } from 'node:path';
+import { describe, expect, it } from 'vitest';
+import type { Dataset } from '../../../src/main/features/saves/dataset';
+import { NATION_NAMES } from '../../../src/shared/domain/national-teams';
+import { MAX_ROSTER } from '../../../src/shared/domain/youth';
+import {
+  mergeRealLeagues,
+  reputationFor,
+  selectRosters,
+  slugify,
+  teamStrength
+} from '../lib/merge';
+import type { SourceLeague, SourcePlayer, SourceTeam } from '../lib/source-types';
+
+const fictitious = JSON.parse(
+  readFileSync(resolve('resources/seed-data/dataset.json'), 'utf8')
+) as Dataset;
+const known = new Set(Object.keys(NATION_NAMES));
+
+function player(id: string, minutes: number, overrides: Partial<SourcePlayer> = {}): SourcePlayer {
+  const games = 20;
+  const seconds = minutes * 60 * games;
+  const scale = minutes / 20;
+  return {
+    sourceId: id,
+    firstName: 'Jugador',
+    lastName: id,
+    nickname: null,
+    birthDate: '1996-03-03',
+    age: null,
+    nationality: 'ESP',
+    nationalityRaw: 'España',
+    position: (['PG', 'SG', 'SF', 'PF', 'C'] as const)[id.length % 5],
+    positionRaw: null,
+    heightCm: 198,
+    weightKg: null,
+    shirtNumber: null,
+    licence: null,
+    stats:
+      minutes === 0
+        ? null
+        : {
+            games,
+            starts: null,
+            seconds,
+            points: Math.round(8 * scale * games),
+            twoPointMade: Math.round(2 * scale * games),
+            twoPointAttempted: Math.round(4 * scale * games),
+            threePointMade: Math.round(1 * scale * games),
+            threePointAttempted: Math.round(3 * scale * games),
+            freeThrowMade: Math.round(1 * scale * games),
+            freeThrowAttempted: Math.round(1.4 * scale * games),
+            offensiveRebounds: Math.round(1 * scale * games),
+            defensiveRebounds: Math.round(2.5 * scale * games),
+            assists: Math.round(1.5 * scale * games),
+            steals: Math.round(0.7 * scale * games),
+            turnovers: Math.round(1.1 * scale * games),
+            blocks: Math.round(0.3 * scale * games),
+            blocksReceived: null,
+            dunks: null,
+            fouls: Math.round(2 * scale * games),
+            foulsDrawn: null,
+            rating: null
+          },
+    ...overrides
+  };
+}
+
+function team(name: string, finalPosition: number, players: SourcePlayer[]): SourceTeam {
+  return {
+    sourceId: slugify(name),
+    name,
+    shortName: null,
+    city: null,
+    pavilionName: null,
+    pavilionCapacity: null,
+    finalPosition,
+    players
+  };
+}
+
+/** Una Primera FEB de mentira con los casos difíciles dentro. */
+function league(): SourceLeague {
+  const teams = Array.from({ length: 4 }, (_, index) =>
+    team(
+      `Club Real ${index + 1}`,
+      index + 1,
+      Array.from({ length: 12 }, (_, slot) => player(`t${index}-p${slot}`, 30 - slot * 2))
+    )
+  );
+  // Uno se fue a mitad de temporada a otro equipo de la liga: jugó más en el segundo.
+  teams[0]!.players.push(player('viajero', 8));
+  teams[1]!.players.push(player('viajero', 18));
+  // Una plantilla con más gente de la que cabe.
+  for (let extra = 0; extra < 5; extra += 1) teams[2]!.players.push(player(`sobra-${extra}`, 1));
+  // Nacionalidad que el juego no conoce y un fichaje sin estadísticas.
+  teams[3]!.players.push(player('raro', 12, { nationality: 'TGA', nationalityRaw: 'Tonga' }));
+  teams[3]!.players.push(player('nuevo', 0, { licence: 'EXT' }));
+  return {
+    competitionId: 'liga-plata',
+    name: 'Primera FEB',
+    shortName: 'PFEB',
+    country: 'ESP',
+    seasonStartYear: 2025,
+    source: 'https://ejemplo',
+    extractedAt: '2026-09-16T00:00:00.000Z',
+    teams,
+    warnings: []
+  };
+}
+
+describe('elegir las plantillas', () => {
+  it('cada jugador en un solo equipo, donde más jugó, y nadie por encima del máximo', () => {
+    const { rosters, droppedDuplicates, droppedOverRoster } = selectRosters(league());
+    const all = [...rosters.values()].flat();
+    const ids = all.map((entry) => entry.sourceId);
+    expect(new Set(ids).size).toBe(ids.length);
+    const home = [...rosters.entries()].find(([, players]) =>
+      players.some((entry) => entry.sourceId === 'viajero')
+    );
+    expect(home?.[0].name).toBe('Club Real 2');
+    expect(droppedDuplicates).toBe(1);
+    expect(droppedOverRoster).toBeGreaterThan(0);
+    for (const players of rosters.values()) expect(players.length).toBeLessThanOrEqual(MAX_ROSTER);
+  });
+
+  it('el nivel del equipo va de 1 el primero a 0 el último', () => {
+    expect(teamStrength(1, 17)).toBe(1);
+    expect(teamStrength(17, 17)).toBe(0);
+    expect(teamStrength(9, 17)).toBe(0.5);
+    expect(teamStrength(null, 17)).toBeNull();
+  });
+
+  it('la reputación va del mejor al peor según el puesto final', () => {
+    const tier = { reputation: [30, 7] as [number, number] } as never;
+    expect(reputationFor(1, 0, 18, tier)).toBe(30);
+    expect(reputationFor(18, 17, 18, tier)).toBe(7);
+    expect(reputationFor(null, 4, 18, tier)).toBeLessThan(30);
+  });
+});
+
+describe('mezclar una liga real con el mundo ficticio', () => {
+  const { dataset, reports } = mergeRealLeagues(fictitious, [league()], known);
+
+  it('sustituye sólo la liga real y deja el resto del mundo intacto', () => {
+    const others = fictitious.teams.filter((entry) => entry.competitionId !== 'liga-plata');
+    for (const entry of others) {
+      expect(dataset.teams).toContainEqual(entry);
+    }
+    const plata = dataset.teams.filter((entry) => entry.competitionId === 'liga-plata');
+    expect(plata.map((entry) => entry.name).sort()).toEqual([
+      'Club Real 1',
+      'Club Real 2',
+      'Club Real 3',
+      'Club Real 4'
+    ]);
+    expect(dataset.realLeagues).toEqual(['liga-plata']);
+  });
+
+  it('la liga y la copa del país llevan su nombre real', () => {
+    expect(dataset.competitions.find((entry) => entry.id === 'liga-plata')?.name).toBe(
+      'Primera FEB'
+    );
+    expect(dataset.competitions.find((entry) => entry.id === 'copa-nacional')?.name).toBe(
+      'Copa del Rey'
+    );
+  });
+
+  it('todo jugador cuelga de un equipo que existe y los identificadores no se repiten', () => {
+    const teamIds = new Set(dataset.teams.map((entry) => entry.id));
+    for (const entry of dataset.players) expect(teamIds.has(entry.teamId)).toBe(true);
+    expect(new Set(dataset.players.map((entry) => entry.id)).size).toBe(dataset.players.length);
+    expect(new Set(dataset.teams.map((entry) => entry.id)).size).toBe(dataset.teams.length);
+  });
+
+  it('rellena lo que la fuente no da con valores razonables', () => {
+    const real = dataset.players.filter((entry) => entry.teamId.startsWith('liga-plata-'));
+    for (const entry of real) {
+      expect(entry.weightKg).toBeGreaterThan(60);
+      expect(entry.wingspanCm).toBeGreaterThanOrEqual(entry.heightCm);
+      expect(entry.potential).toBeGreaterThanOrEqual(0);
+      expect(entry.wageCents).toBeGreaterThan(0);
+      expect(entry.contractUntil).toMatch(/^20(2[6-9]|30)-06-30$/);
+    }
+  });
+
+  it('una nacionalidad desconocida se avisa y se cambia por la del club', () => {
+    expect(reports[0]?.unknownNationalities).toContain('TGA');
+    const raro = dataset.players.find((entry) => entry.lastName === 'raro');
+    expect(raro?.nationality).toBe('ESP');
+  });
+
+  it('el mejor equipo real sale con más reputación y presupuesto que el peor', () => {
+    const plata = dataset.teams.filter((entry) => entry.competitionId === 'liga-plata');
+    const best = plata.find((entry) => entry.name === 'Club Real 1')!;
+    const worst = plata.find((entry) => entry.name === 'Club Real 4')!;
+    expect(best.reputation).toBeGreaterThan(worst.reputation);
+    expect(best.budgetCents).toBeGreaterThan(worst.budgetCents);
+  });
+
+  it('las medias quedan dentro del rango de la liga ficticia a la que sustituyen', () => {
+    const fictitiousIds = new Set(
+      fictitious.teams
+        .filter((entry) => entry.competitionId === 'liga-plata')
+        .map((entry) => entry.id)
+    );
+    const values = fictitious.players
+      .filter((entry) => fictitiousIds.has(entry.teamId))
+      .flatMap((entry) => Object.values(entry.attributes));
+    const [min, max] = [Math.min(...values), Math.max(...values)];
+    const real = dataset.players.filter((entry) => entry.teamId.startsWith('liga-plata-'));
+    for (const entry of real) {
+      for (const value of Object.values(entry.attributes)) {
+        expect(value).toBeGreaterThanOrEqual(min);
+        expect(value).toBeLessThanOrEqual(max);
+      }
+    }
+  });
+
+  it('una liga que no existe en el mundo ficticio es un error', () => {
+    expect(() =>
+      mergeRealLeagues(fictitious, [{ ...league(), competitionId: 'no-existe' }], known)
+    ).toThrow(/no-existe/);
+  });
+});

@@ -78,6 +78,16 @@ const MVP_STATS = [
             <span class="figure py-3 text-center text-lg">{{ game.awayPosition ?? '' }}</span>
           </li>
         </ul>
+        <p
+          v-if="results.resting.length > 0"
+          class="bg-tv-800 px-4 py-2 text-center text-sm text-white/80"
+        >
+          Descansa:
+          <template v-for="(team, index) in results.resting" :key="team.teamId"
+            >{{ index > 0 ? ', ' : '' }}{{ team.teamName
+            }}{{ team.position ? ` (${team.position}º)` : '' }}</template
+          >
+        </p>
         <p v-if="results.pending > 0" class="bg-tv-900 px-4 py-2 text-center text-sm text-white/80">
           Quedan {{ results.pending }} partidos de la jornada por jugar.
         </p>

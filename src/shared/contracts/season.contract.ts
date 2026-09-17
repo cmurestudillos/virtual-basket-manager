@@ -8,6 +8,12 @@ export interface SeasonSummary {
   startYear: number;
   currentRound: number;
   totalRounds: number;
+  /**
+   * La jornada de liga regular que toca jugar —la primera con partidos
+   * pendientes— y si el club del usuario descansa en ella, que sólo pasa en
+   * ligas de número impar. `null` con la liga regular acabada.
+   */
+  nextRound: { round: number; scheduledOn: number; managedRests: boolean } | null;
   stage: 'regular' | 'playoffs' | 'finished';
   /**
    * Ligas de los países elegidos que aún no han terminado. La temporada no se

@@ -11,59 +11,58 @@ export interface ScheduledPairing {
   awayTeamId: string;
 }
 
-export class OddTeamCountError extends Error {
-  constructor(count: number) {
-    super(`El calendario de todos contra todos necesita un número par de equipos (hay ${count})`);
-    this.name = 'OddTeamCountError';
-  }
-}
-
 /**
  * Todos contra todos a una vuelta, por el método del círculo: se fija un equipo
  * y los demás rotan a su alrededor.
  *
- * Exige número par de equipos. Con impar habría que meter un equipo fantasma y
- * una jornada de descanso por equipo, que es una decisión de diseño de
- * competición y no algo que deba inventarse aquí en silencio — de ahí el error
- * explícito.
+ * Con número impar de equipos entra un fantasma, y quien se cruza con él esa
+ * jornada descansa: N jornadas en vez de N-1, cada una con un equipo sin
+ * partido, que es como se juega una liga impar de verdad (la Primera FEB de
+ * diecisiete). El fantasma va delante, como equipo fijo, y no al final: así los
+ * campos se siguen repartiendo mitad y mitad en cada vuelta.
  */
 export function generateSingleRoundRobin(teamIds: readonly string[]): ScheduledPairing[][] {
-  if (teamIds.length % 2 !== 0) {
-    throw new OddTeamCountError(teamIds.length);
-  }
   if (teamIds.length < 2) {
     return [];
   }
 
-  const total = teamIds.length;
-  const fixed = teamIds[0] as string;
-  let rotating = teamIds.slice(1);
+  // `null` es el fantasma: nunca se confunde con el id de un equipo de verdad.
+  const slots: (string | null)[] = teamIds.length % 2 === 0 ? [...teamIds] : [null, ...teamIds];
+  const total = slots.length;
+  const fixed = slots[0] as string | null;
+  let rotating = slots.slice(1);
 
   const rounds: ScheduledPairing[][] = [];
 
   for (let round = 0; round < total - 1; round += 1) {
     const pairings: ScheduledPairing[] = [];
-    const opponent = rotating[0] as string;
+    // Un emparejamiento con el fantasma no se juega: ese equipo descansa.
+    const pair = (home: string | null, away: string | null): void => {
+      if (home !== null && away !== null) {
+        pairings.push({ homeTeamId: home, awayTeamId: away });
+      }
+    };
+    const opponent = rotating[0] as string | null;
 
     // El equipo fijo alterna campo cada jornada; si no, jugaría las 17 en casa.
-    pairings.push(
-      round % 2 === 0
-        ? { homeTeamId: fixed, awayTeamId: opponent }
-        : { homeTeamId: opponent, awayTeamId: fixed }
-    );
+    if (round % 2 === 0) {
+      pair(fixed, opponent);
+    } else {
+      pair(opponent, fixed);
+    }
 
     for (let index = 1; index < total / 2; index += 1) {
-      const first = rotating[index] as string;
-      const second = rotating[rotating.length - index] as string;
-      pairings.push(
-        index % 2 === 0
-          ? { homeTeamId: first, awayTeamId: second }
-          : { homeTeamId: second, awayTeamId: first }
-      );
+      const first = rotating[index] as string | null;
+      const second = rotating[rotating.length - index] as string | null;
+      if (index % 2 === 0) {
+        pair(first, second);
+      } else {
+        pair(second, first);
+      }
     }
 
     rounds.push(pairings);
-    rotating = [rotating[rotating.length - 1] as string, ...rotating.slice(0, -1)];
+    rotating = [rotating[rotating.length - 1] as string | null, ...rotating.slice(0, -1)];
   }
 
   return rounds;
@@ -110,18 +109,42 @@ export function generateRoundRobin(teamIds: readonly string[], laps: number): Sc
 export const MAX_MATCHDAYS = 34;
 
 /**
+ * Jornadas de una vuelta: N-1 con número par de equipos y N con impar, porque
+ * cada jornada descansa uno.
+ */
+export function roundsPerLap(teams: number): number {
+  if (teams < 2) {
+    return 0;
+  }
+  return teams % 2 === 0 ? teams - 1 : teams;
+}
+
+/**
  * Cuántas vueltas juega una liga según su tamaño.
  *
  * Sale de lo que cabe en la temporada: dieciocho equipos dan justo las 34
- * jornadas a ida y vuelta, diez juegan tres vueltas —como las ligas pequeñas de
- * verdad— y una liga de treinta se queda en una sola. Así todas las ligas del
+ * jornadas a ida y vuelta, y diecisiete también —diecisiete jornadas por vuelta,
+ * con un descanso cada una—; diez juegan tres vueltas —como las ligas pequeñas
+ * de verdad— y una liga de treinta se queda en una sola. Así todas las ligas del
  * mundo caben en el mismo calendario sin inventarse formatos distintos.
  */
 export function roundRobinLaps(teams: number, maxRounds = MAX_MATCHDAYS): number {
   if (teams < 2) {
     return 1;
   }
-  return Math.max(1, Math.floor(maxRounds / (teams - 1)));
+  return Math.max(1, Math.floor(maxRounds / roundsPerLap(teams)));
+}
+
+/**
+ * Partidos en casa de cada equipo en la fase regular: la mitad de los que juega,
+ * que son uno contra cada rival por vuelta. Dieciocho equipos dan 17; diecisiete,
+ * que descansan dos jornadas, 16.
+ */
+export function homeGamesPerSeason(teams: number, maxRounds = MAX_MATCHDAYS): number {
+  if (teams < 2) {
+    return 0;
+  }
+  return Math.round(((teams - 1) * roundRobinLaps(teams, maxRounds)) / 2);
 }
 
 /**

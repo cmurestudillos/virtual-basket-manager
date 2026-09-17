@@ -80,7 +80,40 @@ export const NATION_NAMES: Record<string, string> = {
   TUN: 'Túnez',
   UKR: 'Ucrania',
   URU: 'Uruguay',
-  VEN: 'Venezuela'
+  VEN: 'Venezuela',
+  // Países con jugadores en las ligas reales pero sin cantera para una
+  // selección: sólo dan nombre a la nacionalidad. Una selección necesita
+  // `MIN_NATIONAL_POOL` jugadores, así que no aparecen en el Mundial.
+  AND: 'Andorra',
+  ARM: 'Armenia',
+  AUT: 'Austria',
+  AZE: 'Azerbaiyán',
+  BAH: 'Bahamas',
+  BAR: 'Barbados',
+  BUL: 'Bulgaria',
+  CAF: 'República Centroafricana',
+  CGO: 'Congo',
+  CHA: 'Chad',
+  COD: 'República Democrática del Congo',
+  COL: 'Colombia',
+  CUB: 'Cuba',
+  DEN: 'Dinamarca',
+  EST: 'Estonia',
+  GHA: 'Ghana',
+  GUI: 'Guinea',
+  HAI: 'Haití',
+  IRL: 'Irlanda',
+  ISL: 'Islandia',
+  JAM: 'Jamaica',
+  NOR: 'Noruega',
+  ROU: 'Rumanía',
+  RUS: 'Rusia',
+  SKN: 'San Cristóbal y Nieves',
+  SLE: 'Sierra Leona',
+  SUI: 'Suiza',
+  SVK: 'Eslovaquia',
+  SWE: 'Suecia',
+  UGA: 'Uganda'
 };
 
 export function nationName(code: string): string {

@@ -15,7 +15,10 @@ export const DEFAULT_TICKET_PRICE_CENTS = REFERENCE_TICKET_PRICE_CENTS;
 export const MIN_TICKET_PRICE_CENTS = 5_00;
 export const MAX_TICKET_PRICE_CENTS = 120_00;
 
-/** El abono sale por doce entradas aunque la liga tenga diecisiete partidos en casa. */
+/**
+ * El abono sale por doce entradas aunque la liga tenga más partidos en casa:
+ * diecisiete en una de dieciocho equipos, dieciséis en una de diecisiete.
+ */
 export const SEASON_TICKET_GAMES = 12;
 
 export function seasonTicketPriceCents(ticketPriceCents: number): number {

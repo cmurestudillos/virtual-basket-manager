@@ -90,8 +90,9 @@ describe('seedSave', () => {
     expect(leagues.length).toBeGreaterThanOrEqual(20);
     for (const competition of leagues) {
       const size = teams.filter((row) => row.competitionId === competition.id).length;
-      // Par y con gente: un calendario de todos contra todos no sale con
-      // impares, y una liga vacía reventaría al generar su temporada.
+      // Con gente, porque una liga vacía reventaría al generar su temporada. Y
+      // par: el mundo ficticio no tiene jornadas de descanso; las ligas impares,
+      // como la Primera FEB real, se prueban aparte (`odd-league.test.ts`).
       expect(size).toBeGreaterThanOrEqual(10);
       expect(size % 2).toBe(0);
     }
