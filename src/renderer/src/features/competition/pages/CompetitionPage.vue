@@ -107,7 +107,8 @@ const leagueOptions = computed(() =>
 
 const tabs = computed(() => [
   { id: 'standings' as Tab, label: 'Clasificación' },
-  { id: 'fixtures' as Tab, label: 'Calendario' },
+  // «Resultados» y no «Calendario»: el calendario es su propia sección (fase 5).
+  { id: 'fixtures' as Tab, label: 'Resultados' },
   { id: 'cup' as Tab, label: 'Copa' },
   { id: 'continental' as Tab, label: 'Continental' },
   ...(hasPlayoffs.value ? [{ id: 'playoffs' as Tab, label: 'Playoffs' }] : []),

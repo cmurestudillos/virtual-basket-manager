@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
+import { RouterLink } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { matchKits } from '@shared/domain/court';
 import type {
@@ -166,7 +167,7 @@ async function reload(): Promise<void> {
     squadStats.value = [];
     playersConfidence.value = null;
   } else {
-    let roster: { morale: number }[];
+    let roster: { morale: number | null }[];
     [team.value, standings.value, fixtures.value, finances.value, squadStats.value, roster] =
       await Promise.all([
         window.api.teams.get(teamId),
@@ -176,7 +177,10 @@ async function reload(): Promise<void> {
         window.api.stats.teamSeason(teamId),
         window.api.players.listByTeam(teamId)
       ]);
-    playersConfidence.value = squadMorale(roster.map((player) => player.morale));
+    // La plantilla es la propia: la moral llega de todos (sólo la de fuera viene vacía).
+    playersConfidence.value = squadMorale(
+      roster.flatMap((player) => (player.morale === null ? [] : [player.morale]))
+    );
   }
   // El cuadro sólo existe cuando acaba la liga regular; antes no hay nada que pedir.
   playoffs.value = stage.value === 'regular' ? null : await window.api.season.getPlayoffs();
@@ -232,6 +236,38 @@ function homeOf(fixture: FixtureEntry): FixtureSide {
 
 function awayOf(fixture: FixtureEntry): FixtureSide {
   return side(fixture.awayTeamId, fixture.awayTeamName, fixture.awayScore, fixture.played);
+}
+
+/**
+ * La ficha del rival de un partido por jugar: la del equipo que no es el del
+ * usuario. Una selección no tiene ficha de club, así que su partido no enlaza.
+ */
+function rivalProfile(fixture: FixtureEntry) {
+  const venue = venueOf(fixture);
+  const rivalId =
+    venue === 'home' ? fixture.awayTeamId : venue === 'away' ? fixture.homeTeamId : null;
+  return rivalId && !nationOf(rivalId)
+    ? { name: 'team-profile', params: { teamId: rivalId } }
+    : null;
+}
+
+/** Lo que envuelve una tarjeta por jugar: el enlace a la ficha del rival o, sin ella, nada. */
+function rivalWrapper(fixture: FixtureEntry) {
+  return rivalProfile(fixture) ? RouterLink : 'div';
+}
+
+function rivalLink(fixture: FixtureEntry) {
+  const to = rivalProfile(fixture);
+  if (!to) {
+    return {};
+  }
+  const rival =
+    to.params.teamId === fixture.homeTeamId ? fixture.homeTeamName : fixture.awayTeamName;
+  return {
+    to,
+    class: 'block outline-tv-blue hover:outline-2',
+    title: `Ficha del rival: ${rival}`
+  };
 }
 
 /** En casa o fuera, visto desde el club o la selección del usuario. */
@@ -436,17 +472,22 @@ const arenaItems = computed(() =>
         </span>
       </FixtureCard>
 
-      <!-- Hay partido propio pendiente: lo normal durante toda la temporada. -->
-      <FixtureCard
+      <!-- Hay partido propio pendiente: lo normal durante toda la temporada. Abre la ficha del rival. -->
+      <component
+        :is="rivalWrapper(seasonStore.nextGame)"
         v-else-if="seasonStore.nextGame"
-        featured
-        :home="homeOf(seasonStore.nextGame)"
-        :away="awayOf(seasonStore.nextGame)"
-        :date="formatShortDate(seasonStore.nextGame.scheduledOn)"
-        :venue="venueOf(seasonStore.nextGame)"
-        :footer="nextGameLabel"
-        :detail="formatMatchDate(seasonStore.nextGame.scheduledOn)"
-      />
+        v-bind="rivalLink(seasonStore.nextGame)"
+      >
+        <FixtureCard
+          featured
+          :home="homeOf(seasonStore.nextGame)"
+          :away="awayOf(seasonStore.nextGame)"
+          :date="formatShortDate(seasonStore.nextGame.scheduledOn)"
+          :venue="venueOf(seasonStore.nextGame)"
+          :footer="nextGameLabel"
+          :detail="formatMatchDate(seasonStore.nextGame.scheduledOn)"
+        />
+      </component>
 
       <!-- Temporada cerrada: hay campeón; quizá otras ligas de las que se juegan todavía no. -->
       <FixtureCard
@@ -484,15 +525,17 @@ const arenaItems = computed(() =>
         </span>
       </FixtureCard>
 
+      <!-- Los que vienen abren la ficha del rival: es lo que se quiere mirar antes de jugar. -->
       <template v-for="(fixture, index) in futureSlots" :key="fixture?.gameId ?? `futuro-${index}`">
-        <FixtureCard
-          v-if="fixture"
-          :home="homeOf(fixture)"
-          :away="awayOf(fixture)"
-          :date="formatShortDate(fixture.scheduledOn)"
-          :venue="venueOf(fixture)"
-          :footer="fixtureFooter(fixture)"
-        />
+        <component :is="rivalWrapper(fixture)" v-if="fixture" v-bind="rivalLink(fixture)">
+          <FixtureCard
+            :home="homeOf(fixture)"
+            :away="awayOf(fixture)"
+            :date="formatShortDate(fixture.scheduledOn)"
+            :venue="venueOf(fixture)"
+            :footer="fixtureFooter(fixture)"
+          />
+        </component>
         <div v-else></div>
       </template>
     </section>
@@ -558,10 +601,13 @@ const arenaItems = computed(() =>
             >
               <td class="numeric" :class="zoneClass(row.zone)">{{ row.position }}</td>
               <td class="max-w-0 w-full">
-                <span class="flex min-w-0 items-center gap-2">
+                <RouterLink
+                  :to="{ name: 'team-profile', params: { teamId: row.teamId } }"
+                  class="flex min-w-0 items-center gap-2 hover:text-tv-blue-ink"
+                >
                   <TeamBadge :name="row.teamName" :kit="kitOf(row.teamId)" :size="18" />
                   <span class="truncate" :title="row.teamName">{{ row.teamName }}</span>
-                </span>
+                </RouterLink>
               </td>
               <td class="numeric">{{ row.won }}</td>
               <td class="numeric">{{ row.lost }}</td>
@@ -597,8 +643,8 @@ const arenaItems = computed(() =>
           <PanelMore :to="{ name: 'finances' }" label="Ver las finanzas" />
         </template>
         <div class="flex flex-col gap-3">
-          <AppStat label="Caja" :tone="team.budgetCents < 0 ? 'bad' : null">
-            {{ formatMoney(team.budgetCents) }}
+          <AppStat label="Caja" :tone="(team.budgetCents ?? 0) < 0 ? 'bad' : null">
+            {{ formatMoney(team.budgetCents ?? 0) }}
           </AppStat>
           <KeyValueList v-if="finances" :items="economyItems" />
         </div>

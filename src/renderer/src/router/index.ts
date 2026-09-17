@@ -66,6 +66,37 @@ export const router = createRouter({
           component: () => import('@renderer/features/players/pages/PlayerPage.vue')
         },
         {
+          // La ficha del club propio, en Equipo. La de cualquier otro es `team-profile`.
+          path: 'team/club',
+          name: 'own-club',
+          component: () => import('@renderer/features/teams/pages/OwnClubPage.vue')
+        },
+        {
+          path: 'clubs',
+          name: 'clubs',
+          component: () => import('@renderer/features/teams/pages/ClubsPage.vue')
+        },
+        {
+          path: 'club/:teamId',
+          name: 'team-profile',
+          component: () => import('@renderer/features/teams/pages/TeamProfilePage.vue')
+        },
+        {
+          path: 'calendar',
+          name: 'calendar',
+          component: () => import('@renderer/features/calendar/pages/CalendarPage.vue')
+        },
+        {
+          path: 'manager',
+          name: 'manager',
+          component: () => import('@renderer/features/coaches/pages/ManagerPage.vue')
+        },
+        {
+          path: 'manager/ranking',
+          name: 'coach-ranking',
+          component: () => import('@renderer/features/coaches/pages/CoachRankingPage.vue')
+        },
+        {
           path: 'lineup',
           name: 'lineup',
           component: () => import('@renderer/features/lineup/pages/LineupPage.vue')

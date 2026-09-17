@@ -2,7 +2,7 @@
 /**
  * La barra de pestañas, en sus dos formas.
  *
- * `underline` es la de dentro de una sección —Clasificación, Calendario,
+ * `underline` es la de dentro de una sección —Clasificación, Resultados,
  * Copa— y `pills` la de elegir entre cosas del mismo rango —una liga, una
  * competición europea—. Son la misma decisión con distinta pinta, así que
  * comparten componente: lo que las distingue es el peso que tienen dentro de
@@ -38,7 +38,7 @@ defineEmits<{ 'update:modelValue': [value: string] }>();
       v-for="option in options"
       :key="option.id"
       type="button"
-      class="whitespace-nowrap border-b-[3px] px-3 pb-2 pt-2.5 text-sm font-bold transition-colors"
+      class="whitespace-nowrap border-b-[3px] px-2.5 pb-2 pt-2.5 text-sm font-bold transition-colors"
       :class="
         modelValue === option.id
           ? 'border-tv-blue text-white'

@@ -6,8 +6,12 @@ import type { GameIconName } from './components/GameIcon.vue';
  *
  * Es el único sitio donde se decide la navegación del marco. Añadir una
  * pantalla a una sección es añadir una pestaña aquí; añadir una sección nueva
- * (Calendario, Ranking de entrenadores en la fase 5) es añadir una entrada y su
- * icono en `GameIcon`.
+ * es añadir una entrada y su icono en `GameIcon`.
+ *
+ * Calendario va justo detrás de Competición porque es lo mismo visto por fechas.
+ * Mánager va entre Club y Selecciones: el club es quien te paga y la selección
+ * el otro banquillo que llevas, y las tres hablan de ti como entrenador y no del
+ * día a día del equipo.
  */
 
 export interface SectionTab {
@@ -38,7 +42,8 @@ export const GAME_SECTIONS: readonly GameSection[] = [
       { route: 'squad', label: 'Plantilla' },
       { route: 'lineup', label: 'Alineación' },
       { route: 'training', label: 'Entrenamiento' },
-      { route: 'youth', label: 'Cantera' }
+      { route: 'youth', label: 'Cantera' },
+      { route: 'own-club', label: 'Club' }
     ],
     also: ['player']
   },
@@ -48,8 +53,18 @@ export const GAME_SECTIONS: readonly GameSection[] = [
     icon: 'trophy',
     tabs: [
       { route: 'competition', label: 'Competiciones' },
-      { route: 'stats', label: 'Estadísticas' }
-    ]
+      { route: 'stats', label: 'Estadísticas' },
+      { route: 'clubs', label: 'Clubes' }
+    ],
+    // La ficha de cualquier club se abre desde la clasificación, los resultados y
+    // la lista de clubes: cuenta como Competición, con sus pestañas a la vista.
+    also: ['team-profile']
+  },
+  {
+    id: 'calendar',
+    label: 'Calendario',
+    icon: 'calendar',
+    tabs: [{ route: 'calendar', label: 'Calendario' }]
   },
   { id: 'market', label: 'Mercado', icon: 'market', tabs: [{ route: 'market', label: 'Mercado' }] },
   {
@@ -59,6 +74,15 @@ export const GAME_SECTIONS: readonly GameSection[] = [
     tabs: [
       { route: 'finances', label: 'Finanzas' },
       { route: 'history', label: 'Historial' }
+    ]
+  },
+  {
+    id: 'manager',
+    label: 'Mánager',
+    icon: 'manager',
+    tabs: [
+      { route: 'manager', label: 'Ficha' },
+      { route: 'coach-ranking', label: 'Ranking' }
     ]
   },
   {

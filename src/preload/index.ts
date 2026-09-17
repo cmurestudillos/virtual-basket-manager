@@ -6,6 +6,7 @@ import type {
   CatalogLeague,
   CatalogScope,
   CatalogTeam,
+  TeamProfile,
   TeamSummary,
   TeamsApi
 } from '@shared/contracts/teams.contract';
@@ -23,6 +24,12 @@ import type {
   SeasonSummary,
   StandingEntry
 } from '@shared/contracts/season.contract';
+// Calendario mensual (fase 5).
+import type {
+  CalendarApi,
+  CalendarMonth,
+  CalendarMonthRequest
+} from '@shared/contracts/calendar.contract';
 import type { HistoryApi, HistoryView } from '@shared/contracts/history.contract';
 import type { CareerApi, CareerStatus } from '@shared/contracts/career.contract';
 import type { DraftApi, DraftView } from '@shared/contracts/draft.contract';
@@ -123,7 +130,10 @@ const teams: TeamsApi = {
   get: (id: string) => ipcRenderer.invoke(IPC_CHANNELS.teamsGet, id) as Promise<TeamSummary | null>,
   listCatalog: () => ipcRenderer.invoke(IPC_CHANNELS.teamsListCatalog) as Promise<CatalogTeam[]>,
   listLeagues: () => ipcRenderer.invoke(IPC_CHANNELS.teamsListLeagues) as Promise<CatalogLeague[]>,
-  listScope: () => ipcRenderer.invoke(IPC_CHANNELS.teamsListScope) as Promise<CatalogScope>
+  listScope: () => ipcRenderer.invoke(IPC_CHANNELS.teamsListScope) as Promise<CatalogScope>,
+  // Ficha de cualquier club (fase 5).
+  getProfile: (teamId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.teamsGetProfile, teamId) as Promise<TeamProfile | null>
 };
 
 const players: PlayersApi = {
@@ -175,6 +185,12 @@ const season: SeasonApi = {
   startNextSeason: () => ipcRenderer.invoke(IPC_CHANNELS.seasonStartNext) as Promise<SeasonSummary>
 };
 
+// Calendario mensual (fase 5).
+const calendar: CalendarApi = {
+  getMonth: (request: CalendarMonthRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.calendarGetMonth, request) as Promise<CalendarMonth>
+};
+
 const rotation: RotationApi = {
   get: (teamId: string) =>
     ipcRenderer.invoke(IPC_CHANNELS.rotationGet, teamId) as Promise<TeamRotation>,
@@ -192,8 +208,10 @@ const tactics: TacticsApi = {
 };
 
 const stats: StatsApi = {
-  teamSeason: (teamId: string) =>
-    ipcRenderer.invoke(IPC_CHANNELS.statsTeamSeason, teamId) as Promise<PlayerSeasonStats[]>,
+  teamSeason: (teamId: string, competitionId?: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.statsTeamSeason, teamId, competitionId) as Promise<
+      PlayerSeasonStats[]
+    >,
   leaders: (category: string, limit?: number) =>
     ipcRenderer.invoke(IPC_CHANNELS.statsLeaders, category, limit) as Promise<LeaderBoard>
 };
@@ -366,6 +384,7 @@ export const api = {
   players,
   gameState,
   season,
+  calendar,
   rotation,
   tactics,
   stats,

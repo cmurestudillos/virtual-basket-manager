@@ -18,6 +18,12 @@ const PATHS = {
     'M8 4 H16 V9.5 C16 12 14 13.5 12 13.5 C10 13.5 8 12 8 9.5 Z M8 6 H5 C5 9 6 10.5 8 10.5 M16 6 H19 C19 9 18 10.5 16 10.5 M12 13.5 V17 M8.5 20.5 H15.5 V17 H8.5 Z',
   // Dos flechas que se cruzan: lo que sale y lo que entra.
   market: 'M4 8 H19 M15 4 L19 8 L15 12 M20 16 H5 M9 12 L5 16 L9 20',
+  // Una hoja de calendario con los días en puntos.
+  calendar:
+    'M4 5.5 H20 V20 H4 Z M4 9.5 H20 M8 3 V7 M16 3 V7 M8 13 H8.01 M12 13 H12.01 M16 13 H16.01 M8 16.5 H8.01 M12 16.5 H12.01 M16 16.5 H16.01',
+  // Un busto con corbata: el entrenador.
+  manager:
+    'M12 4 A3.5 3.5 0 1 0 12.01 4 Z M4.5 21 C4.5 16 7.5 13.5 12 13.5 C16.5 13.5 19.5 16 19.5 21 M12 13.5 L10.8 15.5 L12 19.5 L13.2 15.5 Z',
   // Un edificio con columnas: la sede del club.
   club: 'M3 9 L12 4 L21 9 Z M5.5 9.5 V17.5 M10 9.5 V17.5 M14 9.5 V17.5 M18.5 9.5 V17.5 M4 17.5 H20 M3 20.5 H21',
   // Una bandera en su mástil.

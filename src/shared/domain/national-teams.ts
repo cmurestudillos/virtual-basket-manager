@@ -120,9 +120,12 @@ export function nationName(code: string): string {
   return NATION_NAMES[code] ?? code;
 }
 
+/** Con lo que empieza el id del equipo de cualquier selección. */
+export const NATIONAL_TEAM_ID_PREFIX = 'seleccion-';
+
 /** Id del equipo de una selección: fijo, para que sobreviva a todo. */
 export function nationalTeamId(code: string): string {
-  return `seleccion-${code.toLowerCase()}`;
+  return `${NATIONAL_TEAM_ID_PREFIX}${code.toLowerCase()}`;
 }
 
 export const NATIONAL_SQUAD_SIZE = 12;

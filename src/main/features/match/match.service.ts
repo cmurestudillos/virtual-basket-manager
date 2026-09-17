@@ -3,7 +3,6 @@ import { continentalRoundName } from '@shared/domain/continental';
 import { CUP_TEAMS, cupRoundName } from '@shared/domain/cup';
 import { buildPlayoffFormat } from '@shared/domain/playoffs';
 import { narrateGame, type PlayLine } from '@shared/domain/play-by-play';
-import { analystRevealsRival } from '@shared/domain/staff';
 import {
   DEFENSIVE_SYSTEM_LABELS,
   OFFENSIVE_SYSTEM_LABELS,
@@ -32,7 +31,6 @@ import {
 } from '@shared/engine/basketball';
 import type { SaveDatabase } from '../../database/save-database';
 import type { GameRow } from '../../database/schema/save';
-import { StaffService } from '../staff/staff.service';
 import { BoardService } from '../club/board.service';
 import { ClubService } from '../club/club.service';
 import { FitnessService } from '../fitness/fitness.service';
@@ -40,6 +38,7 @@ import { worldCupRoundName } from '@shared/domain/national-teams';
 import { buildEngineTeam } from './engine-input';
 import { MatchRepository, type PlayerCard } from './match.repository';
 import { decodePlayByPlay, encodePlayByPlay } from './play-by-play-codec';
+import { scoutRivalTactics } from './rival-scouting';
 
 export class GameNotFoundError extends Error {
   constructor(gameId: string) {
@@ -370,7 +369,7 @@ export class MatchService {
       overtimeSeconds: ruleset.overtimeMinutes * 60,
       finished: true,
       managedSide: managedSideOf(game, managedTeamId),
-      scouting: scoutRival(db, repository, game, managedTeamId),
+      scouting: scoutRival(db, game, managedTeamId),
       playByPlay: events ? narrate(repository, game, events, regulationPeriods) : null,
       courtEvents: events ? toCourtEvents(events, game) : null
     };
@@ -618,7 +617,7 @@ function toMatchState(
     overtimeSeconds: ruleset.overtimeMinutes * 60,
     finished,
     managedSide: managedSideOf(game, managedTeamId),
-    scouting: scoutRival(db, repository, game, managedTeamId),
+    scouting: scoutRival(db, game, managedTeamId),
     playByPlay: narrate(repository, game, result.events, regulationPeriods),
     courtEvents: toCourtEvents(result.events, game)
   };
@@ -680,11 +679,11 @@ function narrate(
  *
  * Es el único efecto del puesto y por eso es concreto: sistemas, ritmo,
  * intensidad y a quién van a buscar. Sin analista —o con uno de aprendiz— no se
- * ve nada, que es lo que hace que contratarlo signifique algo.
+ * ve nada, que es lo que hace que contratarlo signifique algo. La regla vive en
+ * `rival-scouting.ts`, que es la misma que usa la ficha de cualquier club.
  */
 function scoutRival(
   db: SaveDatabase,
-  repository: MatchRepository,
   game: GameRow,
   managedTeamId: string | null
 ): MatchScouting | null {
@@ -693,26 +692,8 @@ function scoutRival(
     return null;
   }
 
-  const level = new StaffService(() => db).levels(managedTeamId).analyst;
-  if (!analystRevealsRival(level)) {
-    return null;
-  }
-
   const rivalId = side === 'home' ? game.awayTeamId : game.homeTeamId;
-  const tactics = repository.teamTactics(rivalId);
-  if (!tactics) {
-    return null;
-  }
-
-  return {
-    teamId: rivalId,
-    teamName: repository.teamName(rivalId),
-    offensiveSystem: OFFENSIVE_SYSTEM_LABELS[tactics.offensiveSystem as OffensiveSystem],
-    defensiveSystem: DEFENSIVE_SYSTEM_LABELS[tactics.defensiveSystem as DefensiveSystem],
-    pace: tactics.pace,
-    defensiveIntensity: tactics.defensiveIntensity,
-    focusPlayerName: tactics.focusPlayerId ? repository.playerName(tactics.focusPlayerId) : null
-  };
+  return scoutRivalTactics(db, managedTeamId, rivalId);
 }
 
 /**

@@ -102,7 +102,10 @@ async function reload(): Promise<void> {
   finances.value = await window.api.club.getFinances(store.state.teamId);
   board.value = await window.api.club.getBoard();
   const roster = await window.api.players.listByTeam(store.state.teamId);
-  playersConfidence.value = squadMorale(roster.map((player) => player.morale));
+  // La plantilla es la propia: la moral llega de todos (sólo la de fuera viene vacía).
+  playersConfidence.value = squadMorale(
+    roster.flatMap((player) => (player.morale === null ? [] : [player.morale]))
+  );
   priceEuros.value = Math.round(finances.value.ticketPriceCents / 100);
 }
 

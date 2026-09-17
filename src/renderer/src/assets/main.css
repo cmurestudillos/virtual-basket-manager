@@ -85,9 +85,28 @@
   --color-tv-star-off: #086880;
   --color-tv-star-box: #181820;
 
-  /* Tarjeta de partido y días de competición en el calendario. */
+  /* Tarjeta de partido: el naranja de IBM, sin distinguir competición. */
   --color-tv-competition: #f06000;
   --color-tv-competition-deep: #a03800;
+
+  /* Un color por tipo de competición (fase 5): la franja del día en el
+     calendario, la cabecera de la tarjeta, la leyenda. Cada uno con su tono
+     hondo para el degradado, y los dos con letra blanca encima. Se traduce desde
+     la competición con `competitionKind()` y a clase con `COMPETITION_BAND`.
+     Medidos en IBM sólo la liga (negra) y la continental (el naranja de la
+     tarjeta, que es el mismo token: la Euroliga es lo que pinta IBM en naranja);
+     copa, playoffs y selecciones son propios y se eligieron lejos del verde y el
+     granate de ganar y perder, y del azul de lo que se pulsa. */
+  --color-tv-comp-league: #2e2e2e;
+  --color-tv-comp-league-deep: #050505;
+  --color-tv-comp-cup: #9b1668;
+  --color-tv-comp-cup-deep: #5a0a3c;
+  --color-tv-comp-continental: var(--color-tv-competition);
+  --color-tv-comp-continental-deep: var(--color-tv-competition-deep);
+  --color-tv-comp-playoffs: #00809a;
+  --color-tv-comp-playoffs-deep: #00485a;
+  --color-tv-comp-national: #8f6400;
+  --color-tv-comp-national-deep: #4f3700;
 
   /* Rótulo del correo: la única cabecera azul y no añil de IBM (131054). */
   --color-tv-mail-from: #1c61a9;

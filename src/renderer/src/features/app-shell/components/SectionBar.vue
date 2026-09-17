@@ -36,7 +36,7 @@ const tabs = computed(() =>
         v-for="tab in tabs"
         :key="tab.route"
         :to="{ name: tab.route }"
-        class="flex items-center whitespace-nowrap border-b-[3px] px-3 pt-[3px] text-sm font-bold transition-colors"
+        class="flex items-center whitespace-nowrap border-b-[3px] px-2.5 pt-[3px] text-sm font-bold transition-colors"
         :class="
           route.name === tab.route
             ? 'border-tv-blue text-white'

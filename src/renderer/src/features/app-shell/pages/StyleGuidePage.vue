@@ -3,6 +3,7 @@ import { ref } from 'vue';
 import { matchKits } from '@shared/domain/court';
 import type { Position } from '@shared/domain/positions';
 import { MORALE_LEVELS } from '@shared/domain/morale';
+import { COMPETITION_KINDS, COMPETITION_KIND_LABEL } from '@shared/domain/competition-kind';
 import {
   AppAvatar,
   AppBackdrop,
@@ -29,6 +30,8 @@ import {
   AppStepper,
   AppTabs,
   AttributeGrid,
+  COMPETITION_BAND,
+  COMPETITION_FILL,
   FixtureCard,
   KeyValueList,
   LeaderCard,
@@ -39,6 +42,7 @@ import {
   RATING_BAND_FLOOR,
   RATING_BAND_LABEL,
   RATING_CHIP,
+  ResultBlock,
   TONE_TEXT,
   type AttributeItem,
   type Tone
@@ -479,6 +483,54 @@ const COMPETITIONS = [
             :rank="2"
             name-mode="initial"
           />
+        </div>
+      </AppPanel>
+    </div>
+
+    <div class="grid grid-cols-[minmax(0,1.3fr)_minmax(0,1fr)] gap-4">
+      <AppPanel title="Colores por competición" hint="competitionKind()">
+        <ul class="grid grid-cols-5 gap-[3px]">
+          <li v-for="kind in COMPETITION_KINDS" :key="kind" class="flex flex-col">
+            <span
+              class="px-2 py-1 text-center text-xs font-bold uppercase tracking-wide"
+              :class="COMPETITION_BAND[kind]"
+            >
+              {{ COMPETITION_KIND_LABEL[kind] }}
+            </span>
+            <span class="bg-tv-cell px-2 py-1 text-center text-xs text-tv-muted">
+              tv-comp-{{ kind }}
+            </span>
+          </li>
+        </ul>
+        <p class="mt-3 flex flex-wrap gap-x-4 gap-y-1 text-xs">
+          <span v-for="kind in COMPETITION_KINDS" :key="kind" class="flex items-center gap-1.5">
+            <span aria-hidden="true" class="h-3 w-3" :class="COMPETITION_FILL[kind]"></span>
+            {{ COMPETITION_KIND_LABEL[kind] }}
+          </span>
+        </p>
+      </AppPanel>
+
+      <AppPanel title="Resultados" hint="ResultBlock">
+        <div class="flex flex-col gap-3 text-tv-ink">
+          <div class="flex flex-wrap items-center gap-4">
+            <ResultBlock won :score="[82, 71]" />
+            <ResultBlock :won="false" :score="[69, 77]" />
+            <ResultBlock won />
+          </div>
+          <div class="flex flex-wrap items-end gap-4">
+            <ResultBlock won size="sm" :score="[52, 57]" />
+            <ResultBlock :won="false" size="sm" :score="[98, 101]" />
+            <ResultBlock won size="sm" placement="below" :score="[74, 71]" />
+            <ResultBlock :won="false" placement="below" :score="[54, 61]" />
+          </div>
+          <p class="flex gap-[3px]">
+            <ResultBlock
+              v-for="(won, index) in [true, true, false, true, false]"
+              :key="index"
+              :won="won"
+              size="sm"
+            />
+          </p>
         </div>
       </AppPanel>
     </div>

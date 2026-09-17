@@ -124,8 +124,10 @@ const highlights = computed<Highlight[]>(() => {
     <div v-else class="flex flex-col gap-4">
       <article v-for="item in highlights" :key="item.id" class="flex flex-col gap-[3px]">
         <AppSectionTitle size="xs">{{ item.title }}</AppSectionTitle>
-        <div
-          class="flex items-center gap-2 px-2 py-1 text-sm font-semibold uppercase"
+        <!-- El equipo abre su ficha. -->
+        <RouterLink
+          :to="{ name: 'team-profile', params: { teamId: item.team.teamId } }"
+          class="flex items-center gap-2 px-2 py-1 text-sm font-semibold uppercase hover:text-tv-blue-ink"
           :class="item.team.isManaged ? 'bg-tv-select' : 'bg-white'"
         >
           <TeamBadge
@@ -134,7 +136,7 @@ const highlights = computed<Highlight[]>(() => {
             :size="26"
           />
           <span class="truncate" :title="item.team.teamName">{{ item.team.teamName }}</span>
-        </div>
+        </RouterLink>
         <div class="grid grid-cols-2 gap-[3px]">
           <AppStat v-for="stat in item.stats" :key="stat.label" :label="stat.label" size="md">
             {{ stat.value }}

@@ -18,8 +18,14 @@ export interface PlayerSummary {
   /** Media ponderada para su posición. Derivada: no está en la base de datos. */
   overall: number;
   potential: number;
+  /** Forma física: se ve la de cualquiera, como en IBM. */
   condition: number;
-  morale: number;
+  /**
+   * Moral, 0-100. `null` en los jugadores que no son del usuario: el ánimo de
+   * un vestuario ajeno no se ve desde fuera. Los suyos —su club y los
+   * convocados de su selección— la llevan siempre.
+   */
+  morale: number | null;
   /** Días de baja que le quedan; 0 = disponible. */
   injuryDaysLeft: number;
   /** Qué tiene, si tiene algo. */

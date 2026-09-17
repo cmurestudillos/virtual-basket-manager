@@ -63,6 +63,16 @@ export function toPlayerSummary(row: PlayerRow, today: Date): PlayerSummary {
   };
 }
 
+/**
+ * La ficha sin la moral, para un jugador que no es del usuario: el ánimo de un
+ * vestuario ajeno no se ve desde fuera. Se quita al salir hacia la pantalla y no
+ * en el mapeo, porque dentro del proceso principal la moral sí cuenta (el motor,
+ * las renovaciones, el correo).
+ */
+export function withoutMorale(player: PlayerSummary): PlayerSummary {
+  return { ...player, morale: null };
+}
+
 /** Edad cumplida a la fecha del juego, no a la del reloj de la máquina. */
 export function ageAt(birthDate: Date, today: Date): number {
   let age = today.getUTCFullYear() - birthDate.getUTCFullYear();

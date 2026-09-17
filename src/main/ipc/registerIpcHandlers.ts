@@ -4,6 +4,8 @@ import { registerTeamsIpcHandlers } from '../features/teams/teams.ipc-handler';
 import { registerPlayersIpcHandlers } from '../features/players/players.ipc-handler';
 import { registerGameStateIpcHandlers } from '../features/game-state/game-state.ipc-handler';
 import { registerSeasonIpcHandlers } from '../features/season/season.ipc-handler';
+// Calendario mensual (fase 5).
+import { registerCalendarIpcHandlers } from '../features/calendar/calendar.ipc-handler';
 import { registerRotationIpcHandlers } from '../features/rotation/rotation.ipc-handler';
 import { registerTacticsIpcHandlers } from '../features/tactics/tactics.ipc-handler';
 import { registerStatsIpcHandlers } from '../features/stats/stats.ipc-handler';
@@ -32,6 +34,7 @@ export function registerIpcHandlers(): void {
   registerPlayersIpcHandlers();
   registerGameStateIpcHandlers();
   registerSeasonIpcHandlers();
+  registerCalendarIpcHandlers();
   registerRotationIpcHandlers();
   registerTacticsIpcHandlers();
   registerStatsIpcHandlers();

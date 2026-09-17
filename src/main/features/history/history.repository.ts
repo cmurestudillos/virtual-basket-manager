@@ -207,6 +207,41 @@ export class HistoryRepository {
       }));
   }
 
+  /**
+   * Los títulos de un club en la partida: las temporadas que acabó campeón, con
+   * su competición. Sirve para cualquier club, no sólo el dirigido; por eso no
+   * mira las etapas del entrenador, que es lo que hace el palmarés propio.
+   */
+  titlesOf(teamId: string): { competition: CompetitionRow; season: SeasonRow }[] {
+    return this.db
+      .select({ competition: competitionsTable, season: seasonsTable })
+      .from(seasonsTable)
+      .innerJoin(competitionsTable, eq(competitionsTable.id, seasonsTable.competitionId))
+      .where(eq(seasonsTable.championTeamId, teamId))
+      .orderBy(desc(seasonsTable.seasonNumber), asc(competitionsTable.name))
+      .all();
+  }
+
+  /**
+   * Todos los partidos entre dos equipos, de cualquier temporada y competición,
+   * del más antiguo al más reciente, con el número de temporada al lado. Es el
+   * cara a cara de la ficha de un club.
+   */
+  gamesBetween(teamId: string, otherTeamId: string): { game: GameRow; seasonNumber: number }[] {
+    return this.db
+      .select({ game: gamesTable, seasonNumber: seasonsTable.seasonNumber })
+      .from(gamesTable)
+      .innerJoin(seasonsTable, eq(seasonsTable.id, gamesTable.seasonId))
+      .where(
+        or(
+          and(eq(gamesTable.homeTeamId, teamId), eq(gamesTable.awayTeamId, otherTeamId)),
+          and(eq(gamesTable.homeTeamId, otherTeamId), eq(gamesTable.awayTeamId, teamId))
+        )
+      )
+      .orderBy(asc(gamesTable.scheduledOn), asc(gamesTable.id))
+      .all();
+  }
+
   /** Nombres de equipo de una tacada, para no consultar uno a uno. */
   namesOf(teamIds: readonly string[]): Map<string, string> {
     if (teamIds.length === 0) {

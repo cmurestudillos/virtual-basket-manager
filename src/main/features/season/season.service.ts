@@ -116,6 +116,16 @@ export class SeasonNotFinishedError extends Error {
   }
 }
 
+/** Un partido del usuario con su competición: lo que pinta el calendario del mes. */
+export interface UserGame {
+  game: GameRow;
+  /** `null` sólo si la temporada del partido ha desaparecido. */
+  competition: CompetitionRow | null;
+  /** El equipo del usuario en ese partido: su club o su selección. */
+  userTeamId: string;
+  scope: 'club' | 'national';
+}
+
 /** Una eliminatoria reconstruida a partir de sus partidos. */
 interface SeriesState {
   seriesId: string;
@@ -347,6 +357,50 @@ export class SeasonService {
       .sort((a, b) => a.scheduledOn.getTime() - b.scheduledOn.getTime())[0];
 
     return next ? (this.toFixtures(repository, [next])[0] as FixtureEntry) : null;
+  }
+
+  /**
+   * Los partidos del usuario entre dos fechas (las dos incluidas), de todas las
+   * competiciones del curso: su club, si tiene banquillo, y su selección.
+   *
+   * Sólo lo sorteado: una ronda de Copa o de playoffs no existe como partido
+   * hasta que se sabe quién la juega. Cada partido va con su competición, que
+   * se lee una vez por temporada y no una por partido.
+   */
+  listUserGamesBetween(from: Date, to: Date): UserGame[] {
+    const repository = new SeasonRepository(this.resolveDb());
+    const season = this.ensureStage(repository);
+    const seasonIds = this.activeSeasonIds(repository, season);
+    const national = this.nationalService.userTeamId();
+
+    const competitionBySeason = new Map<string, CompetitionRow | null>(
+      seasonIds.map((seasonId) => {
+        const row = repository.findSeasonById(seasonId);
+        return [seasonId, row ? repository.findCompetition(row.competitionId) : null];
+      })
+    );
+
+    return this.userTeamIds(repository)
+      .flatMap((teamId) =>
+        repository
+          .listTeamGamesIn(seasonIds, teamId)
+          .filter(
+            (game) =>
+              game.scheduledOn.getTime() >= from.getTime() &&
+              game.scheduledOn.getTime() <= to.getTime()
+          )
+          .map((game): UserGame => ({
+            game,
+            competition: competitionBySeason.get(game.seasonId) ?? null,
+            userTeamId: teamId,
+            scope: teamId === national ? 'national' : 'club'
+          }))
+      )
+      .sort(
+        (a, b) =>
+          a.game.scheduledOn.getTime() - b.game.scheduledOn.getTime() ||
+          a.game.id.localeCompare(b.game.id)
+      );
   }
 
   /**

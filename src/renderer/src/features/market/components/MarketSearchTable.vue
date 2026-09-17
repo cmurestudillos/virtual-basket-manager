@@ -73,10 +73,15 @@ const kitOf = (teamId: string) => matchKits(teamId, '').home;
             </RouterLink>
           </td>
           <td>
-            <span v-if="player.teamId && player.teamName" class="flex max-w-40 items-center gap-2">
+            <!-- El club abre su ficha: a quién se le compra, y cómo juega. -->
+            <RouterLink
+              v-if="player.teamId && player.teamName"
+              :to="{ name: 'team-profile', params: { teamId: player.teamId } }"
+              class="flex max-w-40 items-center gap-2 hover:text-tv-blue-ink"
+            >
               <TeamBadge :name="player.teamName" :kit="kitOf(player.teamId)" :size="20" />
               <span class="truncate">{{ player.teamName }}</span>
-            </span>
+            </RouterLink>
             <span v-else :class="TONE_TEXT.neutral">Libre</span>
           </td>
           <td><PositionChip :position="player.position" /></td>

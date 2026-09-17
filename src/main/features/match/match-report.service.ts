@@ -19,10 +19,19 @@ import {
 import { LINEUP_SIZE } from '@shared/domain/rotation';
 import { accumulateSeason, perGame } from '@shared/domain/season-stats';
 import type { SaveDatabase } from '../../database/save-database';
-import { playersTable, teamsTable, type GameRow, type PlayerRow } from '../../database/schema/save';
+import {
+  gameStateTable,
+  playersTable,
+  teamsTable,
+  type GameRow,
+  type PlayerRow
+} from '../../database/schema/save';
+import { userTeamIds } from '../national/national-squad';
 import { toPlayerSummary } from '../players/players.mapper';
+import { scoutPlayer, scoutingErrorFor } from '../players/scouting';
 import { SeasonRepository } from '../season/season.repository';
 import { SeasonService } from '../season/season.service';
+import { StaffService } from '../staff/staff.service';
 import { StatsRepository } from '../stats/stats.repository';
 import { buildEngineTeam } from './engine-input';
 import { MatchRepository } from './match.repository';
@@ -157,10 +166,13 @@ function previewTeam(
   const lines = seasonLines.filter((line) => line.teamId === teamId);
   const totals = accumulateSeason(lines).filter((entry) => entry.games > 0);
   const rows = playerRows(db, [...starterIds, ...totals.map((entry) => entry.playerId)]);
+  // El cinco del rival se ve, pero con la media que cuenta el ojeador: la
+  // exacta sólo de los equipos del usuario, como en el mercado y en su ficha.
+  const error = previewScoutingError(db, teamId);
   const toPlayer = (playerId: string): MatchPreviewPlayer | null => {
     const row = rows.get(playerId);
     if (!row) return null;
-    const summary = toPlayerSummary(row, today);
+    const summary = scoutPlayer(toPlayerSummary(row, today), error);
     return {
       playerId,
       playerName: `${row.firstName} ${row.lastName}`,
@@ -193,6 +205,14 @@ function previewTeam(
     averages: teamGames > 0 ? averagesOf(teamBox, teamGames) : null,
     keyPlayer
   };
+}
+
+/** El margen del ojeador del club del usuario sobre un equipo de la previa; 0 en los suyos. */
+function previewScoutingError(db: SaveDatabase, teamId: string): number {
+  const mine = userTeamIds(db);
+  const club = db.select().from(gameStateTable).get()?.managedTeamId ?? null;
+  const level = club ? new StaffService(() => db).levels(club).scout : 0;
+  return scoutingErrorFor(level, mine.includes(teamId));
 }
 
 function bestByOverall(starters: readonly MatchPreviewPlayer[]): MatchPreviewTeam['keyPlayer'] {

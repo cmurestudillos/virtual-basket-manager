@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { RouterLink } from 'vue-router';
 import { matchKits } from '@shared/domain/court';
 import { formatShortDate } from '@renderer/shared/format';
 import { AppFlag, TeamBadge } from '@renderer/shared/ui';
@@ -10,7 +11,8 @@ import { AppFlag, TeamBadge } from '@renderer/shared/ui';
  * sus cajas, escudo y equipo. Tu partido, en azul pálido; el que gana, en
  * negrita.
  *
- * Jugado, el marcador lleva al acta; sin jugar, dice cuándo se juega. Es la
+ * Jugado, el marcador lleva al acta; sin jugar, dice cuándo se juega. El nombre
+ * y el escudo de un club abren su ficha (los de una selección, no). Es la
  * fila del calendario de la liga, de la Copa y de los grupos de selecciones.
  * `compact` la aprieta para las listas que van debajo de una tabla.
  */
@@ -50,6 +52,11 @@ function kitOf(teamId: string) {
   return matchKits(teamId, '').home;
 }
 
+/** La ficha del club. Las selecciones (`nationOf`) no tienen: van sin enlace. */
+function profileOf(teamId: string) {
+  return { name: 'team-profile', params: { teamId } };
+}
+
 const badgeSize = computed(() => (props.compact ? 18 : 30));
 const scoreBox = computed(() => [
   'figure flex items-center justify-center bg-tv-cell-strong font-semibold',
@@ -67,16 +74,26 @@ const scoreBox = computed(() => [
       game.involvesManaged ? 'bg-tv-select' : 'odd:bg-tv-cell'
     ]"
   >
-    <span
+    <component
+      :is="nationOf ? 'span' : RouterLink"
+      v-bind="nationOf ? {} : { to: profileOf(game.homeTeamId) }"
       class="truncate px-3 text-right uppercase"
-      :class="homeWon ? 'font-bold' : ''"
+      :class="[homeWon ? 'font-bold' : '', nationOf ? '' : 'hover:text-tv-blue-ink']"
       :title="game.homeTeamName"
     >
       {{ game.homeTeamName }}
-    </span>
+    </component>
     <span class="flex items-center justify-center self-stretch bg-white px-1.5">
       <AppFlag v-if="nationOf" :code="nationOf(game.homeTeamId)" :label="game.homeTeamName" />
-      <TeamBadge v-else :name="game.homeTeamName" :kit="kitOf(game.homeTeamId)" :size="badgeSize" />
+      <RouterLink
+        v-else
+        :to="profileOf(game.homeTeamId)"
+        class="flex"
+        tabindex="-1"
+        aria-hidden="true"
+      >
+        <TeamBadge :name="game.homeTeamName" :kit="kitOf(game.homeTeamId)" :size="badgeSize" />
+      </RouterLink>
     </span>
 
     <RouterLink
@@ -100,14 +117,24 @@ const scoreBox = computed(() => [
 
     <span class="flex items-center justify-center self-stretch bg-white px-1.5">
       <AppFlag v-if="nationOf" :code="nationOf(game.awayTeamId)" :label="game.awayTeamName" />
-      <TeamBadge v-else :name="game.awayTeamName" :kit="kitOf(game.awayTeamId)" :size="badgeSize" />
+      <RouterLink
+        v-else
+        :to="profileOf(game.awayTeamId)"
+        class="flex"
+        tabindex="-1"
+        aria-hidden="true"
+      >
+        <TeamBadge :name="game.awayTeamName" :kit="kitOf(game.awayTeamId)" :size="badgeSize" />
+      </RouterLink>
     </span>
-    <span
+    <component
+      :is="nationOf ? 'span' : RouterLink"
+      v-bind="nationOf ? {} : { to: profileOf(game.awayTeamId) }"
       class="truncate px-3 uppercase"
-      :class="awayWon ? 'font-bold' : ''"
+      :class="[awayWon ? 'font-bold' : '', nationOf ? '' : 'hover:text-tv-blue-ink']"
       :title="game.awayTeamName"
     >
       {{ game.awayTeamName }}
-    </span>
+    </component>
   </li>
 </template>

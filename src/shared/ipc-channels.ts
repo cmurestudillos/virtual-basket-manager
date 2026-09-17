@@ -15,6 +15,8 @@ export const IPC_CHANNELS = {
   teamsListCatalog: 'teams:listCatalog',
   teamsListLeagues: 'teams:listLeagues',
   teamsListScope: 'teams:listScope',
+  // Ficha de cualquier club (fase 5).
+  teamsGetProfile: 'teams:getProfile',
   playersListByTeam: 'players:listByTeam',
   playersGet: 'players:get',
   gameStateGet: 'gameState:get',
@@ -32,6 +34,8 @@ export const IPC_CHANNELS = {
   seasonListContinental: 'season:listContinental',
   seasonGetContinental: 'season:getContinental',
   seasonStartNext: 'season:startNext',
+  // Calendario mensual (fase 5).
+  calendarGetMonth: 'calendar:getMonth',
   rotationGet: 'rotation:get',
   rotationSave: 'rotation:save',
   rotationAuto: 'rotation:auto',

@@ -36,6 +36,8 @@ export { default as LeaderCard } from './LeaderCard.vue';
 export { default as MoodIcon } from './MoodIcon.vue';
 export { default as PlayerName } from './PlayerName.vue';
 export { default as PositionChip } from './PositionChip.vue';
+export { default as ResultBlock } from './ResultBlock.vue';
 export { default as TeamBadge } from './TeamBadge.vue';
 export * from './tones';
+export { COMPETITION_BAND, COMPETITION_FILL } from './competition-colors';
 export { AVATAR_CREDITS, avatarUri, type AvatarCredit, type AvatarKind } from './avatars';

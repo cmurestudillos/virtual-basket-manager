@@ -12,8 +12,8 @@ import { resolve } from 'node:path';
  * Arranca Electron y recorre el flujo completo: menú, nueva partida, club,
  * plantilla, ficha, alineación, pizarra, entrenamiento, finanzas, cuerpo
  * técnico, cantera, mercado, partido jugado cuarto a cuarto, clasificación,
- * calendario, cuadro de playoffs y estadísticas. Deja una captura de cada
- * pantalla en `.dev-data/shots`.
+ * resultados, cuadro de playoffs, estadísticas, calendario mensual y fichas de
+ * club. Deja una captura de cada pantalla en `.dev-data/shots`.
  *
  * Es la única forma de saber que algo funciona de verdad: los tests unitarios
  * no ven ni una pantalla en blanco ni un `window.api` que no llegó a exponerse.
@@ -140,6 +140,16 @@ await page.screenshot({ path: `${SHOTS}/01b-guia-de-estilo.png`, fullPage: false
 await page.getByText('Sólo agentes libres').scrollIntoViewIfNeeded();
 await page.waitForTimeout(400);
 await page.screenshot({ path: `${SHOTS}/01b2-guia-de-estilo-campos.png` });
+// Y los colores por tipo de competición con los bloques de victoria y derrota (fase 5).
+await page.getByText('tv-comp-national').scrollIntoViewIfNeeded();
+await page.waitForTimeout(400);
+console.log(
+  'guía · bloques de resultado:',
+  (await page.locator('.sr-only', { hasText: /^(Victoria|Derrota)/ }).allInnerTexts())
+    .slice(0, 3)
+    .join(' · ')
+);
+await page.screenshot({ path: `${SHOTS}/01b3-guia-de-estilo-competiciones.png` });
 await page.goto(`${appUrl}#/`);
 await page.waitForTimeout(800);
 
@@ -632,6 +642,55 @@ await page.waitForTimeout(1200);
 console.log('cabecera en Grecia:', await page.locator('main h1').first().innerText());
 console.log('equipos en la primera griega:', await page.locator('tbody tr').count());
 await page.screenshot({ path: `${SHOTS}/16c-grecia.png` });
+
+// Un club griego, desde su nombre en la clasificación, y uno de sus jugadores:
+// sus estadísticas son las de la liga de su club, no las de la del usuario.
+await page.locator('main tbody tr').first().getByRole('link').first().click();
+await page.waitForURL(/#\/game\/club\//, { timeout: 10_000 });
+await page.getByText('Información del equipo', { exact: true }).waitFor({ timeout: 10_000 });
+await page.waitForTimeout(800);
+console.log('ficha de un club griego:', (await page.locator('main h1').first().innerText()).trim());
+await page.screenshot({ path: `${SHOTS}/16f-ficha-club-griego.png` });
+await page.getByRole('button', { name: 'Estadísticas', exact: true }).click();
+await page.waitForTimeout(800);
+const filasGriegas = await page.locator('main tbody tr').count();
+console.log('club griego · jugadores con estadística:', filasGriegas);
+await page.getByRole('button', { name: 'Plantilla', exact: true }).click();
+await page.waitForTimeout(800);
+await page.locator('main tbody tr a').first().click();
+await page.waitForURL(/#\/game\/player\//, { timeout: 10_000 });
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: 'Estadísticas', exact: true }).click();
+await page.waitForTimeout(800);
+console.log(
+  'jugador griego:',
+  (await page.locator('main h1').first().innerText()).replace(/\s+/g, ' ').trim(),
+  '· con estadísticas:',
+  (await page.getByText(/Todavía no ha jugado ningún partido/).count()) === 0,
+  '· su club tiene:',
+  filasGriegas > 0
+);
+await page.screenshot({ path: `${SHOTS}/16g-jugador-otra-liga-estadisticas.png` });
+
+// Y un rival de la liga del usuario, con el primer partido ya jugado.
+await goTo('Competición', 'Competiciones');
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: 'Clasificación', exact: true }).click();
+await selectorDeCompeticion().selectOption('liga-nacional');
+await page.waitForTimeout(1200);
+await page.locator('main tbody tr:not(.is-mine)').first().getByRole('link').first().click();
+await page.waitForURL(/#\/game\/club\//, { timeout: 10_000 });
+await page.getByText('Información del equipo', { exact: true }).waitFor({ timeout: 10_000 });
+await page.waitForTimeout(800);
+console.log(
+  'ficha de un rival de liga:',
+  (await page.locator('main h1').first().innerText()).trim(),
+  '· líderes:',
+  await page.locator('main a[href*="/game/player/"]').count()
+);
+await page.screenshot({ path: `${SHOTS}/16h-ficha-rival-liga.png` });
+await goTo('Competición', 'Competiciones');
+await page.waitForTimeout(1000);
 await selectorDeCompeticion().selectOption('liga-nacional');
 await page.waitForTimeout(1000);
 
@@ -649,10 +708,44 @@ await page.screenshot({ path: `${SHOTS}/16e-clasificacion-mundial.png` });
 await goTo('Competición', 'Competiciones');
 await page.waitForTimeout(1200);
 
-await page.getByRole('button', { name: 'Calendario' }).click();
+// «Resultados» y no «Calendario»: el calendario mensual es su propia sección.
+await page.getByRole('button', { name: 'Resultados' }).click();
 await page.waitForTimeout(1200);
 console.log('partidos de la jornada:', await page.locator('ul li').count());
-await page.screenshot({ path: `${SHOTS}/17-calendario.png` });
+await page.screenshot({ path: `${SHOTS}/17-resultados.png` });
+
+// El calendario mensual, con el primer partido ya jugado: su casilla lleva la
+// «V» o la «D», y los demás días del mes, el rival que toca.
+await goTo('Calendario');
+await page.waitForTimeout(1500);
+const casillasConPartido = page.getByRole('button', {
+  name: /^Día \d+\. [^.]+: (contra|en casa de) /
+});
+console.log(
+  'calendario mensual:',
+  await page.getByRole('group', { name: /^Calendario de / }).getAttribute('aria-label'),
+  '· días con partido:',
+  await casillasConPartido.count(),
+  '· jugados:',
+  await page.getByRole('button', { name: /\. (victoria|derrota)(\.|$)/ }).count(),
+  '· hoy marcado:',
+  (await page.locator('[aria-current="date"]').count()) === 1,
+  '· «Mes anterior»:',
+  (await page.getByRole('button', { name: 'Mes anterior' }).count()) === 1
+);
+await page.screenshot({ path: `${SHOTS}/17d-calendario-mensual.png` });
+// El mes siguiente, para ver que el paginador mueve la rejilla.
+await page.getByRole('button', { name: 'Mes siguiente' }).click();
+await page.waitForTimeout(1200);
+console.log(
+  'calendario tras «Mes siguiente»:',
+  await page.getByRole('group', { name: /^Calendario de / }).getAttribute('aria-label'),
+  '· días con partido:',
+  await casillasConPartido.count()
+);
+await page.screenshot({ path: `${SHOTS}/17e-calendario-mes-siguiente.png` });
+await goTo('Competición', 'Competiciones');
+await page.waitForTimeout(1200);
 
 // El cuadro de playoffs todavía no existe en la jornada 1, pero la pantalla
 // tiene que explicarlo en vez de quedarse en blanco.
@@ -1040,6 +1133,224 @@ await page.getByRole('button', { name: 'Contratos' }).click();
 await enLaVentanaMinima('contratos', '36i-contratos-1280');
 await goTo('Inicio');
 await enLaVentanaMinima('inicio', '36j-inicio-1280');
+
+// --- Fase 5: las secciones y pestañas nuevas -------------------------------
+//
+// Ya en la ventana mínima: la barra lateral lleva dos iconos más y Equipo cinco
+// pestañas, y las dos cosas tienen que caber a 1280×720. El calendario y las
+// fichas de club ya son de verdad (paso 2); Mánager sigue en construcción.
+
+/** El título de la barra de sección y las pestañas que enseña. */
+async function barraDeSeccion() {
+  const pestañas = await page
+    .getByRole('navigation', { name: /^Pantallas de/ })
+    .getByRole('link')
+    .allInnerTexts();
+  const titulo = await page.locator('main').evaluate((main) => {
+    const barra = main.previousElementSibling;
+    return barra?.querySelector('p')?.textContent?.trim() ?? '';
+  });
+  return `${titulo} | ${pestañas.join(' · ')}`;
+}
+
+/** Si la barra de sección se desborda: las pestañas se desplazarían sin verse. */
+async function pestañasCaben() {
+  return page
+    .getByRole('navigation', { name: /^Pantallas de/ })
+    .evaluate((nav) => nav.scrollWidth <= nav.clientWidth);
+}
+
+/**
+ * Si algo de la pantalla se desplaza a lo alto. El marco no se desplaza: lo hace
+ * `main` o un panel con scroll propio, así que se busca el primero que lo haga.
+ */
+async function cabeALoAlto() {
+  return page.evaluate(() => {
+    const zonas = [document.querySelector('main'), ...document.querySelectorAll('main *')];
+    const zona = zonas.find(
+      (el) =>
+        el &&
+        el.scrollHeight > el.clientHeight + 1 &&
+        ['auto', 'scroll'].includes(window.getComputedStyle(el).overflowY)
+    );
+    return zona
+      ? `no (${zona.tagName.toLowerCase()} ${zona.scrollHeight} > ${zona.clientHeight})`
+      : 'sí';
+  });
+}
+
+console.log(
+  'secciones en la barra lateral:',
+  (
+    await page
+      .getByRole('navigation', { name: 'Secciones del juego' })
+      .getByRole('link')
+      .evaluateAll((links) => links.map((link) => link.getAttribute('aria-label')))
+  ).join(' · ')
+);
+console.log(
+  'la barra lateral cabe a lo alto:',
+  await page
+    .getByRole('navigation', { name: 'Secciones del juego' })
+    .evaluate((nav) => nav.scrollHeight <= nav.clientHeight)
+);
+await page.screenshot({
+  path: `${SHOTS}/37-barra-lateral-1280.png`,
+  clip: { x: 0, y: 0, width: 420, height: 720 }
+});
+
+await goTo('Calendario');
+console.log('calendario:', await barraDeSeccion());
+await page.waitForTimeout(1200);
+console.log(
+  'calendario a 1280:',
+  await page.getByRole('group', { name: /^Calendario de / }).getAttribute('aria-label'),
+  '· «Mes anterior»:',
+  (await page.getByRole('button', { name: 'Mes anterior' }).count()) === 1,
+  '· casillas:',
+  await page.getByRole('button', { name: /^Día \d+/ }).count()
+);
+await enLaVentanaMinima('calendario', '37a-calendario-1280');
+
+await goTo('Mánager', 'Ficha');
+console.log('mánager:', await barraDeSeccion());
+await enLaVentanaMinima('ficha del mánager', '37b-manager-ficha-vacia');
+await goTo('Mánager', 'Ranking');
+await enLaVentanaMinima('ranking de entrenadores', '37c-ranking-vacio');
+
+// Tu club, pestaña «Club» de Equipo: la misma ficha que la de cualquiera, pero
+// sin niebla y con la moral.
+await goTo('Equipo', 'Club');
+console.log('equipo:', await barraDeSeccion(), '· caben:', await pestañasCaben());
+await page.getByText('Información del equipo', { exact: true }).waitFor({ timeout: 10_000 });
+console.log(
+  'tu club:',
+  (await page.locator('main h1').first().innerText()).trim(),
+  '· rótulo «INFORMACIÓN DEL EQUIPO»:',
+  (await page.getByText('Información del equipo', { exact: true }).count()) === 1,
+  '· cabe a lo alto:',
+  await cabeALoAlto()
+);
+await enLaVentanaMinima('tu club', '37d-club-propio-1280');
+await page.getByRole('button', { name: 'Plantilla', exact: true }).click();
+await page.waitForTimeout(800);
+console.log(
+  'tu club · columna Moral en la plantilla:',
+  (await page.locator('main thead th', { hasText: /^Moral$/ }).count()) === 1
+);
+await enLaVentanaMinima('tu club · plantilla', '37d2-club-propio-plantilla-1280');
+
+await goTo('Competición', 'Clubes');
+console.log('competición:', await barraDeSeccion(), '· caben:', await pestañasCaben());
+await page.waitForTimeout(800);
+console.log('clubes en la liga:', await page.locator('main tbody tr').count());
+await enLaVentanaMinima('clubes', '37e-clubes-1280');
+// Competiciones mete sus propias pestañas detrás: con Clubes, también tienen que caber.
+await goTo('Competición', 'Competiciones');
+await page.waitForTimeout(1200);
+console.log('competiciones con sus pestañas · caben:', await pestañasCaben());
+await page.screenshot({ path: `${SHOTS}/37f-competiciones-pestanas-1280.png` });
+
+// La ficha de un rival, abierta desde su nombre en la clasificación. Cuenta como
+// Competición, y lo que no se ve de un club ajeno se comprueba también en lo que
+// llega por IPC, no sólo en la pantalla.
+await page.getByRole('button', { name: 'Clasificación', exact: true }).click();
+await page.waitForTimeout(1200);
+// El escudo también enlaza, pero va oculto a la accesibilidad: el enlace es el nombre.
+const enlaceRival = page.locator('main tbody tr:not(.is-mine)').first().getByRole('link').first();
+const nombreRival = (await enlaceRival.innerText()).trim();
+await enlaceRival.click();
+await page.waitForURL(/#\/game\/club\//, { timeout: 10_000 });
+await page.getByText('Información del equipo', { exact: true }).waitFor({ timeout: 10_000 });
+await page.waitForTimeout(800);
+const idRival = decodeURIComponent(page.url().split('/game/club/')[1] ?? '');
+console.log('ficha del rival:', nombreRival, '·', await barraDeSeccion());
+console.log(
+  'ficha del rival · cabecera:',
+  (await page.locator('main h1').first().innerText()).trim(),
+  '· cabe a lo alto:',
+  await cabeALoAlto(),
+  '· habla de caja o presupuesto:',
+  /\b(caja|presupuesto)\b/i.test(await page.locator('main').innerText())
+);
+await enLaVentanaMinima('ficha del rival · resumen', '37g-ficha-rival-resumen-1280');
+
+const visibilidad = await page.evaluate(async (teamId) => {
+  const api = window.api;
+  const club = await api.teams.get(teamId);
+  const plantilla = await api.players.listByTeam(teamId);
+  const jugador = plantilla[0] ? await api.players.get(plantilla[0].id) : null;
+  let finanzas = 'rechazadas';
+  try {
+    await api.club.getFinances(teamId);
+    finanzas = 'SE VEN';
+  } catch {
+    // Lo esperado: las cuentas son sólo del club propio.
+  }
+  const estado = await api.gameState.get();
+  const cuerpo = estado?.teamId ? await api.staff.get(estado.teamId) : null;
+  const analista = cuerpo?.members.find((member) => member.role === 'analyst') ?? null;
+  return {
+    caja: club ? club.budgetCents : 'sin club',
+    moralEnLista: plantilla.filter((player) => player.morale !== null).length,
+    moralEnFicha: jugador ? jugador.morale : 'sin jugador',
+    finanzas,
+    analista: analista ? analista.level : 0
+  };
+}, idRival);
+console.log(
+  'visibilidad del rival · caja:',
+  visibilidad.caja,
+  '· jugadores con moral:',
+  visibilidad.moralEnLista,
+  '· moral en su ficha:',
+  visibilidad.moralEnFicha,
+  '· finanzas:',
+  visibilidad.finanzas,
+  '· oculto como toca:',
+  visibilidad.caja === null &&
+    visibilidad.moralEnLista === 0 &&
+    visibilidad.moralEnFicha === null &&
+    visibilidad.finanzas === 'rechazadas'
+);
+
+await page.getByRole('button', { name: 'Plantilla', exact: true }).click();
+await page.waitForTimeout(600);
+console.log(
+  'ficha del rival · jugadores:',
+  await page.locator('main tbody tr').count(),
+  '· columna Moral:',
+  (await page.locator('main thead th', { hasText: /^Moral$/ }).count()) > 0
+);
+await enLaVentanaMinima('ficha del rival · plantilla', '37h-ficha-rival-plantilla-1280');
+
+await page.getByRole('button', { name: 'Estadísticas', exact: true }).click();
+await page.waitForTimeout(600);
+console.log(
+  'ficha del rival · filas de estadísticas:',
+  await page.locator('main tbody tr').count()
+);
+await enLaVentanaMinima('ficha del rival · estadísticas', '37i-ficha-rival-estadisticas-1280');
+
+await page.getByRole('button', { name: 'Partidos', exact: true }).click();
+await page.waitForTimeout(600);
+console.log('ficha del rival · partidos:', await page.locator('main li').count());
+await enLaVentanaMinima('ficha del rival · partidos', '37j-ficha-rival-partidos-1280');
+
+// Tácticas: con un analista de nivel 2 o más, la pizarra; sin él, el aviso.
+await page.getByRole('button', { name: 'Tácticas', exact: true }).click();
+await page.waitForTimeout(800);
+const sinInforme = (await page.getByText(/Sin informe del analista/).count()) > 0;
+const conPizarra = (await page.getByText('Sistema ofensivo', { exact: true }).count()) > 0;
+console.log(
+  'ficha del rival · tácticas:',
+  sinInforme ? 'aviso sin analista' : conPizarra ? 'pizarra' : 'NADA',
+  '· nivel del analista:',
+  visibilidad.analista,
+  '· cuadra:',
+  visibilidad.analista >= 2 ? conPizarra && !sinInforme : sinInforme && !conPizarra
+);
+await enLaVentanaMinima('ficha del rival · tácticas', '37k-ficha-rival-tacticas-1280');
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);

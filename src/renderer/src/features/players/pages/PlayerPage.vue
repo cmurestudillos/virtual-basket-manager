@@ -83,11 +83,17 @@ async function load(): Promise<void> {
   let foundStats: PlayerSeasonStats | null = null;
   let foundContract: ContractEntry | null = null;
   if (found?.teamId) {
+    const teamId = found.teamId;
+    const teamRequest = window.api.teams.get(teamId);
     const [teamSummary, roster, season] = await Promise.all([
-      window.api.teams.get(found.teamId),
-      window.api.players.listByTeam(found.teamId),
-      // Las estadísticas son una pestaña más: si fallan, la ficha se enseña igual.
-      window.api.stats.teamSeason(found.teamId).catch(() => [])
+      teamRequest,
+      window.api.players.listByTeam(teamId),
+      // Las estadísticas, en la liga del club del jugador: sin la competición
+      // saldrían las de la liga del usuario, y un jugador de otra liga no
+      // tendría ninguna. Son una pestaña más: si fallan, la ficha se enseña igual.
+      teamRequest
+        .then((summary) => window.api.stats.teamSeason(teamId, summary?.competitionId))
+        .catch(() => [])
     ]);
     foundTeam = teamSummary;
     // El dorsal sale de la plantilla entera, igual que en el partido.
@@ -237,9 +243,15 @@ const attributes = computed<AttributeItem[]>(() => {
   );
 });
 
+/**
+ * La forma se ve de cualquiera; el ánimo, sólo de los tuyos: de un jugador de
+ * otro club la moral no llega (`null`) y la ficha no la pinta.
+ */
+const knowsMorale = computed(() => (player.value?.morale ?? null) !== null);
+
 const stateItems = computed<KeyValueItem[]>(() => [
   { id: 'condition', label: 'Condición', value: conditionLabel(player.value?.condition ?? 0) },
-  { id: 'mood', label: 'Estado de ánimo' },
+  ...(knowsMorale.value ? [{ id: 'mood', label: 'Estado de ánimo' }] : []),
   { id: 'injury', label: 'Lesión' }
 ]);
 
@@ -435,7 +447,15 @@ function release(): void {
               :name="`${player.firstName} ${player.lastName}`"
               :size="96"
             />
-            <TeamBadge v-if="team && kit" :name="team.name" :kit="kit" :size="64" />
+            <RouterLink
+              v-if="team && kit"
+              :to="{ name: 'team-profile', params: { teamId: team.id } }"
+              class="outline-tv-blue hover:outline-2"
+              :aria-label="`Ficha del club: ${team.name}`"
+              :title="`Ficha del club: ${team.name}`"
+            >
+              <TeamBadge :name="team.name" :kit="kit" :size="64" />
+            </RouterLink>
             <div class="flex flex-col items-center gap-1">
               <AppRing :value="player.overall" :unknown="unscouted" label="Media" :size="80" />
               <span
@@ -459,6 +479,13 @@ function release(): void {
                 :position="player.secondaryPosition"
               />
             </span>
+            <RouterLink
+              v-else-if="item.id === 'team' && team"
+              :to="{ name: 'team-profile', params: { teamId: team.id } }"
+              class="text-tv-blue-ink hover:underline"
+            >
+              {{ team.name }}
+            </RouterLink>
             <template v-else-if="item.id === 'nationality'">
               {{ nationName(player.nationality) }}
               <AppFlag :code="player.nationality" size="md" />
@@ -488,7 +515,7 @@ function release(): void {
       <AppPanel title="Estado actual">
         <div class="flex flex-col gap-3">
           <AppMeter :value="player.condition" label="Forma" />
-          <AppMeter :value="player.morale" label="Moral" />
+          <AppMeter v-if="player.morale !== null" :value="player.morale" label="Moral" />
           <KeyValueList :items="stateItems">
             <template #value="{ item }">
               <MoodIcon v-if="item.id === 'mood'" :value="player.morale" labelled />
@@ -501,7 +528,11 @@ function release(): void {
               <template v-else>{{ item.value ?? '-' }}</template>
             </template>
           </KeyValueList>
-          <p v-if="player.morale < UNHAPPY_MORALE" class="text-xs" :class="TONE_TEXT.bad">
+          <p
+            v-if="player.morale !== null && player.morale < UNHAPPY_MORALE"
+            class="text-xs"
+            :class="TONE_TEXT.bad"
+          >
             Rinde por debajo y pide más para renovar.
           </p>
         </div>
