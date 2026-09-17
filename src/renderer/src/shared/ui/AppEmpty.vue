@@ -5,9 +5,12 @@
  * Nunca en blanco: un hueco vacío parece una pantalla rota, y aquí casi
  * siempre hay una razón concreta —«la Copa se sortea en enero»— que conviene
  * contar. Existe para que esa razón no se olvide.
+ *
+ * Va sobre papel, dentro del panel que estaría lleno: texto centrado en gris,
+ * como IBM.
  */
 </script>
 
 <template>
-  <p class="text-sm text-court-300"><slot /></p>
+  <p class="mx-auto max-w-prose px-4 py-6 text-center text-sm text-tv-muted"><slot /></p>
 </template>

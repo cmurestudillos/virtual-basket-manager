@@ -8,9 +8,7 @@
  */
 import { matchKits } from '@shared/domain/court';
 import type { RoundResults } from '@shared/contracts/match.contract';
-import { AppAvatar, AppFlag } from '@renderer/shared/ui';
-import BroadcastButton from './BroadcastButton.vue';
-import TeamBadge from './TeamBadge.vue';
+import { AppAvatar, AppButton, AppFlag, TeamBadge } from '@renderer/shared/ui';
 
 defineProps<{ results: RoundResults; busy: boolean }>();
 const emit = defineEmits<{ continue: [] }>();
@@ -38,9 +36,15 @@ const MVP_STATS = [
         <p class="text-xl font-bold uppercase">{{ results.competitionName }}</p>
       </div>
       <div class="flex justify-end">
-        <BroadcastButton arrow="single" class="min-w-48" :disabled="busy" @click="emit('continue')">
+        <AppButton
+          variant="primary"
+          arrow="single"
+          class="min-w-48"
+          :disabled="busy"
+          @click="emit('continue')"
+        >
           Continuar
-        </BroadcastButton>
+        </AppButton>
       </div>
     </header>
 
@@ -58,7 +62,7 @@ const MVP_STATS = [
             v-for="game in results.games"
             :key="game.gameId"
             class="grid grid-cols-[4rem_1fr_4.5rem_5rem_5rem_4.5rem_1fr_4rem] items-center gap-1"
-            :class="game.involvesManaged ? 'bg-sky-200' : 'odd:bg-tv-cell'"
+            :class="game.involvesManaged ? 'bg-tv-select' : 'odd:bg-tv-cell'"
           >
             <span class="figure py-3 text-center text-lg">{{ game.homePosition ?? '' }}</span>
             <span class="truncate text-right text-sm">{{ game.homeTeamName }}</span>

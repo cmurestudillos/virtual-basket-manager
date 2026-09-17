@@ -1,41 +1,78 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
+import { computed, onMounted, ref, watch } from 'vue';
+import { storeToRefs } from 'pinia';
+import { matchKits } from '@shared/domain/court';
 import type {
   FixtureEntry,
   PlayoffBracket,
   StandingEntry
 } from '@shared/contracts/season.contract';
 import type { TeamSummary } from '@shared/contracts/teams.contract';
-import type { BoardView } from '@shared/contracts/club.contract';
-import type { CareerStatus } from '@shared/contracts/career.contract';
-import { DANGER_CONFIDENCE, SEASON_VERDICT_LABELS } from '@shared/domain/board';
-import { AppButton, AppFlag, AppPageHeader, AppSectionTitle, AppStat } from '@renderer/shared/ui';
+import type { ClubFinances } from '@shared/contracts/club.contract';
+import type { PlayerSeasonStats } from '@shared/contracts/stats.contract';
+import type { InboxMessage } from '@shared/contracts/inbox.contract';
+import { SEASON_VERDICT_LABELS, type SeasonVerdict } from '@shared/domain/board';
+import { squadMorale } from '@shared/domain/morale';
+import type { StandingZone } from '@shared/domain/promotion';
+import {
+  AppButton,
+  AppEmpty,
+  AppFlag,
+  AppMeter,
+  AppPanel,
+  AppStat,
+  FixtureCard,
+  KeyValueList,
+  LeaderCard,
+  TONE_TEXT,
+  TeamBadge,
+  type FixtureSide,
+  type Tone
+} from '@renderer/shared/ui';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { useSeasonStore } from '@renderer/features/season/season.store';
-import { formatMatchDate, formatMoney } from '@renderer/shared/format';
+import { useContinueStore } from '@renderer/features/season/continue.store';
+import { useInboxStore } from '@renderer/features/inbox/inbox.store';
+import { formatMatchDate, formatMoney, formatShortDate } from '@renderer/shared/format';
 import CareerOffers from '@renderer/features/career/components/CareerOffers.vue';
+import ConfidenceRings from '@renderer/features/club/components/ConfidenceRings.vue';
+import MailPanel from '@renderer/features/inbox/components/MailPanel.vue';
+import MailRow from '@renderer/features/inbox/components/MailRow.vue';
+import PanelMore from '../components/PanelMore.vue';
 
-const router = useRouter();
+/*
+ * El inicio, como el menú principal de IBM (125858): arriba la tira de partidos
+ * —los dos últimos, el PRÓXIMO PARTIDO en grande y los dos siguientes— y debajo
+ * una rejilla de paneles que resumen cada pantalla, con el «+» que lleva a ella.
+ *
+ * Los botones que movían el calendario («Avanzar día», «Ir a la jornada»,
+ * «Jugar partido», «Avanzar», «Empezar temporada», «Esperar un mes») están
+ * desde la fase 2 del estilo IBM en el CONTINUAR de la barra de arriba
+ * (`features/season/continue.store.ts`). Esta pantalla cuenta qué toca; el
+ * marco lo hace. Por eso tampoco usa la barra de acciones de abajo.
+ */
+
 const gameState = useGameStateStore();
 const seasonStore = useSeasonStore();
+const continuing = useContinueStore();
+const inbox = useInboxStore();
 
 const team = ref<TeamSummary | null>(null);
 const standings = ref<StandingEntry[]>([]);
-const recent = ref<FixtureEntry[]>([]);
+const fixtures = ref<FixtureEntry[]>([]);
 const playoffs = ref<PlayoffBracket | null>(null);
-const board = ref<BoardView | null>(null);
+const finances = ref<ClubFinances | null>(null);
+const squadStats = ref<PlayerSeasonStats[]>([]);
+/** La moral media de la plantilla: la confianza de los jugadores. */
+const playersConfidence = ref<number | null>(null);
+const mail = ref<InboxMessage[]>([]);
 /**
- * La carrera, si la partida se juega en ese modo. Es lo que convierte el
- * despido en «busca otro banquillo» en vez de en el final de la partida.
+ * El consejo y la carrera, si la partida se juega en ese modo. La carrera es lo
+ * que convierte el despido en «busca otro banquillo» en vez de en el final de
+ * la partida. Los guarda el store de CONTINUAR, que decide con ellos.
  */
-const career = ref<CareerStatus | null>(null);
+const { board, career, unemployed, nationalOnly } = storeToRefs(continuing);
 const signing = ref(false);
-
-/** Sin equipo y con clubes preguntando: no hay nada más que hacer hasta firmar. */
-const unemployed = computed(() => career.value?.careerMode === true && career.value.unemployed);
-/** Sin club pero con selección: sus partidos se siguen dirigiendo. */
-const nationalOnly = computed(() => unemployed.value && Boolean(career.value?.nationalTeamName));
 
 /** Una federación te quiere: se acepta sin dejar el club. */
 async function acceptNational(teamId: string): Promise<void> {
@@ -51,7 +88,6 @@ async function acceptNational(teamId: string): Promise<void> {
   }
 }
 
-const myPosition = computed(() => standings.value.find((row) => row.isManaged));
 const stage = computed(() => seasonStore.season?.stage ?? 'regular');
 
 /** La eliminatoria que juega el equipo del usuario ahora mismo, si la juega. */
@@ -87,23 +123,9 @@ const nextGameLabel = computed(() => {
   return `${series.roundName} · ${next.seriesGame}º partido (${own}-${rival})`;
 });
 
-/**
- * La jornada de liga que toca, si el próximo partido del club llega después de
- * ella. Es la semana de descanso de una liga impar —el club no juega esa
- * jornada— o, con el partido propio ya jugado, el resto de la jornada por
- * simular. En los dos casos el partido siguiente todavía no se puede empezar.
- */
-const roundBeforeNextGame = computed(() => {
-  const round = seasonStore.season?.nextRound;
-  if (stage.value !== 'regular' || !round || unemployed.value) {
-    return null;
-  }
-  const next = seasonStore.nextGame;
-  return !next || next.scheduledOn > round.scheduledOn ? round : null;
-});
 /** Semana de descanso: la jornada se juega sin el club. */
 const restingRound = computed(() =>
-  roundBeforeNextGame.value?.managedRests ? roundBeforeNextGame.value : null
+  continuing.roundBefore?.managedRests ? continuing.roundBefore : null
 );
 
 onMounted(async () => {
@@ -114,20 +136,53 @@ onMounted(async () => {
   await reload();
 });
 
+// CONTINUAR se pulsa en el marco, fuera de esta pantalla: al acabar —y al
+// cambiar de club o de temporada— se vuelve a leer todo. A mitad de un avance
+// no, que la fecha cambia a cada paso.
+watch(
+  () =>
+    continuing.busy
+      ? null
+      : `${gameState.state?.teamId}|${gameState.state?.currentDate}|${seasonStore.season?.seasonNumber}`,
+  (key) => {
+    if (key) {
+      void reload();
+    }
+  }
+);
+
 async function reload(): Promise<void> {
   if (!gameState.state) {
     return;
   }
-  team.value = await window.api.teams.get(gameState.state.teamId);
-  standings.value = await window.api.season.getStandings();
-  recent.value = (await window.api.season.listTeamFixtures(gameState.state.teamId))
-    .filter((fixture) => fixture.played)
-    .slice(-5)
-    .reverse();
+  // Primero la carrera: sin banquillo no hay club del que enseñar nada.
+  await continuing.refresh();
+  const teamId = gameState.state.teamId;
+  if (unemployed.value || !teamId) {
+    team.value = null;
+    standings.value = [];
+    fixtures.value = [];
+    finances.value = null;
+    squadStats.value = [];
+    playersConfidence.value = null;
+  } else {
+    let roster: { morale: number }[];
+    [team.value, standings.value, fixtures.value, finances.value, squadStats.value, roster] =
+      await Promise.all([
+        window.api.teams.get(teamId),
+        window.api.season.getStandings(),
+        window.api.season.listTeamFixtures(teamId),
+        window.api.club.getFinances(teamId),
+        window.api.stats.teamSeason(teamId),
+        window.api.players.listByTeam(teamId)
+      ]);
+    playersConfidence.value = squadMorale(roster.map((player) => player.morale));
+  }
   // El cuadro sólo existe cuando acaba la liga regular; antes no hay nada que pedir.
   playoffs.value = stage.value === 'regular' ? null : await window.api.season.getPlayoffs();
-  board.value = await window.api.club.getBoard();
-  career.value = await window.api.career.getStatus();
+  const view = await window.api.inbox.get();
+  mail.value = view.messages.slice(0, 4);
+  inbox.unread = view.unread;
 }
 
 /** Coge el banquillo ofrecido y vuelve a cargar el club, que ya es otro. */
@@ -146,25 +201,6 @@ async function acceptOffer(teamId: string): Promise<void> {
   }
 }
 
-/**
- * Un mes en el paro. El reloj corre sin banquillo —la IA juega todo— y a la
- * vuelta hay otros clubes con el suyo abierto.
- */
-async function waitAMonth(): Promise<void> {
-  if (signing.value) {
-    return;
-  }
-  signing.value = true;
-  try {
-    career.value = await window.api.career.wait();
-    await gameState.refresh();
-    await seasonStore.refresh();
-    await reload();
-  } finally {
-    signing.value = false;
-  }
-}
-
 /** Ofertas teniendo equipo: sólo al cerrar la temporada, y sólo si alguien tienta. */
 const employedOffers = computed(
   () =>
@@ -174,298 +210,474 @@ const employedOffers = computed(
     career.value.offers.length > 0
 );
 
-async function advance(mode: 'day' | 'nextGame'): Promise<void> {
-  const gameId = await seasonStore.advance(mode);
-  if (gameId) {
-    await router.push({ name: 'match', params: { gameId } });
-    return;
+// --- La tira de partidos -----------------------------------------------------
+
+/** Con banquillo, o sin él pero con selección que dirigir. */
+const showStrip = computed(
+  () => (!board.value?.dismissed && !unemployed.value) || nationalOnly.value
+);
+
+const kitOf = (teamId: string) => matchKits(teamId, '').home;
+/** Las selecciones llevan bandera y no escudo: `seleccion-esp` → `ESP`. */
+const nationOf = (teamId: string) =>
+  teamId.startsWith('seleccion-') ? teamId.replace('seleccion-', '').toUpperCase() : null;
+
+function side(teamId: string, name: string, score: number | null, played: boolean): FixtureSide {
+  return { name, kit: kitOf(teamId), nationOf: nationOf(teamId), score: played ? score : null };
+}
+
+function homeOf(fixture: FixtureEntry): FixtureSide {
+  return side(fixture.homeTeamId, fixture.homeTeamName, fixture.homeScore, fixture.played);
+}
+
+function awayOf(fixture: FixtureEntry): FixtureSide {
+  return side(fixture.awayTeamId, fixture.awayTeamName, fixture.awayScore, fixture.played);
+}
+
+/** En casa o fuera, visto desde el club o la selección del usuario. */
+function venueOf(fixture: FixtureEntry): 'home' | 'away' | null {
+  const national = career.value?.nationalTeamName ?? null;
+  if (fixture.homeTeamId === gameState.state?.teamId || fixture.homeTeamName === national) {
+    return 'home';
   }
-  await reload();
-}
-
-async function playNextGame(): Promise<void> {
-  // Con la jornada de antes a medias, el partido no se puede empezar todavía:
-  // primero se juega lo que queda de ella, igual que con «Ir a la jornada».
-  if (roundBeforeNextGame.value) {
-    const gameId = await seasonStore.advance('nextGame');
-    if (gameId) {
-      await router.push({ name: 'match', params: { gameId } });
-      return;
-    }
-    await reload();
-    if (roundBeforeNextGame.value) {
-      return;
-    }
+  if (fixture.awayTeamId === gameState.state?.teamId || fixture.awayTeamName === national) {
+    return 'away';
   }
-  if (seasonStore.nextGame) {
-    await router.push({ name: 'match', params: { gameId: seasonStore.nextGame.gameId } });
+  return null;
+}
+
+/** El pie de una tarjeta pequeña: la jornada o el partido de la eliminatoria. */
+function fixtureFooter(fixture: FixtureEntry): string {
+  return fixture.seriesId
+    ? `Playoffs · ${fixture.seriesGame}º partido`
+    : `Jornada ${fixture.round}`;
+}
+
+/** Siempre dos huecos a cada lado, para que el próximo partido quede en el centro. */
+const pastSlots = computed(() => {
+  const played = fixtures.value.filter((fixture) => fixture.played).slice(-2);
+  return [null, null, ...played].slice(-2);
+});
+
+const futureSlots = computed(() => {
+  const nextId = restingRound.value ? null : seasonStore.nextGame?.gameId;
+  const upcoming = fixtures.value
+    .filter((fixture) => !fixture.played && fixture.gameId !== nextId)
+    .slice(0, 2);
+  return [...upcoming, null, null].slice(0, 2);
+});
+
+const seasonYears = computed(() => {
+  const start = seasonStore.season?.startYear ?? 0;
+  return `${start}-${start + 1}`;
+});
+
+// --- Los paneles -------------------------------------------------------------
+
+/** Los ocho primeros y, si queda fuera, tu equipo detrás. */
+const standingsRows = computed(() => {
+  const top = standings.value.slice(0, 8);
+  const mine = standings.value.find((row) => row.isManaged);
+  return mine && !top.includes(mine) ? [...top, mine] : top;
+});
+
+function zoneClass(zone: StandingZone): string {
+  if (zone === 'playoffs' || zone === 'promotion') return 'zone-up';
+  if (zone === 'relegation') return 'zone-down';
+  return '';
+}
+
+const standingsHint = computed(() => {
+  if (stage.value === 'playoffs') return 'Playoffs';
+  if (stage.value === 'finished') return 'Terminada';
+  return `J${seasonStore.season?.currentRound ?? 1} / ${seasonStore.season?.totalRounds ?? 34}`;
+});
+
+const AVERAGE = new Intl.NumberFormat('es-ES', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1
+});
+const WHOLE = new Intl.NumberFormat('es-ES');
+
+const LEADER_CATEGORIES: { id: string; label: string; pick: (row: PlayerSeasonStats) => number }[] =
+  [
+    { id: 'efficiency', label: 'Valoración', pick: (row) => row.efficiencyPerGame },
+    { id: 'points', label: 'Puntos', pick: (row) => row.pointsPerGame },
+    { id: 'rebounds', label: 'Rebotes', pick: (row) => row.reboundsPerGame }
+  ];
+
+/** El mejor de la plantilla en cada categoría, entre los que han jugado. */
+const leaders = computed(() => {
+  const played = squadStats.value.filter((row) => row.games > 0);
+  if (played.length === 0) {
+    return [];
   }
-}
+  return LEADER_CATEGORIES.map((category) => {
+    const best = played.reduce((top, row) => (category.pick(row) > category.pick(top) ? row : top));
+    return { ...category, player: best, value: AVERAGE.format(category.pick(best)) };
+  });
+});
 
-async function startNextSeason(): Promise<void> {
-  await seasonStore.startNextSeason();
-  playoffs.value = null;
-  await reload();
-}
+const VERDICT_TONE: Record<SeasonVerdict, Tone> = {
+  exceeded: 'good',
+  met: 'good',
+  failed: 'bad'
+};
 
-/** Resultado desde el punto de vista del equipo del usuario: `V 82-71`. */
-function resultLabel(fixture: FixtureEntry): string {
-  const isHome = fixture.homeTeamId === gameState.state?.teamId;
-  const own = isHome ? fixture.homeScore : fixture.awayScore;
-  const rival = isHome ? fixture.awayScore : fixture.homeScore;
-  return `${(own ?? 0) > (rival ?? 0) ? 'V' : 'D'} ${own}-${rival}`;
-}
+const boardItems = computed(() =>
+  board.value
+    ? [
+        { id: 'objective', label: 'Objetivo', value: board.value.objectiveLabel },
+        { id: 'target', label: 'Hace falta', value: `${board.value.targetPosition}º o mejor` },
+        {
+          id: 'position',
+          label: 'Puesto actual',
+          value: board.value.position ? `${board.value.position}º` : '—'
+        },
+        {
+          id: 'verdict',
+          label: 'Con lo de ahora',
+          value: SEASON_VERDICT_LABELS[board.value.verdict]
+        }
+      ]
+    : []
+);
 
-function rivalName(fixture: FixtureEntry): string {
-  const isHome = fixture.homeTeamId === gameState.state?.teamId;
-  return `${isHome ? '' : '@ '}${isHome ? fixture.awayTeamName : fixture.homeTeamName}`;
-}
+const economyItems = computed(() =>
+  finances.value
+    ? [
+        { id: 'wages', label: 'Nómina anual', value: formatMoney(finances.value.seasonWagesCents) },
+        {
+          id: 'income',
+          label: 'Ingresos del curso',
+          value: formatMoney(finances.value.seasonIncomeCents)
+        },
+        {
+          id: 'expense',
+          label: 'Gastos del curso',
+          value: formatMoney(finances.value.seasonExpenseCents)
+        }
+      ]
+    : []
+);
 
-/** Etiqueta corta de un partido en la lista de últimos resultados. */
-function fixtureRound(fixture: FixtureEntry): string {
-  return fixture.seriesId ? `PO${fixture.seriesGame}` : `J${fixture.round}`;
-}
+const arenaItems = computed(() =>
+  finances.value
+    ? [
+        { id: 'capacity', label: 'Aforo', value: WHOLE.format(finances.value.capacity) },
+        {
+          id: 'attendance',
+          label: 'Asistencia prevista',
+          value: WHOLE.format(finances.value.expectedAttendance)
+        },
+        {
+          id: 'season-tickets',
+          label: 'Abonados',
+          value: WHOLE.format(finances.value.seasonTicketHolders)
+        }
+      ]
+    : []
+);
 </script>
 
 <template>
-  <div v-if="team" class="flex flex-col gap-6">
-    <AppPageHeader :title="team.name" />
-
-    <div class="grid grid-cols-4 gap-4">
-      <AppStat label="Clasificación" tone="accent" boxed>
-        {{ myPosition ? `${myPosition.position}º` : '—' }}
-        <template v-if="myPosition" #note>{{ myPosition.won }}-{{ myPosition.lost }}</template>
-      </AppStat>
-
-      <AppStat
-        :label="stage === 'regular' ? 'Jornada' : 'Fase'"
-        :tone="stage === 'regular' ? null : 'accent'"
-        boxed
-      >
-        <template v-if="stage === 'regular'">
-          {{ seasonStore.season?.currentRound ?? 1 }}
-          <span class="text-base text-court-300"
-            >/ {{ seasonStore.season?.totalRounds ?? 34 }}</span
-          >
-        </template>
-        <template v-else>{{ stage === 'playoffs' ? 'Playoffs' : 'Terminada' }}</template>
-      </AppStat>
-
-      <AppStat label="Caja" size="md" :tone="team.budgetCents < 0 ? 'bad' : null" boxed>
-        {{ formatMoney(team.budgetCents) }}
-        <template #note>
-          <RouterLink :to="{ name: 'finances' }" class="hover:text-ball-400"
-            >Ver finanzas</RouterLink
-          >
-        </template>
-      </AppStat>
-
-      <AppStat label="Pabellón" size="md" boxed>
-        {{ team.pavilionName }}
-        <template #note>{{ team.pavilionCapacity }} espectadores</template>
-      </AppStat>
-    </div>
-
+  <div v-if="gameState.state" class="flex flex-col gap-4">
     <!-- Sin equipo, lo primero es elegir banquillo; con él, quién te busca en verano. -->
     <CareerOffers
       v-if="career && (unemployed || employedOffers)"
       :offers="career.offers"
       :reputation-label="career.reputationLabel"
-      :busy="signing"
+      :busy="signing || continuing.busy"
       :employed="!unemployed"
       :can-wait="career.canWait"
       :current-date="career.currentDate"
       @accept="acceptOffer"
-      @wait="waitAMonth"
     />
 
-    <!-- El consejo -->
+    <!-- La tira de partidos: dos jugados, el próximo en grande y dos por jugar. -->
     <section
-      v-if="board && !unemployed"
-      class="rounded border px-5 py-4"
-      :class="board.dismissed ? 'border-bad-500' : 'border-court-700'"
+      v-if="showStrip"
+      aria-label="Partidos"
+      class="grid grid-cols-[minmax(0,1fr)_minmax(0,1fr)_minmax(0,2fr)_minmax(0,1fr)_minmax(0,1fr)] items-center gap-2"
     >
-      <div class="flex items-center justify-between gap-6">
-        <div>
-          <AppSectionTitle>El consejo</AppSectionTitle>
-          <p v-if="board.dismissed" class="mt-1 text-lg text-bad-400">
-            Te han destituido. La partida se queda como está.
-          </p>
-          <template v-else>
-            <p class="mt-1 text-lg">{{ board.objectiveLabel }}</p>
-            <p class="text-sm text-court-300">
-              Hace falta acabar {{ board.targetPosition }}º o mejor ·
-              {{ SEASON_VERDICT_LABELS[board.verdict].toLowerCase() }} con lo de ahora
-            </p>
-          </template>
-        </div>
-        <AppStat
-          label="Confianza"
-          class="text-right"
-          :tone="board.confidence >= DANGER_CONFIDENCE ? 'accent' : 'bad'"
-          :note="board.confidenceLabel"
+      <template v-for="(fixture, index) in pastSlots" :key="fixture?.gameId ?? `pasado-${index}`">
+        <RouterLink
+          v-if="fixture"
+          :to="{ name: 'match', params: { gameId: fixture.gameId } }"
+          class="block outline-tv-blue hover:outline-2"
+          :title="`Ver el acta: ${fixture.homeTeamName} - ${fixture.awayTeamName}`"
         >
-          {{ board.confidence }}
-        </AppStat>
-      </div>
-    </section>
-
-    <!-- Federaciones que buscan seleccionador: se lleva a la vez que el club. -->
-    <section
-      v-if="career && career.nationalOffers.length > 0"
-      class="rounded border border-court-700 p-5"
-    >
-      <AppSectionTitle>Selecciones que te buscan</AppSectionTitle>
-      <p class="mt-1 text-sm text-court-300">
-        Tras el Mundial hay federaciones sin seleccionador. Una selección se dirige a la vez que el
-        club{{ career.nationalTeamName ? `; aceptar es dejar ${career.nationalTeamName}` : '' }}.
-      </p>
-      <ul class="mt-3 flex flex-col gap-2">
-        <li
-          v-for="offer in career.nationalOffers"
-          :key="offer.teamId"
-          class="flex flex-wrap items-center justify-between gap-4 rounded border border-court-700 px-4 py-3"
-        >
-          <div class="flex items-center gap-3">
-            <AppFlag :code="offer.teamId.replace('seleccion-', '').toUpperCase()" size="md" />
-            <div>
-              <p>{{ offer.teamName }} · {{ offer.rank }}ª del mundo</p>
-              <p class="text-xs text-court-300">
-                Te pedirán: {{ offer.objectiveLabel.toLowerCase() }}
-              </p>
-            </div>
-          </div>
-          <AppButton variant="primary" :disabled="signing" @click="acceptNational(offer.teamId)">
-            Aceptar
-          </AppButton>
-        </li>
-      </ul>
-    </section>
-
-    <section
-      v-if="(!board?.dismissed && !unemployed) || nationalOnly"
-      class="rounded border border-court-700 p-5"
-    >
-      <AppSectionTitle>
-        {{ stage === 'finished' ? 'Temporada terminada' : 'Próximo partido' }}
-      </AppSectionTitle>
+          <FixtureCard
+            :home="homeOf(fixture)"
+            :away="awayOf(fixture)"
+            :date="formatShortDate(fixture.scheduledOn)"
+            :venue="venueOf(fixture)"
+            :footer="fixtureFooter(fixture)"
+          />
+        </RouterLink>
+        <div v-else></div>
+      </template>
 
       <!-- Semana de descanso en una liga impar: la jornada se juega sin el club. -->
-      <div v-if="restingRound" class="mt-3 flex items-center justify-between">
-        <div>
-          <p class="text-xl">Jornada {{ restingRound.round }}: descansas</p>
-          <p class="text-sm text-court-300">
-            {{ formatMatchDate(restingRound.scheduledOn) }}
-            <template v-if="seasonStore.nextGame">
-              · Después: {{ seasonStore.nextGame.homeTeamName }} vs
-              {{ seasonStore.nextGame.awayTeamName }}
-            </template>
-          </p>
-        </div>
-        <div class="flex gap-2">
-          <AppButton :disabled="seasonStore.busy" @click="advance('day')"> Avanzar día </AppButton>
-          <AppButton variant="primary" :disabled="seasonStore.busy" @click="advance('nextGame')">
-            Ir a la jornada
-          </AppButton>
-        </div>
-      </div>
+      <FixtureCard
+        v-if="restingRound"
+        featured
+        title="Descanso"
+        :date="formatShortDate(restingRound.scheduledOn)"
+        :footer="`Jornada ${restingRound.round}`"
+        :detail="
+          seasonStore.nextGame
+            ? `Después: ${seasonStore.nextGame.homeTeamName} - ${seasonStore.nextGame.awayTeamName}`
+            : ''
+        "
+      >
+        <span class="text-base font-bold uppercase tracking-wide">
+          Jornada {{ restingRound.round }}: descansas
+        </span>
+      </FixtureCard>
 
       <!-- Hay partido propio pendiente: lo normal durante toda la temporada. -->
-      <div v-else-if="seasonStore.nextGame" class="mt-3 flex items-center justify-between">
-        <div>
-          <p class="text-xl">
-            {{ seasonStore.nextGame.homeTeamName }}
-            <span class="text-court-600">vs</span>
-            {{ seasonStore.nextGame.awayTeamName }}
-          </p>
-          <p class="text-sm text-court-300">
-            {{ nextGameLabel }} · {{ formatMatchDate(seasonStore.nextGame.scheduledOn) }}
-          </p>
-        </div>
-        <div class="flex gap-2">
-          <AppButton :disabled="seasonStore.busy" @click="advance('day')"> Avanzar día </AppButton>
-          <AppButton :disabled="seasonStore.busy" @click="advance('nextGame')">
-            Ir a la jornada
-          </AppButton>
-          <AppButton variant="primary" :disabled="seasonStore.busy" @click="playNextGame">
-            Jugar partido
-          </AppButton>
-        </div>
-      </div>
+      <FixtureCard
+        v-else-if="seasonStore.nextGame"
+        featured
+        :home="homeOf(seasonStore.nextGame)"
+        :away="awayOf(seasonStore.nextGame)"
+        :date="formatShortDate(seasonStore.nextGame.scheduledOn)"
+        :venue="venueOf(seasonStore.nextGame)"
+        :footer="nextGameLabel"
+        :detail="formatMatchDate(seasonStore.nextGame.scheduledOn)"
+      />
 
-      <!-- Tu liga ya tiene campeón, pero otras de las que se juegan todavía no. -->
-      <div
-        v-else-if="stage === 'finished' && (seasonStore.season?.pendingLeagues.length ?? 0) > 0"
-        class="mt-3 flex items-center justify-between gap-4"
+      <!-- Temporada cerrada: hay campeón; quizá otras ligas de las que se juegan todavía no. -->
+      <FixtureCard
+        v-else-if="stage === 'finished'"
+        featured
+        title="Temporada terminada"
+        :date="seasonYears"
+        :footer="seasonStore.season?.competitionName ?? ''"
+        :detail="
+          (seasonStore.season?.pendingLeagues.length ?? 0) > 0
+            ? `Faltan por terminar: ${seasonStore.season?.pendingLeagues.join(', ')}`
+            : `Temporada ${seasonStore.season?.seasonNumber} · ${seasonYears}`
+        "
       >
-        <div>
-          <p class="text-xl">
-            Campeón:
-            <span class="font-semibold text-ball-400">
-              {{ seasonStore.season?.championTeamName ?? '—' }}
-            </span>
-          </p>
-          <p class="text-sm text-court-300">
-            Faltan por terminar: {{ seasonStore.season?.pendingLeagues.join(', ') }}
-          </p>
-        </div>
-        <AppButton :disabled="seasonStore.busy" @click="advance('nextGame')">Avanzar</AppButton>
-      </div>
-
-      <!-- Temporada cerrada: hay campeón y toca empezar la siguiente. -->
-      <div v-else-if="stage === 'finished'" class="mt-3 flex items-center justify-between">
-        <div>
-          <p class="text-xl">
-            Campeón:
-            <span class="font-semibold text-ball-400">
-              {{ seasonStore.season?.championTeamName ?? '—' }}
-            </span>
-          </p>
-          <p class="text-sm text-court-300">
-            Temporada {{ seasonStore.season?.seasonNumber }} ·
-            {{ seasonStore.season?.startYear }}-{{ (seasonStore.season?.startYear ?? 0) + 1 }}
-          </p>
-        </div>
-        <AppButton variant="primary" :disabled="seasonStore.busy" @click="startNextSeason">
-          Empezar temporada {{ (seasonStore.season?.seasonNumber ?? 1) + 1 }}
-        </AppButton>
-      </div>
+        <span class="text-base uppercase tracking-wide">
+          Campeón:
+          <span class="font-bold">{{ seasonStore.season?.championTeamName ?? '—' }}</span>
+        </span>
+      </FixtureCard>
 
       <!-- Sin partido propio, pero la competición sigue: eliminado o sin playoffs. -->
-      <div v-else class="mt-3 flex items-center justify-between">
-        <p class="text-court-300">
+      <FixtureCard
+        v-else
+        featured
+        title="Sin partido"
+        :date="seasonYears"
+        :footer="seasonStore.season?.competitionName ?? ''"
+      >
+        <span class="text-sm">
           {{
             stage === 'playoffs'
               ? 'Tu equipo ya no está en el cuadro. Los playoffs siguen sin ti.'
               : 'No queda ningún partido tuyo por jugar.'
           }}
-        </p>
-        <AppButton :disabled="seasonStore.busy" @click="advance('nextGame')">Avanzar</AppButton>
-      </div>
+        </span>
+      </FixtureCard>
+
+      <template v-for="(fixture, index) in futureSlots" :key="fixture?.gameId ?? `futuro-${index}`">
+        <FixtureCard
+          v-if="fixture"
+          :home="homeOf(fixture)"
+          :away="awayOf(fixture)"
+          :date="formatShortDate(fixture.scheduledOn)"
+          :venue="venueOf(fixture)"
+          :footer="fixtureFooter(fixture)"
+        />
+        <div v-else></div>
+      </template>
     </section>
 
-    <section v-if="recent.length > 0" class="rounded border border-court-700 p-5">
-      <AppSectionTitle>Últimos resultados</AppSectionTitle>
-      <ul class="mt-3 flex flex-col gap-2">
+    <!-- Federaciones que buscan seleccionador: se lleva a la vez que el club. -->
+    <AppPanel v-if="career && career.nationalOffers.length > 0" title="Selecciones que te buscan">
+      <p class="text-sm text-tv-muted">
+        Tras el Mundial hay federaciones sin seleccionador. Una selección se dirige a la vez que el
+        club{{ career.nationalTeamName ? `; aceptar es dejar ${career.nationalTeamName}` : '' }}.
+      </p>
+      <ul class="mt-3 flex flex-col gap-[3px]">
         <li
-          v-for="fixture in recent"
-          :key="fixture.gameId"
-          class="flex items-center justify-between text-sm"
+          v-for="offer in career.nationalOffers"
+          :key="offer.teamId"
+          class="flex flex-wrap items-center justify-between gap-4 bg-tv-cell px-3 py-2 text-sm"
         >
-          <RouterLink
-            :to="{ name: 'match', params: { gameId: fixture.gameId } }"
-            class="hover:text-ball-400"
-          >
-            {{ fixtureRound(fixture) }} · {{ rivalName(fixture) }}
-          </RouterLink>
-          <span
-            class="tabular-nums"
-            :class="resultLabel(fixture).startsWith('V') ? 'text-emerald-400' : 'text-court-300'"
-          >
-            {{ resultLabel(fixture) }}
+          <span class="flex min-w-0 items-center gap-3">
+            <AppFlag :code="nationOf(offer.teamId)" size="md" />
+            <span class="flex min-w-0 flex-col leading-tight">
+              <span class="font-bold">{{ offer.teamName }} · {{ offer.rank }}ª del mundo</span>
+              <span class="text-xs text-tv-muted">
+                Te pedirán: {{ offer.objectiveLabel.toLowerCase() }}
+              </span>
+            </span>
           </span>
+          <AppButton
+            variant="primary"
+            size="sm"
+            :disabled="signing"
+            @click="acceptNational(offer.teamId)"
+          >
+            Aceptar
+          </AppButton>
         </li>
       </ul>
-    </section>
+    </AppPanel>
+
+    <div v-if="team && !unemployed" class="grid grid-cols-4 gap-4">
+      <AppPanel title="Clasificación" :hint="standingsHint" flush class="row-span-2">
+        <template #actions>
+          <PanelMore :to="{ name: 'competition' }" label="Ver la clasificación completa" />
+        </template>
+        <p class="truncate px-3 pt-2 text-center text-xs font-bold uppercase tracking-wide">
+          {{ team.competitionName }}
+        </p>
+        <AppEmpty v-if="standingsRows.length === 0">
+          La clasificación sale con la primera jornada.
+        </AppEmpty>
+        <table v-else class="data-table">
+          <thead>
+            <tr>
+              <th class="numeric">Pos</th>
+              <th>Equipo</th>
+              <th class="numeric">PG</th>
+              <th class="numeric">PP</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr
+              v-for="row in standingsRows"
+              :key="row.teamId"
+              :class="row.isManaged ? 'is-mine' : ''"
+            >
+              <td class="numeric" :class="zoneClass(row.zone)">{{ row.position }}</td>
+              <td class="max-w-0 w-full">
+                <span class="flex min-w-0 items-center gap-2">
+                  <TeamBadge :name="row.teamName" :kit="kitOf(row.teamId)" :size="18" />
+                  <span class="truncate" :title="row.teamName">{{ row.teamName }}</span>
+                </span>
+              </td>
+              <td class="numeric">{{ row.won }}</td>
+              <td class="numeric">{{ row.lost }}</td>
+            </tr>
+          </tbody>
+        </table>
+      </AppPanel>
+
+      <AppPanel title="Líderes del equipo">
+        <template #actions>
+          <PanelMore :to="{ name: 'stats' }" label="Ver las estadísticas" />
+        </template>
+        <AppEmpty v-if="leaders.length === 0">
+          Los líderes salen con el primer partido jugado.
+        </AppEmpty>
+        <div v-else class="flex flex-col gap-2">
+          <LeaderCard
+            v-for="leader in leaders"
+            :key="leader.id"
+            :label="leader.label"
+            :name="leader.player.playerName"
+            :seed="leader.player.playerId"
+            :nationality="leader.player.nationality"
+            :value="leader.value"
+            name-mode="initial"
+            :note="`Partidos jugados: ${leader.player.games}`"
+          />
+        </div>
+      </AppPanel>
+
+      <AppPanel title="Economía">
+        <template #actions>
+          <PanelMore :to="{ name: 'finances' }" label="Ver las finanzas" />
+        </template>
+        <div class="flex flex-col gap-3">
+          <AppStat label="Caja" :tone="team.budgetCents < 0 ? 'bad' : null">
+            {{ formatMoney(team.budgetCents) }}
+          </AppStat>
+          <KeyValueList v-if="finances" :items="economyItems" />
+        </div>
+      </AppPanel>
+
+      <MailPanel
+        title="Correo"
+        :hint="inbox.unread === 0 ? '' : `${inbox.unread} sin leer`"
+        envelope
+      >
+        <template #actions>
+          <PanelMore :to="{ name: 'inbox' }" label="Abrir el correo" />
+        </template>
+        <AppEmpty v-if="mail.length === 0">Sin correos por ahora.</AppEmpty>
+        <ul v-else class="flex flex-col gap-1">
+          <li v-for="message in mail" :key="message.id">
+            <RouterLink
+              :to="{ name: 'inbox' }"
+              class="block bg-tv-cell px-2 py-1.5 transition-colors hover:bg-tv-cell-strong"
+            >
+              <MailRow :message="message" />
+            </RouterLink>
+          </li>
+        </ul>
+      </MailPanel>
+
+      <AppPanel title="Objetivo y confianza" class="col-span-2">
+        <template #actions>
+          <PanelMore :to="{ name: 'finances' }" label="Ver el consejo" />
+        </template>
+        <AppEmpty v-if="!board">El consejo todavía no ha dicho nada.</AppEmpty>
+        <p v-else-if="board.dismissed" class="py-4 text-center text-lg" :class="TONE_TEXT.bad">
+          Te han destituido. La partida se queda como está.
+        </p>
+        <div v-else class="grid grid-cols-[minmax(0,1fr)_auto] items-center gap-4">
+          <KeyValueList :items="boardItems">
+            <template #value="{ item }">
+              <span
+                v-if="item.id === 'verdict'"
+                class="font-semibold"
+                :class="TONE_TEXT[VERDICT_TONE[board.verdict]]"
+              >
+                {{ item.value }}
+              </span>
+              <template v-else>{{ item.value }}</template>
+            </template>
+          </KeyValueList>
+          <ConfidenceRings
+            class="bg-tv-cell px-4 py-3"
+            :board="board.confidence"
+            :board-note="board.confidenceLabel"
+            :fans="finances?.fanSupport"
+            :fans-note="finances?.fanSupportLabel"
+            :players="playersConfidence"
+          />
+        </div>
+      </AppPanel>
+
+      <AppPanel title="Pabellón">
+        <template #actions>
+          <PanelMore :to="{ name: 'finances' }" label="Ver el pabellón y la taquilla" />
+        </template>
+        <div class="flex flex-col gap-3">
+          <p class="flex items-center gap-3">
+            <TeamBadge :name="team.name" :kit="kitOf(team.id)" :size="36" />
+            <span class="min-w-0 leading-tight">
+              <span class="block truncate font-bold">{{ team.pavilionName }}</span>
+              <span class="block truncate text-xs text-tv-muted">{{ team.city }}</span>
+            </span>
+          </p>
+          <template v-if="finances">
+            <KeyValueList :items="arenaItems" />
+            <div class="flex flex-col gap-0.5">
+              <AppMeter :value="finances.fanSupport" label="Afición" />
+              <span class="text-right text-xs text-tv-muted">{{ finances.fanSupportLabel }}</span>
+            </div>
+          </template>
+        </div>
+      </AppPanel>
+    </div>
   </div>
 </template>

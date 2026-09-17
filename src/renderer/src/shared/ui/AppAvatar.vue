@@ -23,7 +23,7 @@ const src = computed(() => avatarUri(props.kind, props.seed));
     :alt="name"
     :width="size"
     :height="size"
-    class="inline-block shrink-0 rounded-full bg-court-800 align-middle"
+    class="inline-block shrink-0 rounded-full bg-tv-box align-middle"
     :style="{ width: `${size}px`, height: `${size}px` }"
     loading="lazy"
     decoding="async"

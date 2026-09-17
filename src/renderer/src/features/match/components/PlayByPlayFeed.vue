@@ -15,7 +15,7 @@ import {
   type PlayLine,
   type PlaySide
 } from '@shared/domain/play-by-play';
-import BroadcastPanel from './BroadcastPanel.vue';
+import { AppPanel } from '@renderer/shared/ui';
 
 const props = defineProps<{
   lines: readonly PlayLine[];
@@ -36,7 +36,7 @@ const shown = computed(() => {
 </script>
 
 <template>
-  <BroadcastPanel flush>
+  <AppPanel flush>
     <template #header>
       <span class="flex w-full items-center justify-between">
         <span>Retransmisión · {{ lines.length }} jugadas</span>
@@ -90,5 +90,5 @@ const shown = computed(() => {
         </li>
       </template>
     </ol>
-  </BroadcastPanel>
+  </AppPanel>
 </template>

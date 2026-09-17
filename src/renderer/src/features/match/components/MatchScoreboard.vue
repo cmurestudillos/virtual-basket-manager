@@ -11,7 +11,7 @@
 import { computed } from 'vue';
 import type { PeriodScoreEntry } from '@shared/contracts/match.contract';
 import type { CourtSide, Kit } from '@shared/domain/court';
-import TeamBadge from './TeamBadge.vue';
+import { TeamBadge } from '@renderer/shared/ui';
 
 const props = defineProps<{
   roundLabel: string;

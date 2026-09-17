@@ -1,44 +1,17 @@
 @import 'tailwindcss';
 
 /**
- * Paleta del juego. Fondo de pista de noche y naranja de balón como acento:
- * es la lectura inmediata de "esto es baloncesto" sin recurrir a ninguna marca.
+ * Paleta del juego: la piel de International Basketball Manager 23, marco oscuro
+ * con paneles claros. Se llama `tv` porque nació en la retransmisión del partido
+ * (2026-09-16); desde el 2026-09-17 es la de toda la aplicación, y la pista de
+ * noche de antes (`court-*`, `ball-*` y los tonos `good`/`warn`/`bad`) ya no
+ * existe. Los valores están medidos en las capturas; ver docs/DESIGN-SYSTEM.md.
  *
  * Se declara con `@theme` (Tailwind 4) para que estos colores estén disponibles
- * como utilidades — `bg-court-900`, `text-ball-500` — y no como cadenas sueltas
+ * como utilidades —`bg-tv-paper`, `text-tv-ink`— y no como cadenas sueltas
  * repartidas por los componentes.
  */
 @theme {
-  --color-court-950: #0b0f14;
-  --color-court-900: #121822;
-  --color-court-800: #1a2230;
-  --color-court-700: #263143;
-  --color-court-600: #3a4759;
-  --color-court-300: #94a3b8;
-  --color-court-100: #e2e8f0;
-
-  --color-ball-600: #d9581a;
-  --color-ball-500: #f2761f;
-  --color-ball-400: #ff9440;
-
-  --color-line-500: #eab308;
-
-  /* Los tres tonos con los que el juego dice si algo va bien o va mal. Se
-     declaran aquí y no se usa `emerald`/`red` sueltos para que «verde» tenga
-     un único significado y un único sitio donde cambiarlo. */
-  --color-good-500: #10b981;
-  --color-good-400: #34d399;
-  --color-warn-500: #f59e0b;
-  --color-warn-400: #fbbf24;
-  --color-bad-500: #ef4444;
-  --color-bad-400: #f87171;
-
-  /* La piel del juego: marco oscuro con paneles claros, como International
-     Basketball Manager 23. Se llama `tv` porque nació en la retransmisión del
-     partido (2026-09-16); desde el 2026-09-17 es la de toda la aplicación y la
-     pista de noche de arriba se va retirando pantalla a pantalla. Los valores
-     están medidos en las capturas; ver docs/DESIGN-SYSTEM.md. */
-
   /* Morados y añiles: rótulos, previa y fondos del partido. */
   --color-tv-950: #0d0726;
   --color-tv-900: #170c42;
@@ -56,6 +29,10 @@
   --color-tv-rail: #171717;
   --color-tv-footer: #0e0e0e;
   --color-tv-slab: #1c1c22;
+  /* Detrás de los paneles, dentro del marco: liso y un punto más morado que las
+     barras, para que la barra de sección no se funda con la pantalla. El fondo
+     con franjas se queda para el menú, el asistente y los vacíos. */
+  --color-tv-canvas: #1d1830;
 
   /* Papel: el cuerpo de los paneles y sus celdas. */
   --color-tv-paper: #f2f2f2;
@@ -71,6 +48,9 @@
   --color-tv-blue-dim-ink: #8090a8;
   --color-tv-select: #a6d5fa;
   --color-tv-cyan: #16cef2;
+  /* Punto de un paso que no es el actual en el asistente de nueva partida
+     (IBM, 130904); el actual va en `tv-blue`. */
+  --color-tv-step: #929292;
 
   /* Estados sobre papel: sube / baja, gana / pierde, zona de playoff / descenso. */
   --color-tv-green: #00a516;
@@ -78,6 +58,21 @@
   --color-tv-red-deep: #7f0000;
   --color-tv-strong: #b2e0b2;
   --color-tv-amber: #f8b800;
+
+  /* Texto de color sobre papel. No están medidos: el azul, el verde y el ámbar
+     de IBM son para rellenar, y como letra pequeña sobre `tv-paper` no llegan
+     a un contraste de 4,5:1. Son los mismos tonos, oscurecidos lo justo. */
+  --color-tv-blue-ink: #0a64c0;
+  --color-tv-green-ink: #007a10;
+  --color-tv-amber-ink: #8f5e00;
+
+  /* El ánimo, en cinco niveles (IBM, 130809). El verde claro no se pudo medir:
+     es el punto medio entre el verde de «muy bien» y el lima de la escala. */
+  --color-tv-mood-great: #009810;
+  --color-tv-mood-good: #6cc22a;
+  --color-tv-mood-normal: #f8b000;
+  --color-tv-mood-low: #f8a898;
+  --color-tv-mood-bad: #b80000;
 
   /* La escala de cualquier valor de 0 a 100 (media, forma, moral, confianza):
      cuatro tramos, los de IBM: 80 o más, 70-79, 60-69 y por debajo de 60. */
@@ -94,6 +89,10 @@
   --color-tv-competition: #f06000;
   --color-tv-competition-deep: #a03800;
 
+  /* Rótulo del correo: la única cabecera azul y no añil de IBM (131054). */
+  --color-tv-mail-from: #1c61a9;
+  --color-tv-mail-to: #2777c8;
+
   /* Fondo decorativo: menú, asistente y pantallas vacías. */
   --color-tv-magenta: #b8175e;
   --color-tv-orange: #ff6b3d;
@@ -109,8 +108,8 @@ body,
 
 body {
   margin: 0;
-  background-color: var(--color-court-950);
-  color: var(--color-court-100);
+  background-color: var(--color-tv-canvas);
+  color: white;
   font-family:
     'Signika',
     'Segoe UI',
@@ -122,41 +121,107 @@ body {
   overflow: hidden;
 }
 
-/* Tabla de datos: es el componente más repetido de todo el juego (plantilla,
-   clasificación, acta, estadísticas), así que su aspecto se define una vez. */
-.data-table {
-  width: 100%;
-  border-collapse: collapse;
-  font-size: 0.875rem;
+/* Barra de desplazamiento propia, fina como la de IBM. La de serie es ancha y
+   clara: sobre el marco es un borrón blanco y sobre papel parece otra ventana.
+   Oscura sobre el marco y gris sobre papel: `scrollbar-color` se hereda, así que
+   basta con la raíz y con el papel; `scrollbar-width` no, y va en todo. En la
+   capa `base` para que una utilidad puesta a mano en un elemento siga mandando. */
+@layer base {
+  * {
+    scrollbar-width: thin;
+  }
+
+  html {
+    scrollbar-color: var(--color-tv-muted) transparent;
+  }
+
+  .bg-tv-paper {
+    scrollbar-color: var(--color-tv-box) var(--color-tv-cell);
+  }
 }
 
-.data-table thead th {
-  position: sticky;
-  top: 0;
-  background-color: var(--color-court-800);
-  color: var(--color-court-300);
-  font-weight: 600;
-  text-align: left;
-  padding: 0.5rem 0.75rem;
-  white-space: nowrap;
-}
+@layer components {
+  /* Tabla de datos: es el componente más repetido de todo el juego (plantilla,
+     clasificación, acta, estadísticas), así que su aspecto se define una vez.
 
-.data-table tbody td {
-  padding: 0.5rem 0.75rem;
-  border-top: 1px solid var(--color-court-700);
-  white-space: nowrap;
-}
+     Va sobre papel (`tv-paper`, dentro de un `AppPanel`): cabecera añil en
+     mayúsculas y celdas grises separadas por huecos de 3 px, sin líneas, como
+     IBM. Los huecos son bordes del color del papel y no `border-spacing`: así la
+     cabecera sigue siendo una barra continua y no una fila de baldosas.
 
-.data-table tbody tr:hover {
-  background-color: var(--color-court-800);
-}
-/* Una cabecera numérica se alinea con sus cifras. Sin este selector, la regla de
-   `thead th` —más específica que `.numeric` suelto— la dejaba a la izquierda, y
-   en todas las tablas del juego los títulos de columna quedaban descuadrados
-   respecto a los números que tenían debajo. */
-.data-table th.numeric,
-.data-table td.numeric {
-  text-align: right;
+     Va en la capa `components`: así una utilidad puesta en la celda (`py-0.5`
+     para una fila con anillo, `whitespace-normal` para un texto largo) manda
+     sobre el aspecto de serie, como en cualquier otra pieza. */
+  .data-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 0.875rem;
+    color: var(--color-tv-ink);
+  }
+
+  .data-table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    /* El centro medido del degradado del rótulo: un degradado por celda se vería
+       a franjas. */
+    background-color: color-mix(in srgb, var(--color-tv-head-from), var(--color-tv-head-to));
+    color: white;
+    font-size: 0.75rem;
+    font-weight: 700;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    text-align: left;
+    padding: 0.5rem 0.625rem;
+    white-space: nowrap;
+  }
+
+  .data-table tbody td {
+    padding: 0.375rem 0.625rem;
+    background-color: var(--color-tv-cell);
+    border: 3px solid var(--color-tv-paper);
+    white-space: nowrap;
+  }
+
+  /* Filas alternas: una de cada dos, a medio camino entre la celda y el papel. */
+  .data-table tbody tr:nth-child(even) td {
+    background-color: color-mix(in srgb, var(--color-tv-cell), var(--color-tv-paper));
+  }
+
+  .data-table tbody tr:hover td {
+    background-color: color-mix(in srgb, var(--color-tv-select) 35%, var(--color-tv-cell));
+  }
+
+  /* Lo tuyo —tu equipo en la clasificación, tu jugador en las estadísticas— y lo
+     elegido llevan la fila entera en azul pálido. Va detrás del `hover` para que
+     la fila propia no se apague al pasar por encima. */
+  .data-table tbody tr.is-mine td,
+  .data-table tbody tr.is-selected td {
+    background-color: var(--color-tv-select);
+  }
+
+  /* La columna por la que se ordena o la que manda (la media, la valoración). */
+  .data-table tbody td.is-key {
+    background-color: var(--color-tv-cell-strong);
+  }
+
+  /* Marca de zona en la primera celda: playoff o ascenso en verde, descenso en granate. */
+  .data-table tbody td.zone-up {
+    box-shadow: inset 4px 0 0 var(--color-tv-green);
+  }
+
+  .data-table tbody td.zone-down {
+    box-shadow: inset 4px 0 0 var(--color-tv-red-deep);
+  }
+
+  /* Una cabecera numérica se alinea con sus cifras. Sin este selector, la regla de
+     `thead th` —más específica que `.numeric` suelto— la dejaba a la izquierda, y
+     en todas las tablas del juego los títulos de columna quedaban descuadrados
+     respecto a los números que tenían debajo. */
+  .data-table th.numeric,
+  .data-table td.numeric {
+    text-align: right;
+  }
 }
 
 .numeric {

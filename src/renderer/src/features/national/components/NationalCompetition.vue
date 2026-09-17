@@ -1,129 +1,111 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import type { NationalCompetitionView } from '@shared/contracts/national.contract';
 import type { FixtureEntry } from '@shared/contracts/season.contract';
-import { formatShortDate } from '@renderer/shared/format';
-import { AppEmpty, AppFlag, AppPanel, AppSectionTitle } from '@renderer/shared/ui';
+import { formatMatchDate } from '@renderer/shared/format';
+import { AppEmpty, AppPanel } from '@renderer/shared/ui';
+import BracketColumns from '@renderer/features/competition/components/BracketColumns.vue';
+import ChampionBanner from '@renderer/features/competition/components/ChampionBanner.vue';
+import GameRow from '@renderer/features/competition/components/GameRow.vue';
+import MatchupCard, {
+  type MatchupSide
+} from '@renderer/features/competition/components/MatchupCard.vue';
+import StandingsTable from '@renderer/features/competition/components/StandingsTable.vue';
 
 /**
  * Una competición de selecciones: sus grupos —tabla y partidos— y, en el
  * Mundial, el cuadro final. La clasificación y el Mundial se pintan igual
  * porque se leen igual: quién va primero y quién pasa.
+ *
+ * Con las piezas de la competición de clubes: la clasificación de IBM con tu
+ * selección en azul pálido, la jornada en líneas y el cuadro en columnas, con
+ * banderas en vez de escudos.
  */
 
-defineProps<{ view: NationalCompetitionView | null; empty: string; passing: string }>();
+const props = defineProps<{
+  view: NationalCompetitionView | null;
+  empty: string;
+  passing: string;
+}>();
 
 /** El código de nacionalidad sale del id de la selección: `seleccion-esp`. */
 function codeOf(teamId: string): string {
   return teamId.replace('seleccion-', '').toUpperCase();
 }
 
-function scoreLabel(game: FixtureEntry): string {
-  return game.played ? `${game.homeScore} - ${game.awayScore}` : formatShortDate(game.scheduledOn);
+const columns = computed(() =>
+  (props.view?.knockout ?? []).map((round) => ({
+    key: round.round,
+    title: round.name,
+    items: round.games
+  }))
+);
+
+function sides(game: FixtureEntry): [MatchupSide, MatchupSide] {
+  const homeWon = game.played && (game.homeScore ?? 0) > (game.awayScore ?? 0);
+  const awayWon = game.played && (game.awayScore ?? 0) > (game.homeScore ?? 0);
+  return [
+    {
+      teamId: game.homeTeamId,
+      name: game.homeTeamName,
+      value: game.homeScore,
+      winner: homeWon,
+      nation: codeOf(game.homeTeamId)
+    },
+    {
+      teamId: game.awayTeamId,
+      name: game.awayTeamName,
+      value: game.awayScore,
+      winner: awayWon,
+      nation: codeOf(game.awayTeamId)
+    }
+  ];
 }
 </script>
 
 <template>
-  <AppEmpty v-if="!view">{{ empty }}</AppEmpty>
+  <AppPanel v-if="!view" title="Selecciones">
+    <AppEmpty>{{ empty }}</AppEmpty>
+  </AppPanel>
 
   <div v-else class="flex flex-col gap-4">
-    <p v-if="view.championTeamName" class="text-lg">
-      <span class="text-court-300">Campeón del {{ view.name }}:</span>
-      <span class="ml-2 font-semibold text-ball-400">{{ view.championTeamName }}</span>
-    </p>
-    <p v-else-if="view.hostName" class="text-sm text-court-300">
-      Anfitrión del Mundial: <span class="text-court-100">{{ view.hostName }}</span> ·
+    <ChampionBanner
+      v-if="view.championTeamName"
+      :label="`Campeón del ${view.name}`"
+      :team-name="view.championTeamName"
+    />
+    <p v-else-if="view.hostName" class="text-sm text-white/75">
+      Anfitrión del Mundial: <span class="font-bold text-white">{{ view.hostName }}</span> ·
       {{ passing }}
     </p>
+    <p v-else class="text-sm text-white/75">{{ passing }}</p>
 
-    <section v-if="view.knockout.length > 0" class="flex flex-col gap-3">
-      <div v-for="round in view.knockout" :key="round.round" class="flex flex-col gap-1">
-        <AppSectionTitle>{{ round.name }}</AppSectionTitle>
-        <ul class="grid gap-1 md:grid-cols-2">
-          <li
-            v-for="game in round.games"
-            :key="game.gameId"
-            class="grid grid-cols-[1fr_6.5rem_1fr] items-center gap-2 rounded border px-3 py-2 text-sm"
-            :class="game.involvesManaged ? 'border-ball-600' : 'border-court-700'"
+    <BracketColumns v-if="columns.length > 0" :columns="columns" :item-key="(game) => game.gameId">
+      <template #item="{ item }">
+        <MatchupCard :sides="sides(item)" :highlighted="item.involvesManaged">
+          <RouterLink
+            v-if="item.played"
+            :to="{ name: 'match', params: { gameId: item.gameId } }"
+            class="text-tv-blue-ink hover:underline"
           >
-            <span class="flex items-center justify-end gap-2 text-right">
-              {{ game.homeTeamName }} <AppFlag :code="codeOf(game.homeTeamId)" />
-            </span>
-            <RouterLink
-              v-if="game.played"
-              :to="{ name: 'match', params: { gameId: game.gameId } }"
-              class="text-center font-semibold tabular-nums hover:text-ball-400"
-            >
-              {{ scoreLabel(game) }}
-            </RouterLink>
-            <span v-else class="text-center text-xs text-court-300">{{ scoreLabel(game) }}</span>
-            <span class="flex items-center gap-2">
-              <AppFlag :code="codeOf(game.awayTeamId)" /> {{ game.awayTeamName }}
-            </span>
-          </li>
-        </ul>
-      </div>
-    </section>
+            Ver el acta
+          </RouterLink>
+          <span v-else class="text-tv-muted">{{ formatMatchDate(item.scheduledOn) }}</span>
+        </MatchupCard>
+      </template>
+    </BracketColumns>
 
-    <div class="grid gap-3 xl:grid-cols-2">
+    <div class="grid grid-cols-2 items-start gap-4">
       <AppPanel v-for="group in view.groups" :key="group.name" :title="group.name" flush>
-        <div class="overflow-x-auto">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th class="numeric">#</th>
-                <th>Selección</th>
-                <th class="numeric">J</th>
-                <th class="numeric">G</th>
-                <th class="numeric">P</th>
-                <th class="numeric">Dif</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr
-                v-for="row in group.standings"
-                :key="row.teamId"
-                :class="row.isManaged ? 'bg-court-800 text-ball-400' : ''"
-              >
-                <td
-                  class="numeric border-l-4"
-                  :class="row.zone ? 'border-ball-500' : 'border-transparent'"
-                >
-                  {{ row.position }}
-                </td>
-                <td>
-                  <span class="inline-flex items-center gap-2">
-                    <AppFlag :code="codeOf(row.teamId)" :label="row.teamName" />
-                    {{ row.teamName }}
-                  </span>
-                </td>
-                <td class="numeric">{{ row.played }}</td>
-                <td class="numeric font-semibold">{{ row.won }}</td>
-                <td class="numeric">{{ row.lost }}</td>
-                <td class="numeric" :class="row.pointsDifference >= 0 ? 'text-good-400' : ''">
-                  {{ row.pointsDifference > 0 ? '+' : '' }}{{ row.pointsDifference }}
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-        <ul class="flex flex-col border-t border-court-700 px-3 py-2 text-xs">
-          <li
+        <StandingsTable :rows="group.standings" :nation-of="codeOf" />
+        <ul class="flex flex-col gap-[3px] p-[3px]">
+          <GameRow
             v-for="game in group.fixtures"
             :key="game.gameId"
-            class="grid grid-cols-[1fr_6.5rem_1fr] items-center gap-2 py-0.5"
-            :class="game.involvesManaged ? 'text-ball-400' : 'text-court-300'"
-          >
-            <span class="truncate text-right">{{ game.homeTeamName }}</span>
-            <RouterLink
-              v-if="game.played"
-              :to="{ name: 'match', params: { gameId: game.gameId } }"
-              class="text-center tabular-nums hover:text-ball-400"
-            >
-              {{ scoreLabel(game) }}
-            </RouterLink>
-            <span v-else class="text-center text-court-600">{{ scoreLabel(game) }}</span>
-            <span class="truncate">{{ game.awayTeamName }}</span>
-          </li>
+            :game="game"
+            :nation-of="codeOf"
+            compact
+          />
         </ul>
       </AppPanel>
     </div>

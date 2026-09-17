@@ -25,12 +25,31 @@ export const REFUSES_RENEWAL_MORALE = 20;
 
 export type MoraleTone = 'good' | 'neutral' | 'warn' | 'bad';
 
+/**
+ * Los cinco niveles del ánimo, de mejor a peor. Son los de la palabra y los del
+ * icono de moral: un «Contento» no puede llevar la flecha de «Normal».
+ */
+export const MORALE_LEVELS = ['great', 'good', 'normal', 'low', 'bad'] as const;
+export type MoraleLevel = (typeof MORALE_LEVELS)[number];
+
+export const MORALE_LEVEL_LABELS: Record<MoraleLevel, string> = {
+  great: 'Eufórico',
+  good: 'Contento',
+  normal: 'Normal',
+  low: 'Descontento',
+  bad: 'Enfadado'
+};
+
+export function moraleLevel(morale: number): MoraleLevel {
+  if (morale >= 85) return 'great';
+  if (morale >= 65) return 'good';
+  if (morale >= 45) return 'normal';
+  if (morale >= 25) return 'low';
+  return 'bad';
+}
+
 export function moraleLabel(morale: number): string {
-  if (morale >= 85) return 'Eufórico';
-  if (morale >= 65) return 'Contento';
-  if (morale >= 45) return 'Normal';
-  if (morale >= 25) return 'Descontento';
-  return 'Enfadado';
+  return MORALE_LEVEL_LABELS[moraleLevel(morale)];
 }
 
 export function moraleTone(morale: number): MoraleTone {
@@ -148,4 +167,14 @@ export function refusesToRenew(morale: number): boolean {
 
 export function clampMorale(value: number): number {
   return Math.min(MAX_MORALE, Math.max(MIN_MORALE, Math.round(value)));
+}
+
+/**
+ * La confianza de los jugadores en el entrenador, la tercera de las de IBM
+ * junto a la directiva y la afición: la moral media de la plantilla,
+ * redondeada. Sin jugadores no hay nada que medir y devuelve `null`.
+ */
+export function squadMorale(morales: readonly number[]): number | null {
+  if (morales.length === 0) return null;
+  return clampMorale(morales.reduce((sum, morale) => sum + morale, 0) / morales.length);
 }

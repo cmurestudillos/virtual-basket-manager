@@ -6,9 +6,11 @@ import {
   moraleAfterRest,
   moraleAttributeOffset,
   moraleLabel,
+  moraleLevel,
   moraleRecoveryPoints,
   refusesToRenew,
   renewalWageFactor,
+  squadMorale,
   trainingMoraleDelta
 } from '../morale';
 
@@ -121,5 +123,29 @@ describe('lo que hace la moral', () => {
     expect(moraleLabel(90)).toBe('Eufórico');
     expect(moraleLabel(70)).toBe('Contento');
     expect(moraleLabel(10)).toBe('Enfadado');
+  });
+
+  it('tiene cinco niveles, con los mismos cortes que la palabra', () => {
+    expect(moraleLevel(85)).toBe('great');
+    expect(moraleLevel(84)).toBe('good');
+    expect(moraleLevel(65)).toBe('good');
+    expect(moraleLevel(64)).toBe('normal');
+    expect(moraleLevel(45)).toBe('normal');
+    expect(moraleLevel(44)).toBe('low');
+    expect(moraleLevel(25)).toBe('low');
+    expect(moraleLevel(24)).toBe('bad');
+    expect(moraleLabel(50)).toBe('Normal');
+    expect(moraleLabel(30)).toBe('Descontento');
+  });
+});
+
+describe('la confianza de los jugadores', () => {
+  it('es la moral media de la plantilla, redondeada', () => {
+    expect(squadMorale([70, 80, 91])).toBe(80);
+    expect(squadMorale([50])).toBe(50);
+  });
+
+  it('sin plantilla no hay confianza que enseñar', () => {
+    expect(squadMorale([])).toBeNull();
   });
 });

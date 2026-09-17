@@ -1,13 +1,17 @@
 <script setup lang="ts">
 /**
- * El fondo de la retransmisión: morado de noche con las franjas en diagonal
- * de las esquinas. Todo CSS, sin imágenes: pesa cero y se estira a cualquier
- * ventana.
+ * El fondo morado con las franjas en diagonal de las esquinas. Todo CSS, sin
+ * imágenes: pesa cero y se estira a cualquier ventana.
+ *
+ * Nació detrás de la retransmisión del partido. En el resto del juego va sólo
+ * en el menú, el asistente de nueva partida y las pantallas vacías: detrás de
+ * una tabla, las franjas estorban (decisión del 2026-09-17). La letra de dentro
+ * es blanca; los paneles traen su propio papel.
  */
 </script>
 
 <template>
-  <div class="broadcast-backdrop relative min-h-full overflow-hidden text-white">
+  <div class="app-backdrop relative min-h-full overflow-hidden text-white">
     <div aria-hidden="true" class="stripes stripes-left"></div>
     <div aria-hidden="true" class="stripes stripes-right"></div>
     <div class="relative">
@@ -17,7 +21,7 @@
 </template>
 
 <style scoped>
-.broadcast-backdrop {
+.app-backdrop {
   background:
     radial-gradient(ellipse at 20% 110%, rgb(21 94 117 / 0.55), transparent 55%),
     radial-gradient(ellipse at 85% -10%, rgb(184 23 94 / 0.45), transparent 50%),

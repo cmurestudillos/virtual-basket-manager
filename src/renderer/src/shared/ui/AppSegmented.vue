@@ -6,6 +6,9 @@
  * No es un desplegable ni son pestañas: las opciones se ven todas a la vez y se
  * eligen de una pulsada. En una pantalla de decisiones —la pizarra, el
  * entrenamiento— eso es lo que hace que se pruebe una y otra sin abrir nada.
+ *
+ * Como IBM: la elegida, azul rellena; las otras, añil con borde azul. Se lee
+ * igual sobre papel que sobre el marco oscuro.
  */
 
 export interface SegmentOption {
@@ -18,16 +21,16 @@ defineEmits<{ 'update:modelValue': [value: string] }>();
 </script>
 
 <template>
-  <div class="inline-flex rounded border border-court-700 p-0.5" role="group">
+  <div class="inline-flex gap-[3px]" role="group">
     <button
       v-for="option in options"
       :key="option.id"
       type="button"
-      class="rounded px-3 py-1 text-sm transition-colors"
+      class="border-2 px-4 py-1 text-sm font-bold uppercase tracking-wide transition-colors"
       :class="
         modelValue === option.id
-          ? 'bg-ball-600 font-semibold text-court-100'
-          : 'text-court-300 hover:bg-court-800 hover:text-court-100'
+          ? 'border-tv-blue bg-tv-blue text-white'
+          : 'border-tv-blue bg-tv-800 text-white/75 hover:text-white'
       "
       :aria-pressed="modelValue === option.id"
       @click="$emit('update:modelValue', option.id)"

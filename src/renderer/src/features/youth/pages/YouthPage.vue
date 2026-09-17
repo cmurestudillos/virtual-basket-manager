@@ -1,14 +1,38 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import type { YouthAcademy, YouthPlayer } from '@shared/contracts/youth.contract';
-import { POSITION_LABELS } from '@shared/domain/positions';
+import { nationName } from '@shared/domain/national-teams';
+import { toStars } from '@shared/domain/stars';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
-import { AppAvatar, AppButton, AppFlag, AppPageHeader, AppStat } from '@renderer/shared/ui';
+import {
+  AppAvatar,
+  AppButton,
+  AppEmpty,
+  AppFlag,
+  AppPanel,
+  AppRing,
+  AppStars,
+  AppStat,
+  PlayerName,
+  PositionChip,
+  TONE_TEXT
+} from '@renderer/shared/ui';
+import PageActions from '@renderer/features/app-shell/components/PageActions.vue';
+
+/**
+ * La cantera, como la plantilla U18 de IBM: las instalaciones y lo que cuestan
+ * arriba, y la tabla de juveniles con la media en anillo —en rojo casi siempre:
+ * un juvenil vale poco hoy— y el techo en estrellas, que es de lo que va esto.
+ *
+ * Promocionar y mejorar las instalaciones van en la barra de abajo. Se
+ * promociona al juvenil elegido en la tabla (el primero, si no se elige).
+ */
 
 const store = useGameStateStore();
 
 const academy = ref<YouthAcademy | null>(null);
+const selectedId = ref<string | null>(null);
 const busy = ref(false);
 const message = ref<string | null>(null);
 const error = ref<string | null>(null);
@@ -20,6 +44,12 @@ onMounted(async () => {
   if (store.state) {
     academy.value = await window.api.youth.get(store.state.teamId);
   }
+});
+
+/** El elegido, o el primero si el elegido ya no está (subió o no se eligió a nadie). */
+const selected = computed<YouthPlayer | null>(() => {
+  const players = academy.value?.players ?? [];
+  return players.find((player) => player.playerId === selectedId.value) ?? players[0] ?? null;
 });
 
 async function run(action: () => Promise<YouthAcademy>, done: string): Promise<void> {
@@ -36,16 +66,14 @@ async function run(action: () => Promise<YouthAcademy>, done: string): Promise<v
   }
 }
 
-function promote(player: YouthPlayer): void {
-  if (!academy.value) {
+function promote(): void {
+  const player = selected.value;
+  if (!academy.value || !player) {
     return;
   }
+  const teamId = academy.value.teamId;
   void run(
-    () =>
-      window.api.youth.promote({
-        teamId: academy.value!.teamId,
-        playerId: player.playerId
-      }),
+    () => window.api.youth.promote({ teamId, playerId: player.playerId }),
     `${player.playerName} sube al primer equipo.`
   );
 }
@@ -54,10 +82,8 @@ function upgrade(): void {
   if (!academy.value) {
     return;
   }
-  void run(
-    () => window.api.youth.upgrade({ teamId: academy.value!.teamId }),
-    'Obra encargada: la cantera sube de nivel.'
-  );
+  const teamId = academy.value.teamId;
+  void run(() => window.api.youth.upgrade({ teamId }), 'Obra encargada: la cantera sube de nivel.');
 }
 
 /** Cuánto le queda por crecer: es lo único que importa de un juvenil. */
@@ -67,110 +93,146 @@ function headroom(player: YouthPlayer): number {
 </script>
 
 <template>
-  <div v-if="academy" class="flex flex-col gap-5">
-    <AppPageHeader title="Cantera">
-      <span class="text-sm text-court-300">
-        Cada verano sale una hornada nueva; a los diecinueve, o suben o se van
-      </span>
-    </AppPageHeader>
-
-    <section class="grid grid-cols-4 gap-4">
-      <AppStat label="Instalaciones" tone="accent" boxed>
-        {{ academy.levelLabel }}
-        <template #note>Nivel {{ academy.level }} de 5</template>
-      </AppStat>
-      <AppStat label="Mantenimiento" size="md" boxed>
-        {{ formatMoney(academy.upkeepCents) }}
-        <template #note>al año, dentro del recibo del club</template>
-      </AppStat>
-      <AppStat label="Plantilla" size="md" boxed>
-        {{ academy.rosterSize }} / {{ academy.maxRoster }}
-        <template #note>
-          <span :class="academy.canPromote ? '' : 'text-warn-400'">
+  <div v-if="academy" class="flex flex-col gap-4">
+    <AppPanel>
+      <section class="grid grid-cols-4 gap-4">
+        <AppStat label="Instalaciones" size="md" boxed>
+          {{ academy.levelLabel }}
+          <template #note>
+            <span class="flex flex-col items-center gap-1">
+              <AppStars :value="academy.level" label="Instalaciones" />
+              Nivel {{ academy.level }} de 5
+            </span>
+          </template>
+        </AppStat>
+        <AppStat label="Mantenimiento" size="md" boxed>
+          {{ formatMoney(academy.upkeepCents) }}
+          <template #note>al año, dentro del recibo del club</template>
+        </AppStat>
+        <AppStat label="Plantilla" size="md" boxed>
+          {{ academy.rosterSize }} / {{ academy.maxRoster }}
+          <template #note>
+            <span :class="academy.canPromote ? '' : TONE_TEXT.warn">
+              {{
+                academy.canPromote
+                  ? 'Hay hueco para subir a alguien'
+                  : 'Sin hueco: no se puede promocionar'
+              }}
+            </span>
+          </template>
+        </AppStat>
+        <AppStat label="Mejorar" size="md" boxed>
+          {{
+            academy.upgradeCostCents === null ? 'Al máximo' : formatMoney(academy.upgradeCostCents)
+          }}
+          <template #note>
             {{
-              academy.canPromote
-                ? 'Hay hueco para subir a alguien'
-                : 'Sin hueco: no se puede promocionar'
+              academy.upgradeCostCents === null
+                ? 'Ya no hay obra que encargar'
+                : `lo que cuesta subir a nivel ${academy.level + 1}`
             }}
-          </span>
-        </template>
-      </AppStat>
-      <article class="flex flex-col justify-between rounded border border-court-700 p-4">
-        <p class="text-xs uppercase tracking-wide text-court-300">Mejorar</p>
-        <p v-if="academy.upgradeCostCents === null" class="mt-1 text-sm text-court-300">
-          Ya está al máximo.
-        </p>
-        <template v-else>
-          <p class="mt-1 text-lg">{{ formatMoney(academy.upgradeCostCents) }}</p>
-          <AppButton
-            variant="primary"
-            size="sm"
-            class="mt-2"
-            :disabled="busy || !academy.isManaged"
-            @click="upgrade"
-          >
-            Subir a nivel {{ academy.level + 1 }}
-          </AppButton>
-        </template>
-      </article>
-    </section>
+          </template>
+        </AppStat>
+      </section>
+    </AppPanel>
 
-    <div class="overflow-auto rounded border border-court-700">
-      <table class="data-table">
+    <AppPanel :hint="`Juveniles en la cantera: ${academy.players.length}`" flush>
+      <AppEmpty v-if="academy.players.length === 0">
+        No hay juveniles ahora mismo. La próxima hornada sale en verano.
+      </AppEmpty>
+      <table v-else class="data-table">
         <thead>
           <tr>
             <th>Jugador</th>
             <th>Pos</th>
             <th class="numeric">Edad</th>
             <th class="numeric">Altura</th>
-            <th class="numeric">Media</th>
-            <th class="numeric">Techo</th>
+            <th class="numeric">Med</th>
+            <th>Techo</th>
             <th class="numeric">Margen</th>
-            <th></th>
           </tr>
         </thead>
         <tbody>
-          <tr v-if="academy.players.length === 0">
-            <td colspan="8" class="text-court-300">
-              No hay juveniles ahora mismo. La próxima hornada sale en verano.
-            </td>
-          </tr>
-          <tr v-for="player in academy.players" :key="player.playerId">
+          <tr
+            v-for="player in academy.players"
+            :key="player.playerId"
+            class="cursor-pointer"
+            :class="selected?.playerId === player.playerId ? 'is-selected' : ''"
+            @click="selectedId = player.playerId"
+          >
             <td>
-              <span class="inline-flex items-center gap-2">
-                <AppAvatar kind="player" :seed="player.playerId" /><AppFlag
-                  :code="player.nationality"
-                />{{ player.playerName }}
-              </span>
+              <!-- El botón es lo que se alcanza con el teclado; el clic vale en toda la fila. -->
+              <button
+                type="button"
+                class="flex max-w-72 items-center gap-2 text-left"
+                :aria-pressed="selected?.playerId === player.playerId"
+                @click.stop="selectedId = player.playerId"
+              >
+                <AppAvatar
+                  kind="player"
+                  :seed="player.playerId"
+                  :name="player.playerName"
+                  :size="24"
+                />
+                <AppFlag :code="player.nationality" :label="nationName(player.nationality)" />
+                <PlayerName :name="player.playerName" />
+              </button>
             </td>
             <td>
-              <span class="text-ball-400">{{ player.position }}</span>
-              <span class="ml-1 text-xs text-court-600">
-                {{ POSITION_LABELS[player.position] }}
+              <span class="flex gap-1">
+                <PositionChip :position="player.position" />
+                <PositionChip
+                  v-if="player.secondaryPosition && player.secondaryPosition !== player.position"
+                  :position="player.secondaryPosition"
+                />
               </span>
             </td>
             <td class="numeric">{{ player.age }}</td>
-            <td class="numeric text-court-300">{{ formatHeight(player.heightCm) }}</td>
-            <td class="numeric">{{ player.overall }}</td>
-            <td class="numeric font-semibold text-ball-400">{{ player.potential }}</td>
-            <td class="numeric" :class="headroom(player) >= 20 ? 'text-good-400' : ''">
-              +{{ headroom(player) }}
+            <td class="numeric">{{ formatHeight(player.heightCm) }}</td>
+            <td class="numeric is-key">
+              <AppRing :value="player.overall" :size="28" />
             </td>
             <td>
-              <AppButton
-                size="sm"
-                :disabled="busy || !academy.canPromote || !academy.isManaged"
-                @click="promote(player)"
-              >
-                Promocionar
-              </AppButton>
+              <span class="flex items-center gap-2">
+                <AppStars :value="toStars(player.potential)" label="Techo" :size="12" />
+                <span class="figure font-bold">{{ player.potential }}</span>
+              </span>
+            </td>
+            <td class="numeric font-bold" :class="headroom(player) > 0 ? TONE_TEXT.good : ''">
+              +{{ headroom(player) }}
             </td>
           </tr>
         </tbody>
       </table>
-    </div>
+      <p class="px-3 py-2 text-xs text-tv-muted">
+        Cada verano sale una hornada nueva; a los diecinueve, o suben o se van.
+      </p>
+      <p
+        v-if="error || message"
+        role="status"
+        class="px-3 pb-3 text-sm font-semibold"
+        :class="error ? TONE_TEXT.bad : TONE_TEXT.good"
+      >
+        {{ error ?? message }}
+      </p>
+    </AppPanel>
 
-    <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>
-    <p v-else-if="message" class="text-sm text-good-400">{{ message }}</p>
+    <PageActions>
+      <AppButton
+        v-if="academy.upgradeCostCents !== null"
+        :disabled="busy || !academy.isManaged"
+        @click="upgrade"
+      >
+        Subir a nivel {{ academy.level + 1 }}
+      </AppButton>
+      <AppButton
+        variant="primary"
+        :disabled="busy || !selected || !academy.canPromote || !academy.isManaged"
+        :title="selected ? `Subir a ${selected.playerName} al primer equipo` : ''"
+        @click="promote"
+      >
+        Promocionar
+      </AppButton>
+    </PageActions>
   </div>
 </template>

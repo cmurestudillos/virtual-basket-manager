@@ -1,17 +1,22 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue';
 import type { DraftView } from '@shared/contracts/draft.contract';
-import { POSITION_LABELS } from '@shared/domain/positions';
+import { toStars } from '@shared/domain/stars';
 import { formatHeight, formatMoney } from '@renderer/shared/format';
 import {
-  AppAvatar,
   AppBadge,
   AppButton,
   AppEmpty,
   AppFlag,
   AppPanel,
-  AppSectionTitle
+  AppRing,
+  AppSectionTitle,
+  AppStars,
+  PlayerName,
+  PositionChip,
+  TONE_TEXT
 } from '@renderer/shared/ui';
+import PageActions from '@renderer/features/app-shell/components/PageActions.vue';
 
 /**
  * El draft: el orden con su lotería a un lado y los prospectos al otro.
@@ -19,6 +24,11 @@ import {
  * La IA elige hasta que le toca al usuario, que escoge con lo que ve su
  * ojeador. Nada obliga a terminarlo: lo que quede se elige solo al empezar la
  * temporada siguiente.
+ *
+ * Como la previsión del draft de IBM: los prospectos en la rejilla, con el
+ * puesto en su chip, la media en su aro y el potencial en estrellas. Avanzar,
+ * renunciar y terminar van en la barra de acciones de abajo; elegir, en la
+ * fila de cada prospecto.
  */
 
 const view = ref<DraftView | null>(null);
@@ -59,149 +69,165 @@ const rounds = computed(() =>
 
 <template>
   <div v-if="loaded" class="flex flex-col gap-4">
-    <AppEmpty v-if="!view">El draft sólo existe si se juega la liga americana.</AppEmpty>
+    <AppPanel v-if="!view" title="Draft">
+      <AppEmpty>El draft sólo existe si se juega la liga americana.</AppEmpty>
+    </AppPanel>
 
     <template v-else>
-      <section class="flex flex-wrap items-center gap-3 rounded border border-court-700 px-4 py-3">
-        <div class="flex-1">
-          <p v-if="view.status === 'waiting'" class="text-sm text-court-300">
+      <PageActions v-if="view.status === 'open'">
+        <AppButton v-if="!view.userOnTheClock" :disabled="busy" @click="run(simulateToUser)">
+          {{ view.userInLeague ? 'Avanzar hasta mi elección' : 'Avanzar' }}
+        </AppButton>
+        <AppButton v-if="view.userOnTheClock" :disabled="busy" @click="run(passPick)">
+          Renunciar a la elección
+        </AppButton>
+        <AppButton :disabled="busy" @click="run(simulateAll)">Terminar el draft</AppButton>
+      </PageActions>
+
+      <AppPanel :title="`Draft de la temporada ${view.seasonNumber}`" :hint="view.competitionName">
+        <div class="flex flex-col gap-1 text-sm">
+          <p v-if="view.status === 'waiting'" class="text-tv-muted">
             El draft se celebra al acabar la temporada de {{ view.competitionName }}: los que no
             llegan a playoffs sortean las cuatro primeras elecciones.
             <template v-if="view.picks.length > 0">
               Debajo, el de la temporada {{ view.seasonNumber }}.
             </template>
           </p>
-          <p v-else-if="view.status === 'done'" class="text-sm text-court-300">
+          <p v-else-if="view.status === 'done'" class="text-tv-muted">
             Draft de la temporada {{ view.seasonNumber }} terminado.
           </p>
-          <p v-else-if="view.onTheClock" class="text-sm">
+          <p v-else-if="view.onTheClock">
             En el reloj: elección {{ view.onTheClock.pick }} ·
-            <span :class="view.userOnTheClock ? 'text-ball-400' : ''">{{
-              view.onTheClock.teamName
-            }}</span>
-            <span v-if="view.userOnTheClock && view.rosterFull" class="ml-2 text-bad-400">
+            <span class="font-bold">{{ view.onTheClock.teamName }}</span>
+            <span
+              v-if="view.userOnTheClock && view.rosterFull"
+              class="ml-2 font-semibold"
+              :class="TONE_TEXT.bad"
+            >
               Tu plantilla está llena: libera a alguien en el mercado o renuncia.
             </span>
           </p>
-          <p v-if="view.userPickCost" class="text-sm text-court-300">
+          <p v-if="view.userPickCost" class="text-tv-muted">
             Tu novato cobrará {{ formatMoney(view.userPickCost.rookieWageCents) }} · la nómina pasa
             de {{ formatMoney(view.userPickCost.payrollCents) }} a
             {{ formatMoney(view.userPickCost.payrollAfterCents) }} (impuesto desde
             {{ formatMoney(view.userPickCost.taxLineCents) }})
-            <span v-if="view.userPickCost.projectedTaxCents > 0" class="text-bad-400">
+            <span
+              v-if="view.userPickCost.projectedTaxCents > 0"
+              class="font-semibold"
+              :class="TONE_TEXT.bad"
+            >
               · pagarías {{ formatMoney(view.userPickCost.projectedTaxCents) }} de impuesto
             </span>
           </p>
-          <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>
+          <p v-if="error" class="font-semibold" :class="TONE_TEXT.bad">{{ error }}</p>
         </div>
-        <template v-if="view.status === 'open'">
-          <AppButton v-if="!view.userOnTheClock" :disabled="busy" @click="run(simulateToUser)">
-            {{ view.userInLeague ? 'Avanzar hasta mi elección' : 'Avanzar' }}
-          </AppButton>
-          <AppButton
-            v-if="view.userOnTheClock"
-            variant="ghost"
-            :disabled="busy"
-            @click="run(passPick)"
-          >
-            Renunciar a la elección
-          </AppButton>
-          <AppButton variant="ghost" :disabled="busy" @click="run(simulateAll)">
-            Terminar el draft
-          </AppButton>
-        </template>
-      </section>
+      </AppPanel>
 
-      <div class="grid gap-4 xl:grid-cols-[22rem_1fr]">
-        <AppPanel title="Orden" flush scroll class="max-h-[42rem]">
-          <div class="overflow-auto">
-            <template v-for="round in rounds" :key="round.round">
-              <AppSectionTitle class="px-4 pt-3">{{ round.round }}ª ronda</AppSectionTitle>
-              <ul class="flex flex-col px-2 pb-2 text-sm">
-                <li
+      <div
+        v-if="view.picks.length > 0"
+        class="grid items-start gap-4"
+        :class="view.status === 'open' ? 'grid-cols-[20rem_minmax(0,1fr)]' : 'max-w-xl'"
+      >
+        <AppPanel title="Orden" flush scroll class="h-[calc(100vh-22rem)] min-h-72">
+          <template v-for="round in rounds" :key="round.round">
+            <AppSectionTitle size="xs">{{ round.round }}ª ronda</AppSectionTitle>
+            <table class="data-table">
+              <tbody>
+                <tr
                   v-for="pick in round.picks"
                   :key="pick.pick"
-                  class="grid grid-cols-[2rem_1fr] gap-2 rounded px-2 py-1"
-                  :class="[
-                    pick.isUser ? 'text-ball-400' : '',
-                    view.onTheClock?.pick === pick.pick ? 'bg-court-800' : ''
-                  ]"
+                  :class="pick.isUser ? 'is-mine' : ''"
                 >
-                  <span class="numeric text-court-300">{{ pick.pick }}</span>
-                  <span>
-                    {{ pick.teamName }}
-                    <AppBadge v-if="pick.lotteryWinner" tone="accent" class="ml-1"
-                      >lotería</AppBadge
+                  <td class="numeric w-10">
+                    <span
+                      v-if="view.onTheClock?.pick === pick.pick"
+                      class="figure inline-block min-w-6 bg-tv-blue px-1 text-center font-bold text-white"
+                      title="En el reloj"
                     >
-                    <span class="block text-xs text-court-300">
-                      <template v-if="pick.playerName">
-                        <AppFlag :code="pick.nationality" /> {{ pick.playerName }}
-                        <span v-if="pick.position">· {{ pick.position }}</span>
-                      </template>
-                      <template v-else-if="pick.passed">Renuncia</template>
+                      {{ pick.pick }}
                     </span>
-                  </span>
-                </li>
-              </ul>
-            </template>
-          </div>
+                    <template v-else>{{ pick.pick }}</template>
+                  </td>
+                  <td class="max-w-0">
+                    <span class="flex items-center gap-1.5">
+                      <span class="truncate" :title="pick.teamName">{{ pick.teamName }}</span>
+                      <AppBadge v-if="pick.lotteryWinner" tone="warn">lotería</AppBadge>
+                    </span>
+                    <span
+                      v-if="pick.playerName || pick.passed"
+                      class="flex items-center gap-1.5 text-xs text-tv-muted"
+                    >
+                      <template v-if="pick.playerName">
+                        <AppFlag :code="pick.nationality" />
+                        <PlayerName :name="pick.playerName" mode="initial" />
+                        <PositionChip v-if="pick.position" :position="pick.position" />
+                      </template>
+                      <template v-else>Renuncia</template>
+                    </span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </template>
         </AppPanel>
 
         <AppPanel
           v-if="view.status === 'open'"
           title="Prospectos"
-          :hint="`${view.prospects.length} disponibles · medias vistas por tu ojeador`"
+          :hint="`${view.prospects.length} disponibles · medias de tu ojeador`"
           flush
           scroll
-          class="max-h-[42rem]"
+          class="h-[calc(100vh-22rem)] min-h-72"
         >
-          <div class="overflow-auto">
-            <table class="data-table">
-              <thead>
-                <tr>
-                  <th>Jugador</th>
-                  <th>Puesto</th>
-                  <th class="numeric">Edad</th>
-                  <th class="numeric">Altura</th>
-                  <th class="numeric">Media</th>
-                  <th class="numeric">Potencial</th>
-                  <th></th>
-                </tr>
-              </thead>
-              <tbody>
-                <tr v-for="prospect in view.prospects" :key="prospect.playerId">
-                  <td>
-                    <span class="inline-flex items-center gap-2">
-                      <AppAvatar kind="player" :seed="prospect.playerId" />
-                      <AppFlag :code="prospect.nationality" />
-                      {{ prospect.name }}
-                    </span>
-                  </td>
-                  <td class="text-court-300">{{ POSITION_LABELS[prospect.position] }}</td>
-                  <td class="numeric">{{ prospect.age }}</td>
-                  <td class="numeric">{{ formatHeight(prospect.heightCm) }}</td>
-                  <td class="numeric font-semibold">
-                    {{ prospect.overall }}
-                    <span v-if="prospect.uncertainty > 0" class="text-xs text-court-300">
+          <table class="data-table">
+            <thead>
+              <tr>
+                <th>Jugador</th>
+                <th>Pos</th>
+                <th class="numeric">Edad</th>
+                <th class="numeric">Altura</th>
+                <th class="numeric">Media</th>
+                <th>Potencial</th>
+                <th><span class="sr-only">Elegir</span></th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="prospect in view.prospects" :key="prospect.playerId">
+                <td>
+                  <span class="flex items-center gap-2">
+                    <AppFlag :code="prospect.nationality" />
+                    <PlayerName :name="prospect.name" />
+                  </span>
+                </td>
+                <td><PositionChip :position="prospect.position" /></td>
+                <td class="numeric">{{ prospect.age }}</td>
+                <td class="numeric">{{ formatHeight(prospect.heightCm) }}</td>
+                <td class="numeric is-key py-0.5">
+                  <span class="inline-flex items-center gap-1">
+                    <AppRing :value="prospect.overall" :size="28" />
+                    <span v-if="prospect.uncertainty > 0" class="w-7 text-xs text-tv-muted">
                       ±{{ prospect.uncertainty }}
                     </span>
-                  </td>
-                  <td class="numeric">{{ prospect.potential }}</td>
-                  <td>
-                    <AppButton
-                      v-if="view.userOnTheClock"
-                      size="sm"
-                      variant="primary"
-                      :disabled="busy || view.rosterFull"
-                      @click="run(() => pickProspect(prospect.playerId))"
-                    >
-                      Elegir
-                    </AppButton>
-                  </td>
-                </tr>
-              </tbody>
-            </table>
-          </div>
+                  </span>
+                </td>
+                <td class="py-0.5">
+                  <AppStars :value="toStars(prospect.potential)" label="Potencial" :size="12" />
+                </td>
+                <td class="py-0.5">
+                  <AppButton
+                    v-if="view.userOnTheClock"
+                    size="sm"
+                    variant="primary"
+                    :disabled="busy || view.rosterFull"
+                    @click="run(() => pickProspect(prospect.playerId))"
+                  >
+                    Elegir
+                  </AppButton>
+                </td>
+              </tr>
+            </tbody>
+          </table>
         </AppPanel>
       </div>
     </template>

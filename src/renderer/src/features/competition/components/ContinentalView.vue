@@ -1,15 +1,25 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import type { ContinentalSummary, ContinentalView } from '@shared/contracts/season.contract';
-import { AppEmpty, AppPanel, AppSectionTitle, AppTabs } from '@renderer/shared/ui';
+import { AppEmpty, AppPanel, AppSelect } from '@renderer/shared/ui';
+import { useGameStateStore } from '@renderer/shared/game-state.store';
+import PageToolbar from '@renderer/features/app-shell/components/PageToolbar.vue';
+import BracketColumns from '@renderer/features/competition/components/BracketColumns.vue';
+import ChampionBanner from '@renderer/features/competition/components/ChampionBanner.vue';
 import SeriesCard from '@renderer/features/competition/components/SeriesCard.vue';
+import StandingsTable from '@renderer/features/competition/components/StandingsTable.vue';
 
 /**
- * Europa —o América— en una pantalla: la tabla de la fase de liga arriba y el
- * cuadro debajo. Se leen juntas porque una explica a la otra: la tabla dice
- * quién va a entrar en el cuadro y el cuadro dice qué pasó después.
+ * Europa —o América— en una pantalla: la tabla de la fase de liga a la
+ * izquierda y el cuadro a la derecha. Se leen juntas porque una explica a la
+ * otra: la tabla dice quién va a entrar en el cuadro y el cuadro dice qué pasó
+ * después.
+ *
+ * Qué competición se mira se elige en la barra de sección, con el selector
+ * negro, como la liga en el resto de pestañas.
  */
 
+const store = useGameStateStore();
 const competitions = ref<ContinentalSummary[]>([]);
 const selected = ref<string | null>(null);
 const view = ref<ContinentalView | null>(null);
@@ -18,8 +28,16 @@ const loaded = ref(false);
 const options = computed(() =>
   competitions.value.map((row) => ({
     id: row.competitionId,
-    label: row.name,
-    hint: row.involvesManaged ? ' · juegas' : ''
+    label: row.involvesManaged ? `${row.name} · juegas` : row.name
+  }))
+);
+
+const columns = computed(() =>
+  (view.value?.knockout.rounds ?? []).map((round) => ({
+    key: round.round,
+    title: round.name,
+    note: round.bestOf > 1 ? `Al mejor de ${round.bestOf}` : 'Partido único',
+    items: round.series
   }))
 );
 
@@ -41,78 +59,51 @@ async function load(): Promise<void> {
 </script>
 
 <template>
+  <PageToolbar>
+    <AppSelect
+      v-if="options.length > 1"
+      :model-value="selected ?? ''"
+      :options="options"
+      label="Competición continental"
+      class="max-w-56 min-w-28!"
+      @update:model-value="selected = $event"
+    />
+  </PageToolbar>
+
   <div v-if="loaded" class="flex flex-col gap-4">
-    <AppEmpty v-if="!view">
-      Las competiciones continentales se sortean al empezar la temporada, con los mejores clubes de
-      cada liga del continente. Hace falta un pabellón a la altura para entrar en la primera.
-    </AppEmpty>
+    <AppPanel v-if="!view" title="Competiciones continentales">
+      <AppEmpty>
+        Las competiciones continentales se sortean al empezar la temporada, con los mejores clubes
+        de cada liga del continente. Hace falta un pabellón a la altura para entrar en la primera.
+      </AppEmpty>
+    </AppPanel>
 
     <template v-else>
-      <AppTabs
-        v-if="options.length > 1"
-        :model-value="selected ?? ''"
-        :options="options"
-        variant="pills"
-        @update:model-value="selected = $event"
+      <ChampionBanner
+        v-if="view.championTeamName"
+        :label="`Campeón de ${view.name}`"
+        :team-id="view.championTeamId"
+        :team-name="view.championTeamName"
+        :mine="view.championTeamId === store.state?.teamId"
       />
 
-      <p v-if="view.championTeamName" class="text-lg">
-        <span class="text-court-300">Campeón de {{ view.name }}:</span>
-        <span class="ml-2 font-semibold text-ball-400">{{ view.championTeamName }}</span>
-      </p>
+      <div class="grid grid-cols-[30rem_minmax(0,1fr)] items-start gap-4">
+        <AppPanel :title="`${view.name} · fase de liga`" hint="Pasan los ocho primeros" flush>
+          <StandingsTable :rows="view.group" />
+        </AppPanel>
 
-      <AppPanel title="Fase de liga" hint="pasan los ocho primeros" flush>
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th class="numeric">#</th>
-              <th>Equipo</th>
-              <th class="numeric">J</th>
-              <th class="numeric">G</th>
-              <th class="numeric">P</th>
-              <th class="numeric">Dif</th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr
-              v-for="row in view.group"
-              :key="row.teamId"
-              :class="row.isManaged ? 'bg-court-800 text-ball-400' : ''"
-            >
-              <td
-                class="numeric border-l-4"
-                :class="row.zone === 'playoffs' ? 'border-ball-500' : 'border-transparent'"
-              >
-                {{ row.position }}
-              </td>
-              <td>{{ row.teamName }}</td>
-              <td class="numeric">{{ row.played }}</td>
-              <td class="numeric font-semibold">{{ row.won }}</td>
-              <td class="numeric">{{ row.lost }}</td>
-              <td class="numeric" :class="row.pointsDifference >= 0 ? 'text-good-400' : ''">
-                {{ row.pointsDifference > 0 ? '+' : '' }}{{ row.pointsDifference }}
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </AppPanel>
-
-      <AppEmpty v-if="view.knockout.rounds.length === 0">
-        El cuadro se monta al acabar la fase de liga: cuartos al mejor de tres y Final Four a
-        partido único en sede neutral.
-      </AppEmpty>
-
-      <section v-for="round in view.knockout.rounds" :key="round.round" class="flex flex-col gap-2">
-        <AppSectionTitle
-          :hint="round.bestOf > 1 ? `· al mejor de ${round.bestOf}` : '· a partido único'"
-        >
-          {{ round.name }}
-        </AppSectionTitle>
-
-        <ul class="grid gap-2 md:grid-cols-2">
-          <SeriesCard v-for="series in round.series" :key="series.seriesId" :series="series" />
-        </ul>
-      </section>
+        <AppPanel v-if="columns.length === 0" title="Cuadro">
+          <AppEmpty>
+            El cuadro se monta al acabar la fase de liga: cuartos al mejor de tres y Final Four a
+            partido único en sede neutral.
+          </AppEmpty>
+        </AppPanel>
+        <BracketColumns v-else :columns="columns" :item-key="(series) => series.seriesId">
+          <template #item="{ item }">
+            <SeriesCard :series="item" />
+          </template>
+        </BracketColumns>
+      </div>
     </template>
   </div>
 </template>

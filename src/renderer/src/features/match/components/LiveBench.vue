@@ -16,8 +16,14 @@ import { computed, ref } from 'vue';
 import type { LiveBenchPlayer } from '@shared/contracts/match.contract';
 import { POSITION_ABBREVIATIONS } from '@shared/domain/positions';
 import { formatPlayedMinutes } from '@renderer/shared/format';
-import { AppAvatar, AppFlag, toneForLevel } from '@renderer/shared/ui';
-import BroadcastButton from './BroadcastButton.vue';
+import {
+  AppAvatar,
+  AppButton,
+  AppFlag,
+  RATING_CHIP,
+  TONE_TEXT,
+  bandForValue
+} from '@renderer/shared/ui';
 
 const props = defineProps<{
   onCourt: readonly LiveBenchPlayer[];
@@ -51,24 +57,16 @@ function pickIncoming(player: LiveBenchPlayer): void {
   outgoing.value = null;
 }
 
-/** Los tonos del kit, traducidos a la piel clara de la retransmisión. */
-const TV_TONE = {
-  good: 'text-tv-green',
-  warn: 'text-amber-600',
-  bad: 'text-tv-red',
-  neutral: 'text-tv-muted',
-  accent: 'text-tv-blue'
-} as const;
-
+/** Las piernas, en su cajita del color de la escala de 0 a 100. */
 function legsTone(player: LiveBenchPlayer): string {
-  return TV_TONE[toneForLevel(player.freshness)];
+  return RATING_CHIP[bandForValue(player.freshness)];
 }
 
 /** Las faltas sólo cantan cuando empiezan a pesar. */
 function foulsTone(player: LiveBenchPlayer): string {
-  if (player.fouledOut) return TV_TONE.bad;
-  if (player.fouls >= 4) return TV_TONE.warn;
-  return TV_TONE.neutral;
+  if (player.fouledOut) return TONE_TEXT.bad;
+  if (player.fouls >= 4) return `${TONE_TEXT.warn} font-bold`;
+  return TONE_TEXT.neutral;
 }
 </script>
 
@@ -78,13 +76,13 @@ function foulsTone(player: LiveBenchPlayer): string {
       <p class="text-sm text-tv-muted">
         {{ autoRotation ? 'Los cambios los hace el motor.' : 'Los cambios los haces tú.' }}
       </p>
-      <BroadcastButton
-        :variant="autoRotation ? 'primary' : 'muted'"
+      <AppButton
+        :variant="autoRotation ? 'primary' : 'secondary'"
         :disabled="disabled"
         @click="emit('autoRotation', !autoRotation)"
       >
         {{ autoRotation ? 'Coger el mando' : 'Devolver al motor' }}
-      </BroadcastButton>
+      </AppButton>
     </div>
 
     <p v-if="refusal" class="border-l-4 border-tv-red bg-white px-3 py-2 text-xs text-tv-red">
@@ -120,7 +118,7 @@ function foulsTone(player: LiveBenchPlayer): string {
           <span class="figure w-8 text-right text-xs" :class="foulsTone(player)">
             {{ player.fouls }}f
           </span>
-          <span class="figure w-8 text-right text-xs font-semibold" :class="legsTone(player)">
+          <span class="figure w-8 py-0.5 text-center text-xs font-bold" :class="legsTone(player)">
             {{ player.freshness }}
           </span>
         </button>
@@ -157,7 +155,7 @@ function foulsTone(player: LiveBenchPlayer): string {
             <span class="figure w-8 text-right text-xs" :class="foulsTone(player)">
               {{ player.fouls }}f
             </span>
-            <span class="figure w-8 text-right text-xs font-semibold" :class="legsTone(player)">
+            <span class="figure w-8 py-0.5 text-center text-xs font-bold" :class="legsTone(player)">
               {{ player.freshness }}
             </span>
           </template>

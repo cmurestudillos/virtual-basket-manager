@@ -1,30 +1,50 @@
 <script setup lang="ts">
-import { AppAvatar, AppFlag } from '@renderer/shared/ui';
-import { onMounted, watch } from 'vue';
+/**
+ * El marco del juego, a imagen de IBM 23: barra de arriba con CONTINUAR
+ * (`GameTopBar`), barra lateral de iconos (`GameRail`), barra de sección con
+ * pestañas (`SectionBar`), la pantalla y, si la pantalla trae botones, la barra
+ * de acciones de abajo (`ActionBar`).
+ *
+ *   ┌──────────────────────────────────────────────┐  72 px
+ *   │ escudo · equipo y caja · entrenador · fecha · CONTINUAR
+ *   ├────┬─────────────────────────────────────────┤  50 px
+ *   │    │ SECCIÓN | pestañas            controles │
+ *   │ ic ├─────────────────────────────────────────┤
+ *   │ on │ la pantalla (con su propio scroll)      │
+ *   │ os ├─────────────────────────────────────────┤  55 px, si hay acciones
+ *   │    │                               acciones  │
+ *   └────┴─────────────────────────────────────────┘
+ *
+ * El marco no se desplaza: sólo la zona de la pantalla, sobre el fondo liso
+ * `tv-canvas` (el morado con franjas es para el menú, el asistente y los vacíos).
+ *
+ * Las pantallas meten cosas en las barras con `PageToolbar` (pestañas propias o
+ * controles en la barra de sección) y `PageActions` (botones abajo): un
+ * `Teleport` a los huecos con id que pintan `SectionBar` y `ActionBar`. Ver
+ * `features/app-shell/page-chrome.ts`. Las secciones y sus pestañas están en
+ * `features/app-shell/sections.ts`.
+ */
+import { onMounted, provide, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
-import { formatGameDate } from '@renderer/shared/format';
 import { useInboxStore } from '@renderer/features/inbox/inbox.store';
+import { useContinueStore } from '@renderer/features/season/continue.store';
+import { PAGE_CHROME } from '@renderer/features/app-shell/page-chrome';
+import GameTopBar from '@renderer/features/app-shell/components/GameTopBar.vue';
+import GameRail from '@renderer/features/app-shell/components/GameRail.vue';
+import SectionBar from '@renderer/features/app-shell/components/SectionBar.vue';
+import ActionBar from '@renderer/features/app-shell/components/ActionBar.vue';
+import AdvanceDaysModal from '@renderer/features/app-shell/components/AdvanceDaysModal.vue';
 
 const store = useGameStateStore();
 const inbox = useInboxStore();
+const continuing = useContinueStore();
 const router = useRouter();
 const route = useRoute();
 
-const sections = [
-  { name: 'dashboard', label: 'Club' },
-  { name: 'inbox', label: 'Bandeja' },
-  { name: 'squad', label: 'Plantilla' },
-  { name: 'lineup', label: 'Alineación' },
-  { name: 'training', label: 'Entrenamiento' },
-  { name: 'youth', label: 'Cantera' },
-  { name: 'stats', label: 'Estadísticas' },
-  { name: 'market', label: 'Mercado' },
-  { name: 'finances', label: 'Finanzas' },
-  { name: 'competition', label: 'Competición' },
-  { name: 'national', label: 'Selecciones' },
-  { name: 'history', label: 'Historial' }
-];
+/** Cuántas `PageActions` hay montadas: con ninguna, la barra de abajo no se ve. */
+const actions = ref(0);
+provide(PAGE_CHROME, { actions });
 
 onMounted(async () => {
   await store.refresh();
@@ -34,7 +54,7 @@ onMounted(async () => {
     await router.replace({ name: 'main-menu' });
     return;
   }
-  await inbox.refresh();
+  await Promise.all([inbox.refresh(), continuing.refresh()]);
 });
 
 // El contador se pone al día cuando puede haber pasado algo: al moverse el reloj
@@ -44,68 +64,36 @@ watch(
   () => store.state?.currentDate,
   () => void inbox.refresh()
 );
+// Y CONTINUAR, que depende de la carrera y del consejo: una pantalla puede
+// cambiarlos (dimitir desde el historial, firmar desde el club). A mitad de un
+// avance no hace falta: el propio avance relee todo al acabar.
 watch(
   () => route.fullPath,
-  () => void inbox.refresh()
+  () => {
+    void inbox.refresh();
+    if (store.state && !continuing.busy) {
+      void continuing.refresh();
+    }
+  }
 );
 </script>
 
 <template>
-  <div class="grid h-screen grid-cols-[13rem_1fr] grid-rows-[3.5rem_1fr]">
-    <header
-      class="col-span-2 flex items-center justify-between border-b border-court-700 bg-court-900 px-5"
-    >
-      <div class="flex items-center gap-3">
-        <span class="text-lg font-semibold text-ball-500">{{
-          store.state?.teamName ?? 'Sin equipo'
-        }}</span>
-        <span v-if="store.state" class="inline-flex items-center gap-2 text-sm text-court-300">
-          <AppAvatar kind="coach" :seed="store.state.managerName" :size="24" />
-          <AppFlag :code="store.state.managerNationality" />
-          {{ store.state.managerName }}
-        </span>
-      </div>
-      <div class="flex items-center gap-4 text-sm text-court-300">
-        <span v-if="store.state">Temporada {{ store.state.seasonNumber }}</span>
-        <span v-if="store.state">{{ formatGameDate(store.state.currentDate) }}</span>
-      </div>
-    </header>
+  <div
+    class="grid h-screen grid-cols-[48px_minmax(0,1fr)] grid-rows-[72px_50px_minmax(0,1fr)_auto] bg-tv-canvas text-white"
+  >
+    <GameTopBar class="col-span-2" />
+    <GameRail class="row-span-3" />
+    <SectionBar />
 
-    <nav class="flex flex-col gap-1 border-r border-court-700 bg-court-900 p-3">
-      <RouterLink
-        v-for="section in sections"
-        :key="section.name"
-        :to="{ name: section.name }"
-        class="rounded px-3 py-2 text-sm text-court-300 hover:bg-court-800 hover:text-court-100"
-        active-class="bg-court-800 text-ball-400"
-      >
-        <span class="flex items-center justify-between">
-          {{ section.label }}
-          <span
-            v-if="section.name === 'inbox' && inbox.unread > 0"
-            class="rounded-full bg-ball-500 px-1.5 text-xs font-semibold text-court-950"
-          >
-            {{ inbox.unread }}
-          </span>
-        </span>
-      </RouterLink>
-
-      <RouterLink
-        :to="{ name: 'settings' }"
-        class="mt-auto rounded px-3 py-2 text-sm text-court-300 hover:bg-court-800"
-      >
-        Ajustes
-      </RouterLink>
-      <RouterLink
-        :to="{ name: 'main-menu' }"
-        class="rounded px-3 py-2 text-sm text-court-300 hover:bg-court-800"
-      >
-        Salir al menú
-      </RouterLink>
-    </nav>
-
-    <main class="overflow-auto p-6">
+    <!-- La barra de desplazamiento, oscura: la clara de serie sobre `tv-canvas` es un borrón blanco. -->
+    <main class="overflow-auto p-4 [scrollbar-color:var(--color-tv-muted)_transparent]">
       <RouterView />
     </main>
+
+    <!-- `v-show` y no `v-if`: el hueco tiene que existir para que llegue el Teleport. -->
+    <ActionBar v-show="actions > 0" />
+
+    <AdvanceDaysModal />
   </div>
 </template>

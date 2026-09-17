@@ -1,18 +1,55 @@
 <script setup lang="ts">
+/**
+ * El mercado: fichar, renovar y ceder.
+ *
+ * La pantalla lleva la conversación con el proceso principal y el estado de la
+ * negociación; lo que se ve está en `features/market/components/`. Las pestañas
+ * (Fichar, Contratos, Cesiones) y los filtros de la búsqueda van en la barra de
+ * sección, como en IBM; la barra negra de arriba dice qué ventana hay y lo que
+ * limita lo que se puede hacer en ella.
+ *
+ * El mensaje de la última operación va al final a propósito: el arnés lee la
+ * respuesta a una oferta en el último párrafo de la pantalla.
+ */
 import { computed, onMounted, ref } from 'vue';
-import { UNHAPPY_MORALE, moraleLabel } from '@shared/domain/morale';
 import type {
   ContractEntry,
   LoanEntry,
   MarketPlayer,
   MarketStatus
 } from '@shared/contracts/market.contract';
-import { MAX_CONTRACT_YEARS, MIN_CONTRACT_YEARS } from '@shared/domain/market';
-import { POSITIONS, type Position } from '@shared/domain/positions';
+import { type Position, POSITION_LABELS, POSITIONS } from '@shared/domain/positions';
 import { formatMoney } from '@renderer/shared/format';
-import { AppAvatar, AppButton, AppFlag, AppPageHeader, AppTabs } from '@renderer/shared/ui';
+import {
+  AppButton,
+  AppCheckbox,
+  AppInput,
+  AppModal,
+  AppSelect,
+  AppTabs,
+  TONE_TEXT,
+  type SelectOption
+} from '@renderer/shared/ui';
+import PageToolbar from '@renderer/features/app-shell/components/PageToolbar.vue';
+import MarketStatusBar from '../components/MarketStatusBar.vue';
+import OfferPanel from '../components/OfferPanel.vue';
+import MarketSearchTable from '../components/MarketSearchTable.vue';
+import ContractsTable from '../components/ContractsTable.vue';
+import LoansTable from '../components/LoansTable.vue';
 
 type Tab = 'search' | 'contracts' | 'loans';
+
+const TABS: { id: Tab; label: string }[] = [
+  { id: 'search', label: 'Fichar' },
+  { id: 'contracts', label: 'Contratos' },
+  { id: 'loans', label: 'Cesiones' }
+];
+
+/** El puesto en español, como en todo el juego; vacío es «todos». */
+const POSITION_OPTIONS: SelectOption[] = [
+  { id: '', label: 'Todos los puestos' },
+  ...POSITIONS.map((pos) => ({ id: pos, label: POSITION_LABELS[pos] }))
+];
 
 const tab = ref<Tab>('search');
 const status = ref<MarketStatus | null>(null);
@@ -64,6 +101,16 @@ async function runSearch(): Promise<void> {
     maxFeeCents: null,
     limit: 40
   });
+}
+
+function filterByPosition(value: string): void {
+  position.value = value as Position | '';
+  void runSearch();
+}
+
+function filterByFreeAgents(value: boolean): void {
+  freeAgentsOnly.value = value;
+  void runSearch();
 }
 
 /**
@@ -174,7 +221,15 @@ async function loanIn(player: MarketPlayer): Promise<void> {
   }
 }
 
+/**
+ * El contrato que se va a rescindir, a la espera de que se confirme. Rescindir
+ * cuesta dinero y no tiene vuelta atrás: se pregunta antes, igual que en la ficha
+ * del jugador.
+ */
+const releasing = ref<ContractEntry | null>(null);
+
 async function release(entry: ContractEntry): Promise<void> {
+  releasing.value = null;
   busy.value = true;
   error.value = null;
   try {
@@ -190,327 +245,117 @@ async function release(entry: ContractEntry): Promise<void> {
 </script>
 
 <template>
-  <div v-if="status" class="flex flex-col gap-4">
-    <AppPageHeader title="Mercado">
-      <span :class="status.isOpen ? 'text-sm text-ball-400' : 'text-sm text-court-300'">
-        {{ status.windowLabel }}
-      </span>
-      <span class="ml-auto text-sm text-court-300">
-        Caja {{ formatMoney(status.balanceCents) }} · plantilla {{ status.rosterSize }}/{{
-          status.maxRoster
-        }}
-        <template v-if="status.salaryCap">
-          · nómina {{ formatMoney(status.seasonWagesCents) }} · tope
-          {{ formatMoney(status.salaryCap.capCents) }} · impuesto desde
-          {{ formatMoney(status.salaryCap.taxLineCents) }}
-          <span v-if="status.salaryCap.projectedTaxCents > 0" class="text-bad-400">
-            (pagarías {{ formatMoney(status.salaryCap.projectedTaxCents) }})
-          </span>
-        </template>
-        <template v-else>
-          · formación
-          <span :class="status.homegrownInSquad <= status.minHomegrown ? 'text-line-500' : ''">
-            {{ status.homegrownInSquad }}/{{ status.minHomegrown }}
-          </span>
-          · nóminas {{ formatMoney(status.seasonWagesCents) }} de
-          {{ formatMoney(status.wageCeilingCents) }}
-        </template>
-      </span>
-    </AppPageHeader>
-    <p v-if="status.salaryCap" class="-mt-2 text-xs text-court-300">
+  <!-- Alto de la zona de la pantalla: las tablas se desplazan dentro de su panel. -->
+  <div v-if="status" class="flex h-full min-h-0 flex-col gap-3">
+    <PageToolbar place="tabs">
+      <AppTabs :model-value="tab" :options="TABS" @update:model-value="tab = $event as Tab" />
+    </PageToolbar>
+
+    <PageToolbar v-if="tab === 'search'">
+      <AppSelect
+        :model-value="position"
+        :options="POSITION_OPTIONS"
+        label="Puesto"
+        @update:model-value="filterByPosition"
+      />
+      <label
+        class="flex items-center gap-2 text-xs font-bold uppercase tracking-wide text-white/70"
+      >
+        Edad máx.
+        <AppInput
+          v-model="maxAge"
+          type="number"
+          min="16"
+          max="45"
+          placeholder="—"
+          class="w-16"
+          @change="runSearch"
+        />
+      </label>
+      <AppCheckbox
+        :model-value="freeAgentsOnly"
+        class="text-white"
+        @update:model-value="filterByFreeAgents"
+      >
+        Sólo agentes libres
+      </AppCheckbox>
+    </PageToolbar>
+
+    <MarketStatusBar :status="status" />
+    <p v-if="status.salaryCap" class="-mt-1 text-xs text-white/70">
       Tope salarial blando: por debajo del tope se firma lo que quepa; por encima, sólo contratos
       mínimos ({{ formatMoney(status.salaryCap.minimumCents) }}). Renovar a los tuyos no cuenta,
       pero la nómina por encima del umbral paga impuesto de lujo al cerrar la temporada.
     </p>
 
-    <AppTabs
-      :model-value="tab"
-      :options="[
-        { id: 'search' as Tab, label: 'Fichar' },
-        { id: 'contracts' as Tab, label: 'Contratos' },
-        { id: 'loans' as Tab, label: 'Cesiones' }
-      ]"
-      @update:model-value="tab = $event as Tab"
-    />
-
     <template v-if="tab === 'search'">
-      <!-- Filtros -->
-      <section class="flex flex-wrap items-end gap-3 rounded border border-court-700 p-4">
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="text-court-300">Puesto</span>
-          <select
-            v-model="position"
-            class="rounded border border-court-600 bg-court-900 px-3 py-1"
-            @change="runSearch"
-          >
-            <option value="">Todos</option>
-            <option v-for="pos in POSITIONS" :key="pos" :value="pos">{{ pos }}</option>
-          </select>
-        </label>
-        <label class="flex flex-col gap-1 text-sm">
-          <span class="text-court-300">Edad máxima</span>
-          <input
-            v-model.number="maxAge"
-            type="number"
-            min="16"
-            max="45"
-            class="w-24 rounded border border-court-600 bg-court-900 px-3 py-1"
-            @change="runSearch"
-          />
-        </label>
-        <label class="flex items-center gap-2 text-sm">
-          <input
-            v-model="freeAgentsOnly"
-            type="checkbox"
-            class="accent-ball-500"
-            @change="runSearch"
-          />
-          <span>Sólo agentes libres</span>
-        </label>
-        <span class="ml-auto text-xs text-court-600">
-          Lo que ves de un jugador de fuera lleva el margen de tu ojeador
-        </span>
-      </section>
-
-      <!-- Oferta en curso -->
-      <section v-if="target" class="rounded border border-ball-600 p-4">
-        <div class="flex flex-wrap items-end gap-4">
-          <div>
-            <p class="text-xs uppercase tracking-wide text-court-300">Oferta por</p>
-            <p class="text-lg">
-              <AppFlag :code="target.nationality" /> {{ target.playerName }}
-              <span class="text-sm text-court-300">
-                {{ target.position }} · {{ target.age }} años ·
-                {{ target.teamName ?? 'agente libre' }}
-              </span>
-            </p>
-          </div>
-          <label class="flex flex-col gap-1 text-sm">
-            <span class="text-court-300">Traspaso (€)</span>
-            <input
-              v-model.number="feeEuros"
-              type="number"
-              min="0"
-              :disabled="target.isFreeAgent"
-              class="w-40 rounded border border-court-600 bg-court-900 px-3 py-1 disabled:opacity-40"
-            />
-          </label>
-          <label class="flex flex-col gap-1 text-sm">
-            <span class="text-court-300">Ficha anual (€)</span>
-            <input
-              v-model.number="wageEuros"
-              type="number"
-              min="0"
-              class="w-40 rounded border border-court-600 bg-court-900 px-3 py-1"
-            />
-          </label>
-          <label class="flex flex-col gap-1 text-sm">
-            <span class="text-court-300">Años</span>
-            <input
-              v-model.number="years"
-              type="number"
-              :min="MIN_CONTRACT_YEARS"
-              :max="MAX_CONTRACT_YEARS"
-              class="w-20 rounded border border-court-600 bg-court-900 px-3 py-1"
-            />
-          </label>
-          <AppButton
-            variant="primary"
-            :disabled="busy || !status.isOpen || !canAfford"
-            @click="submitOffer"
-          >
-            Ofertar
-          </AppButton>
-          <AppButton @click="target = null"> Cancelar </AppButton>
-        </div>
-        <p v-if="!canAfford" class="mt-2 text-sm text-line-500">No hay tanto dinero en caja.</p>
-        <div v-if="counterOffer !== null" class="mt-3 flex items-center gap-3">
-          <span class="text-sm text-court-300">
-            El club se lo dejaría en {{ formatMoney(counterOffer) }}.
-          </span>
-          <AppButton variant="primary" size="sm" :disabled="busy" @click="acceptCounter">
-            Aceptar contraoferta
-          </AppButton>
-        </div>
-        <p class="mt-2 text-xs text-court-600">
-          Margen de nómina antes del tope: {{ formatMoney(wageHeadroom) }}
-        </p>
-      </section>
-
-      <div class="overflow-auto rounded border border-court-700">
-        <table class="data-table">
-          <thead>
-            <tr>
-              <th>Jugador</th>
-              <th>Equipo</th>
-              <th>Pos</th>
-              <th class="numeric">Edad</th>
-              <th class="numeric">Media</th>
-              <th class="numeric">Techo</th>
-              <th class="numeric">Contrato</th>
-              <th class="numeric">Traspaso</th>
-              <th class="numeric">Ficha</th>
-              <th></th>
-            </tr>
-          </thead>
-          <tbody>
-            <tr v-if="results.length === 0">
-              <td colspan="10" class="text-court-300">Nadie encaja con esos filtros.</td>
-            </tr>
-            <tr v-for="player in results" :key="player.playerId">
-              <td>
-                <RouterLink
-                  :to="{ name: 'player', params: { playerId: player.playerId } }"
-                  class="inline-flex items-center gap-2 hover:text-ball-400"
-                >
-                  <AppAvatar kind="player" :seed="player.playerId" />
-                  <AppFlag :code="player.nationality" />
-                  {{ player.playerName }}
-                </RouterLink>
-              </td>
-              <td class="text-court-300">{{ player.teamName ?? 'Libre' }}</td>
-              <td class="text-ball-400">{{ player.position }}</td>
-              <td class="numeric">{{ player.age }}</td>
-              <td class="numeric font-semibold">
-                {{ player.overall
-                }}<span class="text-xs text-court-600">±{{ player.uncertainty }}</span>
-              </td>
-              <td class="numeric text-court-300">{{ player.potential }}</td>
-              <td class="numeric text-court-300">
-                {{ player.contractYearsLeft }}
-                {{ player.contractYearsLeft === 1 ? 'año' : 'años' }}
-              </td>
-              <td class="numeric">
-                {{ player.isFreeAgent ? '—' : formatMoney(player.askingPriceCents) }}
-              </td>
-              <td class="numeric text-court-300">{{ formatMoney(player.wageDemandCents) }}</td>
-              <td>
-                <AppButton size="sm" :disabled="!status.isOpen" @click="openOffer(player)">
-                  Ofertar
-                </AppButton>
-                <AppButton
-                  v-if="!player.isFreeAgent"
-                  size="sm"
-                  class="ml-1"
-                  :disabled="!status.isOpen || busy"
-                  @click="loanIn(player)"
-                >
-                  Pedir cedido
-                </AppButton>
-              </td>
-            </tr>
-          </tbody>
-        </table>
-      </div>
+      <OfferPanel
+        v-if="target"
+        v-model:fee="feeEuros"
+        v-model:wage="wageEuros"
+        v-model:years="years"
+        :target="target"
+        :open="status.isOpen"
+        :busy="busy"
+        :can-afford="canAfford"
+        :counter-offer="counterOffer"
+        :wage-headroom-cents="wageHeadroom"
+        @submit="submitOffer"
+        @cancel="target = null"
+        @accept-counter="acceptCounter"
+      />
+      <MarketSearchTable
+        :players="results"
+        :open="status.isOpen"
+        :busy="busy"
+        @offer="openOffer"
+        @loan-in="loanIn"
+      />
     </template>
 
-    <div v-else-if="tab === 'contracts'" class="overflow-auto rounded border border-court-700">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Jugador</th>
-            <th>Pos</th>
-            <th class="numeric">Edad</th>
-            <th class="numeric">Media</th>
-            <th class="numeric">Ficha</th>
-            <th class="numeric">Le queda</th>
-            <th class="numeric">Renovar por</th>
-            <th class="numeric">Rescindir</th>
-            <th></th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-for="entry in contracts" :key="entry.playerId">
-            <td>
-              <span class="inline-flex items-center gap-2">
-                <AppAvatar kind="player" :seed="entry.playerId" /><AppFlag
-                  :code="entry.nationality"
-                />{{ entry.playerName }}
-              </span>
-              <span v-if="entry.isHomegrown" class="ml-1 text-xs text-good-400">form.</span>
-              <span v-if="entry.isOnLoan" class="ml-1 text-xs text-court-600">cedido aquí</span>
-              <span
-                v-if="entry.morale < UNHAPPY_MORALE"
-                class="ml-1 text-xs"
-                :class="entry.refusesRenewal ? 'text-bad-400' : 'text-line-500'"
-              >
-                {{ moraleLabel(entry.morale).toLowerCase() }}
-              </span>
-            </td>
-            <td class="text-ball-400">{{ entry.position }}</td>
-            <td class="numeric">{{ entry.age }}</td>
-            <td class="numeric font-semibold">{{ entry.overall }}</td>
-            <td class="numeric">{{ formatMoney(entry.wageCents) }}</td>
-            <td class="numeric" :class="entry.contractYearsLeft <= 1 ? 'text-line-500' : ''">
-              {{ entry.contractYearsLeft }}
-              {{ entry.contractYearsLeft === 1 ? 'año' : 'años' }}
-            </td>
-            <td class="numeric text-court-300">{{ formatMoney(entry.renewalWageCents) }}</td>
-            <td class="numeric text-court-300">{{ formatMoney(entry.releaseCostCents) }}</td>
-            <td>
-              <AppButton
-                size="sm"
-                :disabled="busy || entry.refusesRenewal"
-                :title="entry.refusesRenewal ? 'Está enfadado: no quiere renovar' : ''"
-                @click="renew(entry)"
-              >
-                Renovar
-              </AppButton>
-              <AppButton
-                size="sm"
-                class="ml-1"
-                :disabled="busy || entry.isOnLoan"
-                @click="loanOut(entry)"
-              >
-                Ceder
-              </AppButton>
-              <AppButton
-                size="sm"
-                class="ml-1"
-                :disabled="busy || entry.isOnLoan"
-                @click="release(entry)"
-              >
-                Rescindir
-              </AppButton>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <ContractsTable
+      v-else-if="tab === 'contracts'"
+      :contracts="contracts"
+      :busy="busy"
+      @renew="renew"
+      @loan-out="loanOut"
+      @release="releasing = $event"
+    />
 
-    <div v-else class="overflow-auto rounded border border-court-700">
-      <table class="data-table">
-        <thead>
-          <tr>
-            <th>Jugador</th>
-            <th>Pos</th>
-            <th class="numeric">Media</th>
-            <th>Cesión</th>
-            <th>Club</th>
-          </tr>
-        </thead>
-        <tbody>
-          <tr v-if="loans.length === 0">
-            <td colspan="5" class="text-court-300">No hay ninguna cesión en marcha.</td>
-          </tr>
-          <tr v-for="loan in loans" :key="loan.playerId">
-            <td>
-              <span class="inline-flex items-center gap-2">
-                <AppFlag :code="loan.nationality" />{{ loan.playerName }}
-              </span>
-            </td>
-            <td class="text-ball-400">{{ loan.position }}</td>
-            <td class="numeric font-semibold">{{ loan.overall }}</td>
-            <td :class="loan.direction === 'out' ? 'text-court-300' : 'text-good-400'">
-              {{ loan.direction === 'out' ? 'Cedido fuera' : 'Cedido aquí' }}
-            </td>
-            <td class="text-court-300">{{ loan.otherTeamName }}</td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
+    <LoansTable v-else :loans="loans" />
 
-    <p v-if="error" class="text-sm text-bad-400">{{ error }}</p>
-    <p v-else-if="message" class="text-sm text-good-400">{{ message }}</p>
+    <p
+      v-if="error"
+      role="alert"
+      class="bg-tv-paper px-3 py-2 text-sm font-semibold"
+      :class="TONE_TEXT.bad"
+    >
+      {{ error }}
+    </p>
+    <p
+      v-else-if="message"
+      role="status"
+      class="bg-tv-paper px-3 py-2 text-sm font-semibold text-tv-ink"
+    >
+      {{ message }}
+    </p>
+
+    <AppModal :open="releasing !== null" title="Rescindir contrato" @close="releasing = null">
+      <p v-if="releasing" class="text-sm">
+        {{ releasing.playerName }} quedará libre y el club le pagará
+        {{ formatMoney(releasing.releaseCostCents) }}.
+      </p>
+      <template #actions>
+        <AppButton
+          variant="danger"
+          class="min-w-40"
+          :disabled="busy"
+          @click="releasing && release(releasing)"
+        >
+          Rescindir
+        </AppButton>
+        <AppButton class="min-w-40" @click="releasing = null">Cancelar</AppButton>
+      </template>
+    </AppModal>
   </div>
 </template>

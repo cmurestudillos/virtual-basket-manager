@@ -3,11 +3,14 @@ import { computed } from 'vue';
 import { TONE_TEXT, type Tone } from './tones';
 
 /**
- * Una cifra con su etiqueta: caja, confianza, media del equipo, asistencia.
+ * Una cifra en su caja: caja del club, confianza, media del equipo, asistencia.
  *
- * Es el bloque con el que se lee un manager de un vistazo, y por eso la
- * etiqueta va arriba en mayúsculas pequeñas y el número debajo en grande: se
- * busca el número, y el rótulo sólo hace falta la primera vez.
+ * Es la caja de cifra de IBM: la etiqueta arriba en mayúsculas y, debajo, el
+ * número grande y centrado en una caja gris (`tv-box`). Se busca el número; el
+ * rótulo sólo hace falta la primera vez. Va sobre papel.
+ *
+ * `boxed` le pone la etiqueta en un subrótulo añil, para cuando la cifra va
+ * suelta y no dentro de un panel que ya diga de qué se habla.
  *
  * `note` es la letra pequeña de debajo —«12.400 € al año», «3 de 5»—, que es
  * donde va el detalle que explica la cifra sin competir con ella.
@@ -20,24 +23,31 @@ const props = withDefaults(
     size?: 'md' | 'lg';
     tone?: Tone | null;
     note?: string;
-    /** Con marco propio: para cuando el dato va suelto y no dentro de un panel. */
+    /** Etiqueta en rótulo añil: para cuando el dato va suelto. */
     boxed?: boolean;
   }>(),
   { size: 'lg', tone: null, note: '', boxed: false }
 );
 
 const valueClass = computed(() => [
-  'figure mt-1',
-  props.size === 'lg' ? 'text-2xl font-semibold' : 'text-lg',
-  props.tone ? TONE_TEXT[props.tone] : ''
+  'figure bg-tv-box px-3 text-center font-bold',
+  props.size === 'lg' ? 'py-2 text-3xl' : 'py-1.5 text-xl',
+  props.tone ? TONE_TEXT[props.tone] : 'text-tv-ink'
 ]);
 </script>
 
 <template>
-  <article :class="boxed ? 'rounded border border-court-700 p-4' : ''">
-    <p class="text-xs uppercase tracking-wide text-court-300">{{ label }}</p>
+  <article class="flex min-w-0 flex-col gap-1">
+    <p
+      class="truncate text-center text-xs font-bold uppercase tracking-wide"
+      :class="
+        boxed ? 'bg-linear-to-r from-tv-head-from to-tv-head-to py-1.5 text-white' : 'text-tv-ink'
+      "
+    >
+      {{ label }}
+    </p>
     <p :class="valueClass"><slot /></p>
-    <p v-if="note || $slots.note" class="text-xs text-court-600">
+    <p v-if="note || $slots.note" class="text-center text-xs text-tv-muted">
       <slot name="note">{{ note }}</slot>
     </p>
   </article>
