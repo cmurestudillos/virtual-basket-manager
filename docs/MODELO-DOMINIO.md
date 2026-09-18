@@ -144,6 +144,36 @@ la rotación y no sale en el acta. Promocionar es quitarle la marca, y hace falt
 hueco en la plantilla. Las instalaciones (1-5) deciden cuántos salen cada verano
 y con qué techo; a los diecinueve, el que no sube se va libre.
 
+## Los entrenadores
+
+Todos los banquillos de club tienen entrenador: el usuario en el suyo y uno de la
+IA en cada uno de los demás (las selecciones no llevan). Viven en `coaches` —el
+usuario es la fila `manager`— y se inventan con una **semilla fija por club**
+(`<club>-entrenador`), de 34 a 66 años, uno de cada seis de fuera y con una
+reputación de partida unos quince puntos por debajo de su club. No traen palmarés:
+lo que cuenta es lo que hagan en la partida. Hay además una **bolsa** de unos
+cuarenta libres, que es la misma tabla sin equipo.
+
+Lo que hace cada uno se guarda por **tramos** (`coach_seasons`): un entrenador,
+un club, una temporada, con fecha de entrada y de salida. Un despido en enero
+parte la temporada del club en dos, y cada partido, ronda o título es de quien
+estaba en el banquillo ese día. Mientras se juega, las cifras salen en vivo de
+los partidos; al cerrar el curso se **congelan** en el tramo.
+
+La **reputación** se calcula igual para todos (`coachReputation`): la del usuario
+es la misma regla con su base de 35. Nada en ella crece sin techo —medias,
+títulos con curva y oficio con tope—, así que quien cumple lo esperado año tras
+año se queda en su sitio.
+
+El **carrusel** lo mueve la temporada: cada cambio de mes, en las ligas que se
+juegan, al que va claramente por debajo de lo que es su club lo pueden echar (con
+la misma tirada que abre los banquillos al usuario en carrera); en verano se echa
+por objetivo incumplido, se retiran los mayores y la bolsa se repone con jóvenes.
+Un club con el banquillo vacío ficha al mejor libre dispuesto o, a veces, se lleva
+al de un club más pequeño. El **ranking** del mundo va por puntos —victorias según
+dónde, rondas superadas y títulos, por la fuerza de la competición—, con el curso
+en juego entero y el anterior a la mitad.
+
 ## El dinero
 
 Todo va en **céntimos enteros**. Cada movimiento se apunta en el libro del club y

@@ -31,7 +31,23 @@ export const MIN_MANAGER_REPUTATION = 5;
 export const MAX_MANAGER_REPUTATION = 99;
 
 /**
- * Cuánto vale un entrenador, 1-100.
+ * Cuánto vale el entrenador del usuario, 1-100.
+ *
+ * Es la regla general de {@link coachReputation} con el punto de partida de
+ * quien empieza de cero: el usuario no trae palmarés de fuera de la partida.
+ */
+export function managerReputation(seasons: readonly CareerSeasonRecord[]): number {
+  return coachReputation(STARTING_MANAGER_REPUTATION, seasons);
+}
+
+/**
+ * Cuánto se separa el club «que le toca» a un entrenador de su reputación de
+ * partida: al usuario, que arranca en 35, le corresponde un club de 50.
+ */
+export const CLUB_LEVEL_OFFSET = 15;
+
+/**
+ * Cuánto vale un entrenador, 1-100, a partir de su reputación de partida.
  *
  * Tres cosas la mueven, y en este orden: los **títulos**, que es lo que de
  * verdad se recuerda; el **rendimiento** contra lo que daba de sí cada club,
@@ -42,10 +58,24 @@ export const MAX_MANAGER_REPUTATION = 99;
  * Los despidos restan, pero poco: a todo el mundo le echan alguna vez, y un
  * entrenador con palmarés no deja de valer porque un consejo perdiera la
  * paciencia.
+ *
+ * `base` es lo que vale antes de dirigir nada en la partida: 35 el usuario, y
+ * lo que diga su ficha un entrenador de la IA, que llega con oficio. El tamaño
+ * del club se mide contra el club que le corresponde a esa base
+ * ({@link CLUB_LEVEL_OFFSET} por encima), no contra un club medio: un
+ * entrenador de 60 que dirige a un club de 75 está donde le toca y no suma por
+ * ello. Sin esto, a un entrenador de la IA de un grande se le contaría dos
+ * veces el escudo: en su base y en cada temporada.
+ *
+ * **No se infla**: todo lo que suma es una media (rendimiento y tamaño del
+ * club), una curva con techo (títulos, +26 como mucho) o un tope (el oficio,
+ * +6 a partir de la octava temporada). Quien cumple lo esperado año tras año
+ * —rendimiento cero, en su club, sin títulos— se queda en su base más el oficio
+ * y de ahí no se mueve, dirija ocho temporadas o treinta.
  */
-export function managerReputation(seasons: readonly CareerSeasonRecord[]): number {
+export function coachReputation(base: number, seasons: readonly CareerSeasonRecord[]): number {
   if (seasons.length === 0) {
-    return STARTING_MANAGER_REPUTATION;
+    return clamp(Math.round(base), MIN_MANAGER_REPUTATION, MAX_MANAGER_REPUTATION);
   }
 
   const titles = seasons.reduce((sum, season) => sum + season.titles, 0);
@@ -59,13 +89,13 @@ export function managerReputation(seasons: readonly CareerSeasonRecord[]): numbe
   const titleBonus = 26 * (1 - Math.exp(-titles / 2.2));
 
   const value =
-    STARTING_MANAGER_REPUTATION +
+    base +
     titleBonus +
     // El rendimiento pesa más que el escudo, y a propósito: si el tamaño del
     // club mandara, fracasar en un grande valdría más que triunfar en un
     // modesto, que es justo lo contrario de lo que mide esto.
     performance * 30 +
-    (clubLevel - 50) * 0.18 +
+    (clubLevel - (base + CLUB_LEVEL_OFFSET)) * 0.18 +
     // Dirigir mucho tiempo cuenta, pero el oficio no sustituye a los resultados.
     Math.min(6, seasons.length * 0.8) -
     dismissals * 2.5;

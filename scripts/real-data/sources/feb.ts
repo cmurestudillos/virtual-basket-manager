@@ -1,6 +1,8 @@
-import { createHttpClient, type HttpClient } from '../lib/http';
+import { existsSync, readFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { PROJECT_ROOT, createHttpClient, type HttpClient } from '../lib/http';
 import { formAction, hiddenInputs } from '../lib/html';
-import { toNationCode } from '../lib/nationalities';
+import { nationFromBirthPlace, toNationCode } from '../lib/nationalities';
 import {
   splitCommaName,
   splitFullName,
@@ -14,8 +16,9 @@ import {
   type PersonName
 } from '../lib/normalize';
 import { cliOptions, sourceFile, summarizeLeague, writeSourceLeague } from '../lib/source-output';
-import type { SourceLeague, SourcePlayer, SourceTeam } from '../lib/source-types';
+import type { SourceCoach, SourceLeague, SourcePlayer, SourceTeam } from '../lib/source-types';
 import {
+  birthPlaceOf,
   cityFromAddress,
   parseAccumulatedStats,
   parseCalendarTeams,
@@ -24,6 +27,7 @@ import {
   parseTeamPage,
   selectOptions,
   toSourceStats,
+  type FebCoachBox,
   type FebPlayerPage,
   type FebPlayerStats,
   type FebRosterRow
@@ -48,6 +52,42 @@ const RESULTS_URL = `${BASE}/resultados.aspx?g=1&t=${SEASON_START_YEAR}&nm=prime
 const STATS_EVENT_TARGET = '_ctl0$MainContentPlaceHolderMaster$estadAcumLinkButton';
 const SELECT_PREFIX = '_ctl0:MainContentPlaceHolderMaster:';
 const REGULAR_SEASON = 'LR';
+
+/**
+ * Lo que la FEB no deja leer bien de un entrenador, completado a mano: el
+ * entrenador de los equipos cuya ficha tiene el recuadro vacío (por id de
+ * equipo, con el mismo formato que la FEB; si la FEB lo publica, manda la FEB)
+ * y los nombres legales que no se pueden partir a ojo, ya partidos.
+ *
+ * Vive en `resources/real-data/manual/feb-entrenadores.json` y no aquí: son
+ * datos de personas reales (nombre legal, fecha y lugar de nacimiento) y este
+ * repositorio es público. Sin el fichero, esos equipos se quedan sin
+ * entrenador y se avisa.
+ */
+interface FebCoachOverrides {
+  fallbacks: Record<string, FebCoachBox>;
+  names: Record<string, PersonName>;
+}
+
+const COACH_OVERRIDES_FILE = join(
+  PROJECT_ROOT,
+  'resources',
+  'real-data',
+  'manual',
+  'feb-entrenadores.json'
+);
+
+function loadCoachOverrides(): FebCoachOverrides {
+  if (!existsSync(COACH_OVERRIDES_FILE)) {
+    return { fallbacks: {}, names: {} };
+  }
+  const parsed = JSON.parse(
+    readFileSync(COACH_OVERRIDES_FILE, 'utf8')
+  ) as Partial<FebCoachOverrides>;
+  return { fallbacks: parsed.fallbacks ?? {}, names: parsed.names ?? {} };
+}
+
+const { fallbacks: COACH_FALLBACKS, names: COACH_NAMES } = loadCoachOverrides();
 
 const log = (message: string): void => console.log(message);
 
@@ -193,6 +233,47 @@ function playerFrom(
   };
 }
 
+/**
+ * El entrenador de la ficha del equipo. La FEB da el nombre legal en
+ * mayúsculas y sin marcar el corte (como la plantilla) y la fecha con el lugar
+ * de nacimiento a veces; la nacionalidad no la da y se deduce del lugar.
+ */
+function coachFrom(box: FebCoachBox | null, teamId: string, teamName: string): SourceCoach | null {
+  let coach = box;
+  if (!coach) {
+    coach = COACH_FALLBACKS[teamId] ?? null;
+    if (!coach) {
+      warn(`${teamName}: la ficha no trae entrenador`);
+      return null;
+    }
+    warn(`${teamName}: la ficha no trae entrenador; se pone a mano ${coach.fullName}`);
+  }
+  const place = birthPlaceOf(coach.birth);
+  const nationality = nationFromBirthPlace(place);
+  const name =
+    COACH_NAMES[coach.fullName] ??
+    splitFullName(coach.fullName, { spanish: nationality === null || nationality === 'ESP' });
+  const label = `${teamName}: entrenador ${usualFirstName(name.firstName)} ${name.lastName}`;
+  if (!nationality) {
+    warn(
+      place
+        ? `${label}: nacionalidad no deducible de «${place}» (se pone la del club)`
+        : `${label}: sin lugar de nacimiento, nacionalidad desconocida (se pone la del club)`
+    );
+  }
+  const birthDate = toIsoDate(coach.birth);
+  if (!birthDate) warn(`${label}: sin fecha de nacimiento`);
+  return {
+    sourceId: coach.personId ?? `equipo-${teamId}`,
+    firstName: usualFirstName(name.firstName),
+    lastName: name.lastName,
+    birthDate,
+    age: null,
+    nationality,
+    nationalityRaw: place
+  };
+}
+
 async function main(): Promise<void> {
   const { force } = cliOptions();
   const client = createHttpClient({ minDelayMs: 2_000, force, log });
@@ -257,7 +338,8 @@ async function main(): Promise<void> {
       pavilionName: tidy(teamPage.pavilionName),
       pavilionCapacity: null,
       finalPosition: standing.position,
-      players
+      players,
+      coach: coachFrom(teamPage.coach, standing.teamId, name)
     });
     if (!teams.at(-1)?.city) warn(`${name}: no se ha podido sacar la ciudad de la dirección`);
   }

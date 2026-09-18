@@ -81,10 +81,15 @@ export class ClubService {
   /** Ver el porqué del resolutor en {@link SeasonService}. */
   constructor(private readonly resolveDb: () => SaveDatabase) {}
 
+  /**
+   * Las cuentas del club. Sólo del que dirige el usuario: la caja y las nóminas
+   * de un club ajeno no se ven desde fuera, y el canal no puede servirlas a
+   * quien pregunte por otro id.
+   */
   getFinances(teamId: string, opponentTeamId?: string | null): ClubFinances {
     const validated = teamIdRequestSchema.parse({ teamId });
     const repository = new ClubRepository(this.resolveDb());
-    const team = this.requireTeam(repository, validated.teamId);
+    const team = this.requireManagedTeam(repository, validated.teamId);
 
     const seasonWages = repository.seasonWagesCents(team.id);
     const opponent = opponentTeamId ? repository.findTeam(opponentTeamId) : null;

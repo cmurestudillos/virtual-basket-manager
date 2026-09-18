@@ -4,9 +4,10 @@
  * 1280×720), en degradado morado → negro → añil.
  *
  * De izquierda a derecha, como IBM: el escudo en su bloque blanco sesgado con
- * la franja cian; equipo y caja; el entrenador con su cara, su bandera y, en
- * modo carrera, su reputación en estrellas; la fecha en dos líneas; y
- * CONTINUAR, que lleva el escudo del rival cuando lo siguiente es un partido.
+ * la franja cian; equipo y caja; el entrenador con su cara, su bandera y su
+ * reputación en estrellas (también en modo mánager, desde la fase 5); la fecha
+ * en dos líneas; y CONTINUAR, que lleva el escudo del rival cuando lo siguiente
+ * es un partido.
  * Al lado de CONTINUAR, pequeñas, las acciones secundarias: «Avanzar día» y,
  * sin club pero con selección, «Esperar un mes».
  *
@@ -141,8 +142,10 @@ const continueDisabled = computed(() => store.busy || store.action.kind === 'non
           <AppFlag :code="gameState.state.managerNationality" />
           <span class="truncate">{{ gameState.state.managerName }}</span>
         </p>
+        <!-- La reputación sale de la carrera, que el store de CONTINUAR relee al
+             cambiar de pantalla y tras cada avance (un despido, un club nuevo). -->
         <AppStars
-          v-if="store.career?.careerMode"
+          v-if="store.career"
           :value="toStars(store.career.reputation)"
           :label="`Reputación: ${store.career.reputationLabel}`"
           :boxed="false"

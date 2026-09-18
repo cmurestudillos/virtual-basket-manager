@@ -13,6 +13,8 @@ import { zoneCellClass, zonesIn } from '@renderer/features/competition/standing-
  * `full` añade puntos a favor y en contra y la racha, que en una tabla de
  * cuatro selecciones sólo estorban; `division`, la división de la liga
  * americana. `nationOf` pinta la bandera en vez del escudo.
+ *
+ * El nombre y el escudo de un club abren su ficha; los de una selección, no.
  */
 
 const props = withDefaults(
@@ -65,11 +67,27 @@ function streakLabel(streak: number): string {
           <AppFlag :code="nationOf(row.teamId)" :label="row.teamName" size="md" />
         </td>
         <td v-else class="py-0.5">
-          <span class="flex justify-center bg-white p-0.5">
+          <!-- El escudo también abre la ficha, pero el enlace del teclado es el nombre. -->
+          <RouterLink
+            :to="{ name: 'team-profile', params: { teamId: row.teamId } }"
+            class="flex justify-center bg-white p-0.5"
+            tabindex="-1"
+            aria-hidden="true"
+          >
             <TeamBadge :name="row.teamName" :kit="kitOf(row.teamId)" :size="22" />
-          </span>
+          </RouterLink>
         </td>
-        <td class="max-w-64 truncate" :title="row.teamName">{{ row.teamName }}</td>
+        <td class="max-w-64 truncate" :title="row.teamName">
+          <!-- Las selecciones no tienen ficha de club: su nombre va sin enlace. -->
+          <span v-if="nationOf">{{ row.teamName }}</span>
+          <RouterLink
+            v-else
+            :to="{ name: 'team-profile', params: { teamId: row.teamId } }"
+            class="hover:text-tv-blue-ink hover:underline"
+          >
+            {{ row.teamName }}
+          </RouterLink>
+        </td>
         <td v-if="division" class="text-tv-muted">{{ row.division }}</td>
         <td class="numeric">{{ row.played }}</td>
         <td class="numeric is-key font-bold">{{ row.won }}</td>

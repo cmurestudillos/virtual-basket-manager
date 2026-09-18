@@ -33,6 +33,8 @@ import {
 import { BoardService } from '../club/board.service';
 import { CareerRepository } from '../career/career.repository';
 import { ClubRepository } from '../club/club.repository';
+// Cambios de banquillo en la liga del usuario (fase 5).
+import { CoachRepository } from '../coaches/coaches.repository';
 import { InboxRepository } from './inbox.repository';
 import { nationalSquad } from '../national/national-squad';
 
@@ -285,8 +287,22 @@ export class InboxService {
       unhappy: squad
         .filter((player) => player.morale < UNHAPPY_MORALE)
         .map((player) => player.id)
-        .sort()
+        .sort(),
+      coaches: this.leagueCoaches(teamId, repository.team(teamId)?.competitionId ?? '')
     };
+  }
+
+  /** Quién entrena a cada club de la liga del usuario, sin contar el suyo. */
+  private leagueCoaches(teamId: string, competitionId: string): Record<string, string> {
+    const repository = new CoachRepository(this.resolveDb());
+    const inLeague = new Set(repository.teamIdsInCompetition(competitionId));
+    const coaches: Record<string, string> = {};
+    for (const [clubId, coach] of repository.benches()) {
+      if (clubId !== teamId && inLeague.has(clubId)) {
+        coaches[clubId] = coach.id;
+      }
+    }
+    return coaches;
   }
 
   /** Los nombres que necesitan los avisos, leídos de una vez. */
@@ -306,12 +322,26 @@ export class InboxService {
     const competitions = repository.competitions();
     const seasons = repository.seasonCompetitions();
 
+    const coaches = new CoachRepository(this.resolveDb());
+
     return {
       player: (id) => players.get(id) ?? 'Un jugador',
       team: (id) => teams.get(id) ?? 'Otro equipo',
       competition: (id) => competitions.get(id)?.name ?? 'la competición',
       tier: (id) => competitions.get(id)?.tier ?? 1,
-      seasonCompetition: (id) => seasons.get(id) ?? ''
+      seasonCompetition: (id) => seasons.get(id) ?? '',
+      coach: (id) => {
+        const coach = coaches.findById(id);
+        return coach ? `${coach.firstName} ${coach.lastName}`.trim() : 'Un entrenador';
+      },
+      coachExit: (coachId, teamId) => {
+        const stint = coaches
+          .stintsOfCoach(coachId)
+          .filter((row) => row.teamId === teamId && row.endDate !== null)
+          .at(-1);
+        const reason = (stint?.endReason ?? null) as 'dismissed' | 'left' | 'retired' | null;
+        return { reason, toTeamId: coaches.findById(coachId)?.teamId ?? null };
+      }
     };
   }
 
@@ -409,7 +439,8 @@ function parseSnapshot(json: string | null): ClubSnapshot | null {
       lastGameId: parsed.lastGameId ?? null,
       champions: parsed.champions ?? {},
       calledUp: parsed.calledUp ?? {},
-      unhappy: parsed.unhappy ?? []
+      unhappy: parsed.unhappy ?? [],
+      coaches: parsed.coaches ?? {}
     };
   } catch {
     return null;

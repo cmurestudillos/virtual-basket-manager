@@ -5,6 +5,8 @@ import { describe, expect, it, vi } from 'vitest';
 vi.mock('electron', () => ({ app: { isPackaged: false, getAppPath: () => '' } }));
 
 const { EDITION_FIELD, appUserModelId, resolveEdition } = await import('../edition');
+const { generateClubCoach } = await import('@shared/domain/coaches');
+const { createRng, seedFromString } = await import('@shared/engine/basketball/rng');
 
 /**
  * La edición privada lleva datos reales que no pueden salir del PC del autor.
@@ -90,7 +92,15 @@ describe('el empaquetado', () => {
 interface NamedDataset {
   /** Las ligas que ya son reales; el resto del dataset real sigue siendo el ficticio. */
   realLeagues?: string[];
-  teams: { id: string; name: string; competitionId: string }[];
+  competitions: { id: string; tier: number }[];
+  teams: {
+    id: string;
+    name: string;
+    country: string;
+    competitionId: string;
+    reputation: number;
+    coach?: { firstName: string; lastName: string; nationality: string; birthDate: string };
+  }[];
   players: { teamId: string; firstName: string; lastName: string; birthDate: string }[];
 }
 
@@ -100,7 +110,7 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
   const load = (path: string): NamedDataset =>
     JSON.parse(readFileSync(path, 'utf8')) as NamedDataset;
   const fictitious = load(resolve('resources/seed-data/dataset.json'));
-  const whole = existsSync(REAL) ? load(REAL) : { teams: [], players: [] };
+  const whole = existsSync(REAL) ? load(REAL) : { competitions: [], teams: [], players: [] };
   // Sólo cuenta lo que viene de las ligas reales: los países que siguen
   // inventados están en los dos datasets a propósito.
   const realLeagues = new Set(whole.realLeagues ?? []);
@@ -124,5 +134,49 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
     const names = new Set(realPlayers.map(key));
     const leaked = fictitious.players.filter((player) => names.has(key(player)));
     expect(leaked.map(key)).toEqual([]);
+  });
+
+  // Los entrenadores reales: los clubes de la ACB y la Primera FEB llevan el suyo.
+  const coachLeagues = ['liga-nacional', 'liga-plata'].filter((id) => realLeagues.has(id));
+  const coachedTeams = realTeams.filter((team) => coachLeagues.includes(team.competitionId));
+  const coachName = (coach: { firstName: string; lastName: string }): string =>
+    `${coach.firstName} ${coach.lastName}`.trim().toLowerCase();
+  const realCoachNames = new Set(
+    coachedTeams.flatMap((team) => (team.coach ? [coachName(team.coach)] : []))
+  );
+
+  it('todos los clubes de la ACB y la Primera FEB llevan a su entrenador real', () => {
+    expect(coachedTeams.length).toBeGreaterThan(0);
+    const missing = coachedTeams.filter(
+      (team) => !team.coach?.firstName.trim() || !team.coach.lastName.trim()
+    );
+    expect(missing.map((team) => team.name)).toEqual([]);
+    for (const team of coachedTeams) {
+      expect(team.coach?.birthDate, team.name).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+      expect(team.coach?.nationality, team.name).toMatch(/^[A-Z]{3}$/);
+    }
+  });
+
+  it('el dataset ficticio no lleva entrenadores ni ningún nombre de uno real', () => {
+    expect(fictitious.teams.filter((team) => team.coach).map((team) => team.name)).toEqual([]);
+    const leaked = fictitious.players.filter((player) => realCoachNames.has(coachName(player)));
+    expect(leaked.map(coachName)).toEqual([]);
+  });
+
+  it('el entrenador que el juego inventa para esos clubes no se llama como uno real', () => {
+    const tiers = new Map(whole.competitions.map((row) => [row.id, row.tier]));
+    const seasonStart = new Date(Date.UTC(2025, 8, 1));
+    const invented = coachedTeams.map((team) =>
+      coachName(
+        generateClubCoach({
+          country: team.country,
+          clubReputation: team.reputation,
+          tier: tiers.get(team.competitionId) ?? 1,
+          today: seasonStart,
+          rng: createRng(seedFromString(`${team.id}-entrenador`))
+        })
+      )
+    );
+    expect(invented.filter((name) => realCoachNames.has(name))).toEqual([]);
   });
 });

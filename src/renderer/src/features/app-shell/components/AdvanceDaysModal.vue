@@ -14,6 +14,7 @@
  * sola llamada al proceso principal y no se pueden cortar a medias.
  */
 import { computed, onBeforeUnmount, ref, watch } from 'vue';
+import { monthCells, monthOf } from '@shared/domain/calendar-month';
 import { matchKits } from '@shared/domain/court';
 import { AppButton, AppModal, TeamBadge } from '@renderer/shared/ui';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
@@ -69,26 +70,22 @@ const calendar = computed(() => {
     return null;
   }
   const now = new Date(today.value);
-  const year = now.getUTCFullYear();
-  const month = now.getUTCMonth();
-  const days = new Date(Date.UTC(year, month + 1, 0)).getUTCDate();
-  const lead = (new Date(Date.UTC(year, month, 1)).getUTCDay() + 6) % 7;
   const nextGameOn = seasonStore.nextGame?.scheduledOn ?? null;
 
-  const cells: ({ day: number; state: 'past' | 'today' | 'future'; game: boolean } | null)[] = [
-    ...Array.from({ length: lead }, () => null)
-  ];
-  for (let day = 1; day <= days; day += 1) {
-    const at = Date.UTC(year, month, day);
-    cells.push({
-      day,
-      state: day < now.getUTCDate() ? 'past' : day === now.getUTCDate() ? 'today' : 'future',
-      game: nextGameOn !== null && Math.abs(nextGameOn - at) < DAY_MS / 2
-    });
-  }
-  while (cells.length % 7 !== 0) {
-    cells.push(null);
-  }
+  const cells = monthCells(monthOf(now)).map((cell) =>
+    cell
+      ? {
+          day: cell.day,
+          state:
+            cell.day < now.getUTCDate()
+              ? ('past' as const)
+              : cell.day === now.getUTCDate()
+                ? ('today' as const)
+                : ('future' as const),
+          game: nextGameOn !== null && Math.abs(nextGameOn - cell.date) < DAY_MS / 2
+        }
+      : null
+  );
   return { title: MONTH.format(now), cells };
 });
 

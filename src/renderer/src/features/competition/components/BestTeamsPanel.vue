@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { formatWhole } from '@renderer/shared/format';
 import type { StandingEntry } from '@shared/contracts/season.contract';
 import { matchKits } from '@shared/domain/court';
 import { AppEmpty, AppPanel, AppSectionTitle, AppStat, TeamBadge } from '@renderer/shared/ui';
@@ -60,7 +61,7 @@ const highlights = computed<Highlight[]>(() => {
       title: 'Mejor ataque',
       team: attack,
       stats: [
-        { label: 'Puntos a favor', value: attack.pointsFor.toLocaleString('es-ES') },
+        { label: 'Puntos a favor', value: formatWhole(attack.pointsFor) },
         { label: 'Por partido', value: DECIMAL.format(perGame(attack.pointsFor, attack.played)) }
       ]
     });
@@ -76,7 +77,7 @@ const highlights = computed<Highlight[]>(() => {
       title: 'Mejor defensa',
       team: defense,
       stats: [
-        { label: 'Puntos en contra', value: defense.pointsAgainst.toLocaleString('es-ES') },
+        { label: 'Puntos en contra', value: formatWhole(defense.pointsAgainst) },
         {
           label: 'Por partido',
           value: DECIMAL.format(perGame(defense.pointsAgainst, defense.played))
@@ -124,8 +125,10 @@ const highlights = computed<Highlight[]>(() => {
     <div v-else class="flex flex-col gap-4">
       <article v-for="item in highlights" :key="item.id" class="flex flex-col gap-[3px]">
         <AppSectionTitle size="xs">{{ item.title }}</AppSectionTitle>
-        <div
-          class="flex items-center gap-2 px-2 py-1 text-sm font-semibold uppercase"
+        <!-- El equipo abre su ficha. -->
+        <RouterLink
+          :to="{ name: 'team-profile', params: { teamId: item.team.teamId } }"
+          class="flex items-center gap-2 px-2 py-1 text-sm font-semibold uppercase hover:text-tv-blue-ink"
           :class="item.team.isManaged ? 'bg-tv-select' : 'bg-white'"
         >
           <TeamBadge
@@ -134,7 +137,7 @@ const highlights = computed<Highlight[]>(() => {
             :size="26"
           />
           <span class="truncate" :title="item.team.teamName">{{ item.team.teamName }}</span>
-        </div>
+        </RouterLink>
         <div class="grid grid-cols-2 gap-[3px]">
           <AppStat v-for="stat in item.stats" :key="stat.label" :label="stat.label" size="md">
             {{ stat.value }}

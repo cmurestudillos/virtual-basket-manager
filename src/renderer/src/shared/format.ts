@@ -1,10 +1,16 @@
 /** Formateo compartido. Todo el dinero viaja en céntimos; aquí es donde se pinta. */
 
+// En español, por norma, las cifras de cuatro dígitos van sin punto («9500»),
+// pero en una tabla de aforos o de dinero eso descuadra la lectura: 9500 junto
+// a 10.262 parece otra magnitud. Aquí se agrupan siempre.
 const CURRENCY = new Intl.NumberFormat('es-ES', {
   style: 'currency',
   currency: 'EUR',
-  maximumFractionDigits: 0
+  maximumFractionDigits: 0,
+  useGrouping: 'always'
 });
+
+const WHOLE = new Intl.NumberFormat('es-ES', { useGrouping: 'always' });
 
 const DATE = new Intl.DateTimeFormat('es-ES', {
   day: 'numeric',
@@ -14,6 +20,22 @@ const DATE = new Intl.DateTimeFormat('es-ES', {
 
 export function formatMoney(cents: number): string {
   return CURRENCY.format(Math.round(cents / 100));
+}
+
+/** Un entero con el punto de los miles siempre: «9.500», «10.262». */
+export function formatWhole(value: number): string {
+  return WHOLE.format(value);
+}
+
+const POINTS = new Intl.NumberFormat('es-ES', {
+  minimumFractionDigits: 1,
+  maximumFractionDigits: 1,
+  useGrouping: 'always'
+});
+
+/** Puntos del ranking de entrenadores, siempre con un decimal: «12,5», «2,0». */
+export function formatPoints(value: number): string {
+  return POINTS.format(value);
 }
 
 export function formatGameDate(milliseconds: number): string {

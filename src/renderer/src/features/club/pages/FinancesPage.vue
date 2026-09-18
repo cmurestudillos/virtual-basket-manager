@@ -15,7 +15,7 @@ import type { BoardView, ClubFinances, FinanceTotal } from '@shared/contracts/cl
 import { MAX_TICKET_PRICE_CENTS, MIN_TICKET_PRICE_CENTS } from '@shared/domain/attendance';
 import { squadMorale } from '@shared/domain/morale';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
-import { formatGameDate, formatMoney } from '@renderer/shared/format';
+import { formatGameDate, formatMoney, formatWhole } from '@renderer/shared/format';
 import {
   AppBadge,
   AppButton,
@@ -102,7 +102,10 @@ async function reload(): Promise<void> {
   finances.value = await window.api.club.getFinances(store.state.teamId);
   board.value = await window.api.club.getBoard();
   const roster = await window.api.players.listByTeam(store.state.teamId);
-  playersConfidence.value = squadMorale(roster.map((player) => player.morale));
+  // La plantilla es la propia: la moral llega de todos (sólo la de fuera viene vacía).
+  playersConfidence.value = squadMorale(
+    roster.flatMap((player) => (player.morale === null ? [] : [player.morale]))
+  );
   priceEuros.value = Math.round(finances.value.ticketPriceCents / 100);
 }
 
@@ -142,14 +145,12 @@ function expand(): void {
   );
 }
 
-/** Los gastos llegan en negativo; en la tabla se leen mejor en positivo. */
 /** Cifras de personas con el punto de los miles, como en el inicio: «10.262». */
-const WHOLE = new Intl.NumberFormat('es-ES');
-
 function whole(value: number): string {
-  return WHOLE.format(value);
+  return formatWhole(value);
 }
 
+/** Los gastos llegan en negativo; en la tabla se leen mejor en positivo. */
 function absolute(cents: number): string {
   return formatMoney(Math.abs(cents));
 }

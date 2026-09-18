@@ -84,6 +84,8 @@ import { YouthService } from '../youth/youth.service';
 import { MatchService } from '../match/match.service';
 import { DraftService } from '../draft/draft.service';
 import { NationalService } from '../national/national.service';
+// Entrenadores de la IA y su carrusel (fase 5).
+import { CoachService } from '../coaches/coaches.service';
 import { SeasonRepository } from './season.repository';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -116,6 +118,16 @@ export class SeasonNotFinishedError extends Error {
   }
 }
 
+/** Un partido del usuario con su competición: lo que pinta el calendario del mes. */
+export interface UserGame {
+  game: GameRow;
+  /** `null` sólo si la temporada del partido ha desaparecido. */
+  competition: CompetitionRow | null;
+  /** El equipo del usuario en ese partido: su club o su selección. */
+  userTeamId: string;
+  scope: 'club' | 'national';
+}
+
 /** Una eliminatoria reconstruida a partir de sus partidos. */
 interface SeriesState {
   seriesId: string;
@@ -137,6 +149,7 @@ export class SeasonService {
   private readonly marketService: MarketService;
   private readonly nationalService: NationalService;
   private readonly draftService: DraftService;
+  private readonly coachService: CoachService;
 
   /**
    * La conexión llega como resolutor y no como instancia porque la partida
@@ -153,6 +166,7 @@ export class SeasonService {
     this.marketService = new MarketService(resolveDb);
     this.nationalService = new NationalService(resolveDb);
     this.draftService = new DraftService(resolveDb);
+    this.coachService = new CoachService(resolveDb);
   }
 
   /**
@@ -347,6 +361,50 @@ export class SeasonService {
       .sort((a, b) => a.scheduledOn.getTime() - b.scheduledOn.getTime())[0];
 
     return next ? (this.toFixtures(repository, [next])[0] as FixtureEntry) : null;
+  }
+
+  /**
+   * Los partidos del usuario entre dos fechas (las dos incluidas), de todas las
+   * competiciones del curso: su club, si tiene banquillo, y su selección.
+   *
+   * Sólo lo sorteado: una ronda de Copa o de playoffs no existe como partido
+   * hasta que se sabe quién la juega. Cada partido va con su competición, que
+   * se lee una vez por temporada y no una por partido.
+   */
+  listUserGamesBetween(from: Date, to: Date): UserGame[] {
+    const repository = new SeasonRepository(this.resolveDb());
+    const season = this.ensureStage(repository);
+    const seasonIds = this.activeSeasonIds(repository, season);
+    const national = this.nationalService.userTeamId();
+
+    const competitionBySeason = new Map<string, CompetitionRow | null>(
+      seasonIds.map((seasonId) => {
+        const row = repository.findSeasonById(seasonId);
+        return [seasonId, row ? repository.findCompetition(row.competitionId) : null];
+      })
+    );
+
+    return this.userTeamIds(repository)
+      .flatMap((teamId) =>
+        repository
+          .listTeamGamesIn(seasonIds, teamId)
+          .filter(
+            (game) =>
+              game.scheduledOn.getTime() >= from.getTime() &&
+              game.scheduledOn.getTime() <= to.getTime()
+          )
+          .map((game): UserGame => ({
+            game,
+            competition: competitionBySeason.get(game.seasonId) ?? null,
+            userTeamId: teamId,
+            scope: teamId === national ? 'national' : 'club'
+          }))
+      )
+      .sort(
+        (a, b) =>
+          a.game.scheduledOn.getTime() - b.game.scheduledOn.getTime() ||
+          a.game.id.localeCompare(b.game.id)
+      );
   }
 
   /**
@@ -655,6 +713,10 @@ export class SeasonService {
 
     const today = repository.gameState().currentDate;
     const nextSeasonStart = new Date(Date.UTC(season.startYear + 1, 8, 1));
+    // Los banquillos de la IA cierran el curso antes de que nadie cambie de
+    // liga: los despidos del verano se juzgan con la clasificación y la
+    // categoría del año que acaba, y las cifras de cada tramo se congelan.
+    this.coachService.closeSeason(season.seasonNumber, nextSeasonStart);
     // Antes de subir el contador: los ascensos se deciden con las
     // clasificaciones del curso que acaba de terminar, y el calendario del
     // siguiente ya tiene que encontrar a cada equipo en su división.
@@ -665,6 +727,9 @@ export class SeasonService {
     this.fitnessService.startNewSeason(today, nextSeasonStart);
     // Y el mercado se mueve solo: vencen contratos y la IA cubre sus huecos.
     this.marketService.processOffseason(nextSeasonStart);
+    // Y abren el siguiente: banquillos cubiertos, tramos nuevos y la bolsa de
+    // entrenadores libres repuesta con jóvenes.
+    this.coachService.openSeason(season.seasonNumber + 1, nextSeasonStart);
 
     return this.getCurrent();
   }
@@ -1656,6 +1721,12 @@ export class SeasonService {
     this.fitnessService.advanceDays(from, to, { training: !offseason });
 
     const months = monthStartsBetween(from, to);
+    // Cada cambio de mes mueve los banquillos de la IA: despidos de mitad de
+    // temporada y fichajes, en todas las ligas que se juegan y también sin
+    // entrenador en el banquillo del usuario. Cada liga mira su propia fase.
+    for (const monthStart of months) {
+      this.coachService.monthlyMoves(monthStart);
+    }
     if (months.length === 0 || offseason) {
       return;
     }

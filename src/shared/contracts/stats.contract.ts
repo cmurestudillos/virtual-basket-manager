@@ -65,8 +65,11 @@ export interface LeaderBoard {
 }
 
 export interface StatsApi {
-  /** Medias de temporada de una plantilla, ordenadas por valoración. */
-  teamSeason: (teamId: string) => Promise<PlayerSeasonStats[]>;
+  /**
+   * Medias de temporada de una plantilla, ordenadas por valoración. Sin
+   * competición, en la liga del usuario; con ella, en esa competición.
+   */
+  teamSeason: (teamId: string, competitionId?: string) => Promise<PlayerSeasonStats[]>;
   /** Líderes de la liga en una categoría. */
   leaders: (category: string, limit?: number) => Promise<LeaderBoard>;
 }

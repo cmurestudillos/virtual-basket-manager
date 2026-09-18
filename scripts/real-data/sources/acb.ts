@@ -2,20 +2,26 @@ import { createHttpClient, type HttpClient } from '../lib/http';
 import { toNationCode } from '../lib/nationalities';
 import { toHeightCm, toInt, toIsoDate, toPosition } from '../lib/normalize';
 import { cliOptions, sourceFile, summarizeLeague, writeSourceLeague } from '../lib/source-output';
-import type { SourceLeague, SourcePlayer, SourceTeam } from '../lib/source-types';
+import type { SourceCoach, SourceLeague, SourcePlayer, SourceTeam } from '../lib/source-types';
 import {
   canonicalTeamSlug,
   cityFromAcbAddress,
+  coachSlugs,
+  parseCoachProfile,
+  parseMatchHeadCoaches,
   parsePlayerProfile,
   parseRoster,
+  parseStaff,
   parseStandings,
   parseTeamInfo,
   parseTeamStats,
+  pickStartingCoach,
   playerSlugs,
   toSourceStats,
   type AcbPlayerProfile,
   type AcbPlayerRef,
   type AcbRosterEntry,
+  type AcbStanding,
   type AcbStatsEntry
 } from './acb-parse';
 
@@ -138,6 +144,82 @@ function playerFrom(
   };
 }
 
+const LIVE = 'https://live.acb.com';
+
+/**
+ * Quién firmó como primer entrenador de un club el acta de un partido. El acta
+ * está en live.acb.com (pestaña de estadísticas) y cualquier slug con el id del
+ * partido la abre; los dos equipos del partido salen de la misma descarga.
+ */
+async function matchHeadCoach(
+  client: HttpClient,
+  matchId: string | null,
+  clubId: string
+): Promise<string | null> {
+  if (!matchId) return null;
+  const html = await client.get(`${LIVE}/partidos/partido-${matchId}/estadisticas`);
+  return parseMatchHeadCoaches(html).get(clubId) ?? null;
+}
+
+/**
+ * El primer entrenador con el que el club empezó la liga: el del acta de su
+ * primer partido, con su ficha para la fecha de nacimiento (la plantilla sólo
+ * da la edad, y de cuándo es esa edad no lo dice).
+ */
+async function coachFrom(
+  client: HttpClient,
+  rosterHtml: string,
+  standing: AcbStanding
+): Promise<SourceCoach | null> {
+  const teamName = standing.fullName;
+  const startName = await matchHeadCoach(client, standing.firstMatchId, standing.clubId);
+  const { head, later, source } = pickStartingCoach(parseStaff(rosterHtml), startName);
+  if (!head) {
+    warn(`${teamName}: la plantilla no trae técnicos (sin entrenador)`);
+    return null;
+  }
+  const ref = head.coach;
+  // El nombre de uso, si la web lo da entero: el apodo con el que se le conoce
+  // y no el nombre de pila legal.
+  const useNickname = Boolean(ref.nicknameFirstName && ref.nicknameLastName);
+  const firstName = useNickname ? (ref.nicknameFirstName as string) : ref.firstName;
+  const lastName = useNickname ? (ref.nicknameLastName as string) : ref.lastName;
+  const label = `${teamName}: entrenador ${firstName} ${lastName}`;
+  if (source === 'guessed') {
+    warn(`${label}: nadie marcado como primer entrenador, se toma el primero`);
+  } else if (source === 'order') {
+    warn(
+      startName
+        ? `${label}: el acta del primer partido dice «${startName}», que no está en la plantilla; se toma el más antiguo`
+        : `${label}: sin acta del primer partido; se toma el más antiguo de la plantilla`
+    );
+  }
+  if (later.length > 0) {
+    warn(
+      `${label}: empezó la temporada; después le sustituyó ` +
+        later.map((entry) => `${entry.coach.firstName} ${entry.coach.lastName}`).join(' y luego ')
+    );
+  }
+  if (head.isLicenseActive === false) warn(`${label}: licencia no activa`);
+
+  const slug = coachSlugs(rosterHtml).get(ref.id) ?? `entrenador-${ref.id}`;
+  const profile = parseCoachProfile(await client.get(`${BASE}/es/liga/entrenadores/${slug}`));
+  const birthDate = toIsoDate(profile?.birthDate);
+  if (!birthDate) warn(`${label}: sin fecha de nacimiento (se usa la edad, ${head.age ?? '?'})`);
+  const nationalityRaw = head.nationalityCountry ?? profile?.nationality ?? null;
+  const nationality = toNationCode(nationalityRaw);
+  if (!nationality) warn(`${label}: nacionalidad no reconocida «${nationalityRaw ?? ''}»`);
+  return {
+    sourceId: ref.id,
+    firstName,
+    lastName,
+    birthDate,
+    age: head.age,
+    nationality,
+    nationalityRaw
+  };
+}
+
 async function main(): Promise<void> {
   const { force } = cliOptions();
   const client = createHttpClient({ minDelayMs: 1_200, force, log });
@@ -173,6 +255,7 @@ async function main(): Promise<void> {
 
     const rosterHtml = await client.get(editionUrl(`${teamPath}/plantilla`));
     const roster = parseRoster(rosterHtml);
+    const coach = await coachFrom(client, rosterHtml, standing);
     const otherEdition = roster.filter((entry) => entry.player.editionId !== EDITION_ID);
     if (otherEdition.length > 0) {
       warn(`${standing.fullName}: ${otherEdition.length} jugadores de plantilla de otra edición`);
@@ -237,7 +320,8 @@ async function main(): Promise<void> {
       pavilionName: info?.stadiumName ?? null,
       pavilionCapacity: info?.stadiumCapacity ?? null,
       finalPosition: standing.position,
-      players
+      players,
+      coach
     });
   }
 

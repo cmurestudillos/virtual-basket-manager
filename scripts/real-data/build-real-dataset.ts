@@ -65,6 +65,12 @@ for (const report of reports) {
       `  nacionalidades que el juego no conoce (se ponen la del club): ${report.unknownNationalities.join(', ')}`
     );
   }
+  console.log(
+    `  entrenadores reales: ${report.teams - report.withoutCoach.length} de ${report.teams}` +
+      (report.withoutCoach.length > 0
+        ? ` (sin entrenador, se inventa: ${report.withoutCoach.join(', ')})`
+        : '')
+  );
   const best = [...league].sort((a, b) => b.overall - a.overall).slice(0, 10);
   console.log('  los diez mejores:');
   for (const entry of best) {

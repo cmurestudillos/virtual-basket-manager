@@ -5,13 +5,14 @@ import type { Dataset } from '../../../src/main/features/saves/dataset';
 import { NATION_NAMES } from '../../../src/shared/domain/national-teams';
 import { MAX_ROSTER } from '../../../src/shared/domain/youth';
 import {
+  coachBirthDate,
   mergeRealLeagues,
   reputationFor,
   selectRosters,
   slugify,
   teamStrength
 } from '../lib/merge';
-import type { SourceLeague, SourcePlayer, SourceTeam } from '../lib/source-types';
+import type { SourceCoach, SourceLeague, SourcePlayer, SourceTeam } from '../lib/source-types';
 
 const fictitious = JSON.parse(
   readFileSync(resolve('resources/seed-data/dataset.json'), 'utf8')
@@ -80,6 +81,19 @@ function team(name: string, finalPosition: number, players: SourcePlayer[]): Sou
   };
 }
 
+function coach(id: string, overrides: Partial<SourceCoach> = {}): SourceCoach {
+  return {
+    sourceId: id,
+    firstName: 'Técnico',
+    lastName: id,
+    birthDate: '1970-05-05',
+    age: null,
+    nationality: 'ESP',
+    nationalityRaw: 'España',
+    ...overrides
+  };
+}
+
 /** Una Primera FEB de mentira con los casos difíciles dentro. */
 function league(): SourceLeague {
   const teams = Array.from({ length: 4 }, (_, index) =>
@@ -97,6 +111,11 @@ function league(): SourceLeague {
   // Nacionalidad que el juego no conoce y un fichaje sin estadísticas.
   teams[3]!.players.push(player('raro', 12, { nationality: 'TGA', nationalityRaw: 'Tonga' }));
   teams[3]!.players.push(player('nuevo', 0, { licence: 'EXT' }));
+  // Entrenadores: con fecha, sólo con edad, con bandera desconocida y ninguno.
+  teams[0]!.coach = coach('con-fecha', { nationality: 'ITA', nationalityRaw: 'Italia' });
+  teams[1]!.coach = coach('con-edad', { birthDate: null, age: 65 });
+  teams[2]!.coach = coach('sin-bandera', { nationality: null, nationalityRaw: null });
+  teams[3]!.coach = null;
   return {
     competitionId: 'liga-plata',
     name: 'Primera FEB',
@@ -216,6 +235,30 @@ describe('mezclar una liga real con el mundo ficticio', () => {
         expect(value).toBeLessThanOrEqual(max);
       }
     }
+  });
+
+  it('cada club real lleva su entrenador, con la bandera del país si no se conoce', () => {
+    const byName = new Map(dataset.teams.map((entry) => [entry.name, entry]));
+    expect(byName.get('Club Real 1')?.coach).toEqual({
+      firstName: 'Técnico',
+      lastName: 'con-fecha',
+      nationality: 'ITA',
+      birthDate: '1970-05-05'
+    });
+    // 65 años el 16-9-2026: nacido entre el 17-9-1960 y el 16-9-1961.
+    expect(byName.get('Club Real 2')?.coach?.birthDate).toBe('1961-07-01');
+    expect(byName.get('Club Real 3')?.coach?.nationality).toBe('ESP');
+    expect(byName.get('Club Real 4')?.coach).toBeUndefined();
+    expect(reports[0]?.withoutCoach).toEqual(['Club Real 4']);
+    // El mundo inventado no lleva entrenadores.
+    expect(dataset.teams.filter((entry) => entry.coach).length).toBe(3);
+  });
+
+  it('con sólo la edad, la fecha es el 1 de julio que le cuadra el día de la extracción', () => {
+    const aged = coach('x', { birthDate: null, age: 40 });
+    expect(coachBirthDate(aged, '2026-09-16T00:00:00.000Z')).toBe('1986-07-01');
+    expect(coachBirthDate(aged, '2026-03-01T00:00:00.000Z')).toBe('1985-07-01');
+    expect(coachBirthDate(coach('y', { birthDate: null, age: null }), '2026-09-16')).toBeNull();
   });
 
   it('una liga que no existe en el mundo ficticio es un error', () => {

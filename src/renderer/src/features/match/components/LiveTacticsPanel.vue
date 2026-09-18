@@ -15,7 +15,7 @@ import {
   type DefensiveSystem,
   type OffensiveSystem
 } from '@shared/domain/tactics';
-import { AppSelect } from '@renderer/shared/ui';
+import { AppScale, AppSelect } from '@renderer/shared/ui';
 
 const props = defineProps<{
   offensiveSystem: OffensiveSystem;
@@ -30,11 +30,6 @@ const emit = defineEmits<{ change: [patch: LiveTacticsPatch] }>();
 /** Las opciones del selector negro, el mismo de la pizarra de antes del partido. */
 const OFFENSES = Object.entries(OFFENSIVE_SYSTEM_LABELS).map(([id, label]) => ({ id, label }));
 const DEFENSES = Object.entries(DEFENSIVE_SYSTEM_LABELS).map(([id, label]) => ({ id, label }));
-
-function slide(key: 'pace' | 'defensiveIntensity', event: Event): void {
-  const value = Number((event.target as HTMLInputElement).value);
-  emit('change', { [key]: value });
-}
 </script>
 
 <template>
@@ -60,36 +55,21 @@ function slide(key: 'pace' | 'defensiveIntensity', event: Event): void {
       />
     </label>
 
-    <label class="flex flex-col gap-1">
-      <span class="flex justify-between text-xs font-semibold uppercase tracking-wide">
-        <span>Ritmo</span>
-        <span class="figure">{{ props.pace }}</span>
-      </span>
-      <input
-        type="range"
-        min="1"
-        max="10"
-        class="accent-tv-blue"
-        :value="props.pace"
-        :disabled="disabled"
-        @change="slide('pace', $event)"
-      />
-    </label>
-
-    <label class="flex flex-col gap-1">
-      <span class="flex justify-between text-xs font-semibold uppercase tracking-wide">
-        <span>Intensidad defensiva</span>
-        <span class="figure">{{ props.defensiveIntensity }}</span>
-      </span>
-      <input
-        type="range"
-        min="1"
-        max="10"
-        class="accent-tv-blue"
-        :value="props.defensiveIntensity"
-        :disabled="disabled"
-        @change="slide('defensiveIntensity', $event)"
-      />
-    </label>
+    <!-- Los mismos deslizadores que la pizarra de antes del partido; el cambio
+         sale al soltar, no con cada paso del arrastre. -->
+    <AppScale
+      :model-value="props.pace"
+      label="Ritmo"
+      :stops="['Pausado', 'Normal', 'Corriendo']"
+      :disabled="disabled"
+      @change="emit('change', { pace: $event })"
+    />
+    <AppScale
+      :model-value="props.defensiveIntensity"
+      label="Intensidad defensiva"
+      :stops="['Blanda', 'Normal', 'Agresiva']"
+      :disabled="disabled"
+      @change="emit('change', { defensiveIntensity: $event })"
+    />
   </div>
 </template>

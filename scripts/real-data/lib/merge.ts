@@ -1,9 +1,14 @@
-import type { Dataset, DatasetPlayer, DatasetTeam } from '../../../src/main/features/saves/dataset';
+import type {
+  Dataset,
+  DatasetCoach,
+  DatasetPlayer,
+  DatasetTeam
+} from '../../../src/main/features/saves/dataset';
 import { POSITIONS, type Position } from '../../../src/shared/domain/positions';
 import { MAX_ROSTER } from '../../../src/shared/domain/youth';
 import { WORLD, type LeagueTier } from '../../seed-data/leagues.mts';
 import { ageFrom, jitter, rateLeague, referenceFrom, type RatedPlayer } from './ratings';
-import type { SourceLeague, SourcePlayer, SourceTeam } from './source-types';
+import type { SourceCoach, SourceLeague, SourcePlayer, SourceTeam } from './source-types';
 
 /**
  * Monta el dataset de la edición privada: el mundo ficticio con las ligas que
@@ -43,6 +48,8 @@ export interface MergeReport {
   droppedDuplicates: number;
   droppedOverRoster: number;
   unknownNationalities: string[];
+  /** Equipos sin entrenador real: se les inventa uno al crear la partida. */
+  withoutCoach: string[];
 }
 
 export interface MergeResult {
@@ -167,6 +174,46 @@ function birthDateFor(player: SourcePlayer, seasonStartYear: number): string {
   return `${seasonStartYear - age}-07-01`;
 }
 
+/**
+ * La fecha de nacimiento de un entrenador: la real o, si la fuente sólo da la
+ * edad, el 1 de julio del año que le cuadra con esa edad el día de la
+ * extracción, que es cuando la cuenta la fuente. Siempre la misma para el
+ * mismo fichero de la fuente.
+ */
+export function coachBirthDate(coach: SourceCoach, extractedAt: string): string | null {
+  if (coach.birthDate) return coach.birthDate;
+  if (coach.age === null) return null;
+  const extracted = new Date(extractedAt);
+  if (Number.isNaN(extracted.getTime())) return null;
+  // Antes del 1 de julio, quien tiene esa edad la cumplió como tarde el año anterior.
+  const beforeJuly = extracted.getUTCMonth() < 6;
+  return `${extracted.getUTCFullYear() - coach.age - (beforeJuly ? 1 : 0)}-07-01`;
+}
+
+/**
+ * El entrenador real de un equipo para el dataset; `null` si la fuente no lo
+ * da o le falta el nombre o la edad. Una nacionalidad que el juego no conoce
+ * se cambia por la del país, como a los jugadores.
+ */
+export function datasetCoachFor(
+  coach: SourceCoach | null | undefined,
+  league: Pick<SourceLeague, 'country' | 'extractedAt'>,
+  knownNationalities: ReadonlySet<string>
+): DatasetCoach | null {
+  if (!coach || coach.lastName.trim() === '') return null;
+  const birthDate = coachBirthDate(coach, league.extractedAt);
+  if (!birthDate) return null;
+  return {
+    firstName: coach.firstName,
+    lastName: coach.lastName,
+    nationality:
+      coach.nationality && knownNationalities.has(coach.nationality)
+        ? coach.nationality
+        : league.country,
+    birthDate
+  };
+}
+
 function clamp(value: number, min: number, max: number): number {
   return Math.round(Math.min(max, Math.max(min, value)));
 }
@@ -229,6 +276,7 @@ export function mergeRealLeagues(
     ratedByLeague.set(source.competitionId, rated);
     const ratedBySource = new Map(rated.map((entry) => [entry.source, entry]));
     const unknown = new Set<string>();
+    const withoutCoach: string[] = [];
 
     const ordered = [...source.teams].sort(
       (a, b) => (a.finalPosition ?? 99) - (b.finalPosition ?? 99) || a.name.localeCompare(b.name)
@@ -238,6 +286,12 @@ export function mergeRealLeagues(
       const capacityBase = tier?.capacity ?? 5000;
       const teamId = `${source.competitionId}-${slugify(sourceTeam.name)}`;
       const city = sourceTeam.city ?? sourceTeam.name;
+      const coach = datasetCoachFor(sourceTeam.coach, source, knownNationalities);
+      const coachNationality = sourceTeam.coach?.nationality ?? null;
+      if (!coach) withoutCoach.push(sourceTeam.name);
+      else if (!coachNationality || !knownNationalities.has(coachNationality)) {
+        unknown.add(`${coachNationality ?? 'sin dato'} (entrenador de ${sourceTeam.name})`);
+      }
       teams.push({
         id: teamId,
         name: sourceTeam.name,
@@ -256,7 +310,8 @@ export function mergeRealLeagues(
         reputation,
         // La misma fórmula que el mundo ficticio: el presupuesto sale de la
         // reputación, y el motor económico está calibrado con ella.
-        budgetCents: (300_000 + reputation * 58_000) * 100
+        budgetCents: (300_000 + reputation * 58_000) * 100,
+        ...(coach ? { coach } : {})
       });
 
       for (const sourcePlayer of rosters.get(sourceTeam) ?? []) {
@@ -311,7 +366,8 @@ export function mergeRealLeagues(
       estimated: rated.filter((entry) => entry.estimated).length,
       droppedDuplicates,
       droppedOverRoster,
-      unknownNationalities: [...unknown].sort()
+      unknownNationalities: [...unknown].sort(),
+      withoutCoach
     });
   }
 

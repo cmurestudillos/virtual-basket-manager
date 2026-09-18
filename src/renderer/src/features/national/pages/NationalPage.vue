@@ -18,6 +18,7 @@ import { formatMatchDate, formatShortDate } from '@renderer/shared/format';
 import {
   AppBadge,
   AppButton,
+  AppCheckbox,
   AppEmpty,
   AppFlag,
   AppPanel,
@@ -216,14 +217,13 @@ function codeOf(teamId: string): string {
             @click="toggle(row.playerId)"
           >
             <td class="text-center">
-              <input
+              <AppCheckbox
                 :id="`convocado-${row.playerId}`"
-                type="checkbox"
-                class="h-4 w-4 accent-tv-blue"
-                :checked="selected.has(row.playerId)"
+                :model-value="selected.has(row.playerId)"
                 :disabled="!callup.editable"
-                :aria-label="`Convocar a ${row.name}`"
-                @click.stop="toggle(row.playerId)"
+                :label="`Convocar a ${row.name}`"
+                @update:model-value="toggle(row.playerId)"
+                @click.stop
               />
             </td>
             <td>

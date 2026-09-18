@@ -92,12 +92,24 @@ export interface FebRosterRow {
   weight: string | null;
 }
 
+/** El recuadro «Entrenador» de la ficha del equipo. */
+export interface FebCoachBox {
+  /** El `c` de su foto (`Foto.aspx?c=…`); `null` si no tiene. */
+  personId: string | null;
+  /** Nombre legal en MAYÚSCULAS, nombre antes que apellidos. */
+  fullName: string;
+  /** «25/05/1978 Burgos (Burgos)»: fecha y, a veces, lugar. */
+  birth: string | null;
+}
+
 export interface FebTeamPage {
   clubName: string | null;
   clubAddress: string | null;
   pavilionName: string | null;
   pavilionAddress: string | null;
   roster: FebRosterRow[];
+  /** `null` si el recuadro del entrenador está vacío. */
+  coach: FebCoachBox | null;
 }
 
 function spanById(html: string, idSuffix: string): string | null {
@@ -112,6 +124,35 @@ function spanById(html: string, idSuffix: string): string | null {
 function cellText(cell: { html: string } | undefined): string | null {
   const text = textOf(cell?.html ?? '');
   return text === '' || text === '-' ? null : text;
+}
+
+/**
+ * El entrenador de la ficha del equipo. Sin nombre es que la FEB no tiene a
+ * nadie dado de alta como primer entrenador.
+ */
+export function parseCoachBox(html: string): FebCoachBox | null {
+  // El recuadro acaba en la fecha de nacimiento, que está aunque venga vacía.
+  const box =
+    /<div class="box-entrenador">([\s\S]*?<div class="fecha nacimiento">[\s\S]*?<\/div>)/i.exec(
+      html
+    )?.[1];
+  if (!box) return null;
+  const name = /<div class="nombre">([\s\S]*?)<\/div>/i.exec(box)?.[1];
+  const fullName = name ? textOf(name) : '';
+  if (fullName === '') return null;
+  const birth = /<div class="fecha nacimiento">([\s\S]*?)<\/div>/i.exec(box)?.[1];
+  return {
+    personId: /fotoEntrenadorImage"[^>]*Foto\.aspx\?c=(\d+)/i.exec(box)?.[1] ?? null,
+    fullName,
+    birth: birth ? textOf(birth) || null : null
+  };
+}
+
+/** «25/05/1978 Burgos (Burgos)» → «Burgos (Burgos)»; `null` si sólo trae la fecha. */
+export function birthPlaceOf(birth: string | null): string | null {
+  if (!birth) return null;
+  const place = birth.replace(/^\s*\d{1,2}[/-]\d{1,2}[/-]\d{4}\s*/, '').trim();
+  return place === '' ? null : place;
 }
 
 export function parseTeamPage(html: string): FebTeamPage {
@@ -149,7 +190,8 @@ export function parseTeamPage(html: string): FebTeamPage {
     clubAddress: spanById(html, 'direccionLabel'),
     pavilionName: spanById(html, 'pabellonLabel'),
     pavilionAddress: spanById(html, 'dirPabellonLabel'),
-    roster
+    roster,
+    coach: parseCoachBox(html)
   };
 }
 

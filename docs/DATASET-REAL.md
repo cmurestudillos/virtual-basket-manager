@@ -94,7 +94,8 @@ inventado.
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
   nombre de la FEB, que da el legal completo: se queda el nombre de pila de uso
-  («Philip Alexander» → «Philip», pero «José María» entero).
+  («Philip Alexander» → «Philip», pero «José María» entero). De los entrenadores
+  de acb.com se queda el nombre de uso que da la propia web.
 - Todo lo descargado se guarda en `.real-data-cache/http` (fuera de git) y no se
   vuelve a pedir; `--force` lo descarga de nuevo.
 
@@ -122,3 +123,52 @@ inventado.
   `MIN_NATIONAL_POOL` jugadores.
 - La Primera FEB 2025-26 tiene **17 equipos**: el calendario mete una jornada
   de descanso por equipo en cada vuelta, como la liga de verdad.
+
+### Entrenadores
+
+Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
+en la Liga Endesa, **el que empezó la temporada**, que es el que está en el
+banquillo el día que arranca la partida; en la Primera FEB, el que publica la
+ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
+siguen inventados.
+
+- **Liga Endesa**: el array `staff` de la plantilla. Quién es primer
+  entrenador lo marca `coach.gameRole` («Entrenador» frente a «Entrenador
+  Ayudante»), **no la licencia**: CRE y CTE son cupos, y hay ayudantes CRE y
+  primeros entrenadores CTE. Si un club cambió de entrenador salen todos, el de
+  ahora el primero, pero el orden no dice quién empezó (con tres, el del medio
+  no se sabe). Eso lo dice el **acta del primer partido de liga** del club: el
+  partido más temprano ya jugado de su fila de la clasificación (por fecha, no
+  por jornada: un aplazado cuenta cuando se jugó), cuya pestaña de estadísticas
+  en live.acb.com (`/partidos/partido-<id>/estadisticas`, cacheada como todo)
+  trae el `headCoach` de cada equipo. Se busca ese nombre entre los primeros de
+  la plantilla (nombre de uso o legal, sin tildes); si no está, se toma el más
+  antiguo de la lista y se avisa. Se queda el nombre de uso de
+  la web (`nicknameFirstName`/`nicknameLastName`: el apodo en vez del nombre de
+  pila legal), la nacionalidad de la plantilla y la fecha de nacimiento de su
+  ficha (`/es/liga/entrenadores/<slug>`, una petición por club).
+- **Primera FEB**: el recuadro `box-entrenador` de la ficha del equipo, que ya
+  se descargaba. Nombre legal en mayúsculas, partido y con el nombre de pila de
+  uso como el de los jugadores, y la fecha con el lugar de nacimiento a veces.
+  La FEB no da la nacionalidad: se deduce del lugar (provincia española →
+  `ESP`, país → el suyo) y, sin lugar, se pone la del club y se avisa.
+- En el formato común es `SourceTeam.coach` y en el dataset, `DatasetTeam.coach`
+  (nombre, apellidos, nacionalidad y fecha). El ficticio no lo lleva nunca.
+- Sin fecha de nacimiento, la edad de la fuente se convierte en el 1 de julio
+  del año que le cuadra el día de la extracción: siempre la misma fecha.
+- Lo que la fuente no da y se pone a mano, con aviso, va en
+  `resources/real-data/manual/feb-entrenadores.json` (fuera de git, porque son
+  datos de personas reales; entra en las copias de seguridad): el entrenador de
+  los equipos con el recuadro vacío en la FEB (`fallbacks`, por id de equipo; en
+  la 2025-26, el del Basket Cartagena) y dónde se parten los nombres legales que
+  no se pueden partir a ojo (`names`). Sin el fichero, esos equipos se quedan
+  sin entrenador real y `real:feb` lo avisa.
+- `real:acb` avisa de los clubes que cambiaron de entrenador durante la
+  temporada, con quién le sustituyó después (en el orden de la plantilla, del
+  más antiguo al más reciente), y `real:build` cuenta cuántos clubes tienen
+  entrenador real.
+- Al sembrar la partida, el entrenador `coach-<club>` es el real, pero su
+  **reputación sale igual que la de uno inventado** (club, categoría y edad,
+  con la misma semilla): ni su fama ni su palmarés de fuera cuentan. Una
+  partida privada creada antes de los entrenadores los inventa todos al
+  abrirse: `CoachService` no lee el dataset.

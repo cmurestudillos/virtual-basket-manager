@@ -1,9 +1,9 @@
+import { z } from 'zod';
 import {
   leadersRequestSchema,
   type LeaderBoard,
   type PlayerSeasonStats
 } from '@shared/contracts/stats.contract';
-import { teamIdRequestSchema } from '@shared/contracts/rotation.contract';
 import {
   efficiencyRating,
   percentage,
@@ -21,8 +21,14 @@ import {
   type SeasonTotals
 } from '@shared/domain/season-stats';
 import type { SaveDatabase } from '../../database/save-database';
+import { SeasonRepository } from '../season/season.repository';
 import { SeasonService } from '../season/season.service';
 import { StatsRepository, type PlayerCard } from './stats.repository';
+
+const teamSeasonRequestSchema = z.object({
+  teamId: z.string().min(1),
+  competitionId: z.string().min(1).optional()
+});
 
 /**
  * Estadísticas de temporada.
@@ -41,11 +47,23 @@ export class StatsService {
     this.seasonService = new SeasonService(resolveDb);
   }
 
-  /** Medias de una plantilla, ordenadas por valoración, como en una ficha de equipo. */
-  teamSeason(teamId: string): PlayerSeasonStats[] {
-    const validated = teamIdRequestSchema.parse({ teamId });
+  /**
+   * Medias de una plantilla, ordenadas por valoración, como en una ficha de equipo.
+   *
+   * Sin competición, las de la liga del usuario, que es lo que se ha mirado
+   * siempre. Con ella, las de esa competición este curso: la ficha de un club
+   * de otra liga no tendría nada que enseñar en la del usuario. Una competición
+   * que no se juega este curso no tiene actas: lista vacía.
+   */
+  teamSeason(teamId: string, competitionId?: string): PlayerSeasonStats[] {
+    const validated = teamSeasonRequestSchema.parse({ teamId, competitionId });
     const repository = new StatsRepository(this.resolveDb());
-    const seasonId = this.seasonService.getCurrent().id;
+    const seasonId = validated.competitionId
+      ? this.seasonOf(validated.competitionId)
+      : this.seasonService.getCurrent().id;
+    if (!seasonId) {
+      return [];
+    }
 
     const lines = repository.listSeasonLines(seasonId, validated.teamId);
     return this.toStats(repository, accumulateSeason(lines)).sort(
@@ -85,6 +103,12 @@ export class StatsService {
   }
 
   // ------------------------------------------------------------------------
+
+  /** La temporada de este curso de una competición, si se juega. */
+  private seasonOf(competitionId: string): string | null {
+    const repository = new SeasonRepository(this.resolveDb());
+    return repository.findSeason(competitionId, repository.gameState().seasonNumber)?.id ?? null;
+  }
 
   private toStats(
     repository: StatsRepository,

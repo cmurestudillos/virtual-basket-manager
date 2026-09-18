@@ -546,6 +546,19 @@ Las ofertas llegan de los países que se juegan en la partida, que se eligen al
 crearla (Bloque 4, fase 4): con Grecia elegida, un banquillo griego es una salida
 más.
 
+### Los entrenadores de la IA y su carrusel
+
+Con la fase 5 del estilo IBM llegaron los **entrenadores de la IA**, como entidad
+propia: uno inventado por club con semilla fija, una bolsa de libres y el usuario
+en la misma tabla. Se mueven solos —despidos a mitad de temporada y en verano,
+fichajes (de la bolsa o quitándoselo a un club más pequeño), retiradas y bolsa
+repuesta con jóvenes— y el correo cuenta los cambios de banquillo de la liga del
+usuario. Hay **ranking del mundo** por puntos (curso actual entero y el anterior a
+la mitad) y **ficha** de cada entrenador, y la reputación del usuario se calcula
+también en modo mánager. Las partidas anteriores los reciben al abrirse, con las
+mismas semillas y contando lo ya jugado del curso. Quedan fuera los
+seleccionadores de la IA y los premios.
+
 ### Prensa y notificaciones
 
 La partida simula muchísimo que el jugador nunca veía —lesiones, fichajes, la

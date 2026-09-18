@@ -14,6 +14,8 @@ import {
 import type { SaveDatabase } from '../../database/client';
 import {
   careerSpellsTable,
+  coachesTable,
+  coachSeasonsTable,
   competitionsTable,
   gameStateTable,
   playersTable,
@@ -23,6 +25,8 @@ import {
   teamTacticsTable,
   teamTrainingTable
 } from '../../database/schema/save';
+// Entrenadores de la IA (fase 5).
+import { buildInitialCoaches } from '../coaches/coach-factory';
 import { buildFreeAgents } from '../market/free-agent-factory';
 import { buildYouthPlayers } from '../youth/youth-factory';
 import type { Dataset } from './dataset';
@@ -234,17 +238,20 @@ export function seedSave(
         .run();
     }
 
+    const managerNationality =
+      options.managerNationality ??
+      dataset.teams.find((team) => team.id === options.managedTeamId)?.country ??
+      'ESP';
+    // 1 de septiembre del año en que arranca la temporada: pretemporada.
+    const seasonStart = new Date(Date.UTC(dataset.seasonStartYear, 8, 1));
+
     tx.insert(gameStateTable)
       .values({
         id: 'singleton',
         managedTeamId: options.managedTeamId,
         managerName: options.managerName,
-        managerNationality:
-          options.managerNationality ??
-          dataset.teams.find((team) => team.id === options.managedTeamId)?.country ??
-          'ESP',
-        // 1 de septiembre del año en que arranca la temporada: pretemporada.
-        currentDate: new Date(Date.UTC(dataset.seasonStartYear, 8, 1)),
+        managerNationality,
+        currentDate: seasonStart,
         seasonNumber: 1,
         dismissalEnabled: options.dismissalEnabled ?? true,
         careerMode: options.careerMode ?? false,
@@ -269,6 +276,40 @@ export function seedSave(
         endReason: null
       })
       .run();
+
+    // Los entrenadores: uno inventado por club de liga (semilla fija por club),
+    // la bolsa de libres y el usuario, con los tramos del primer curso abiertos.
+    // El que se inventa para el club del usuario empieza en la bolsa. Si el
+    // dataset trae al entrenador real del club (edición privada), es ése.
+    const leagues = new Map(
+      dataset.competitions
+        .filter((competition) => competition.format === 'league')
+        .map((competition) => [competition.id, competition])
+    );
+    const { coaches, stints } = buildInitialCoaches({
+      clubs: dataset.teams
+        .filter((team) => leagues.has(team.competitionId))
+        .map((team) => ({
+          id: team.id,
+          country: team.country,
+          reputation: team.reputation,
+          competitionId: team.competitionId,
+          tier: leagues.get(team.competitionId)?.tier ?? 1,
+          realCoach: team.coach ?? null
+        })),
+      nationalities: [...new Set([...leagues.values()].map((league) => league.country))].sort(),
+      seasonStart,
+      seasonNumber: 1,
+      managerTeamId: options.managedTeamId,
+      managerName: options.managerName,
+      managerNationality
+    });
+    for (const row of coaches) {
+      tx.insert(coachesTable).values(row).run();
+    }
+    for (const row of stints) {
+      tx.insert(coachSeasonsTable).values(row).run();
+    }
   });
 }
 

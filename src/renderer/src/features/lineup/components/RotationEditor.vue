@@ -83,11 +83,15 @@ async function load(): Promise<void> {
  */
 async function loadMorale(): Promise<void> {
   const roster = await window.api.players.listByTeam(props.teamId);
-  const found = new Map(roster.map((player) => [player.id, player.morale]));
+  // La moral de quien no es del usuario llega vacía: ese no lleva icono.
+  const found = new Map<string, number>();
+  for (const player of roster) {
+    if (player.morale !== null) found.set(player.id, player.morale);
+  }
   const missing = slots.value.filter((slot) => !found.has(slot.playerId));
   const extra = await Promise.all(missing.map((slot) => window.api.players.get(slot.playerId)));
   for (const player of extra) {
-    if (player) found.set(player.id, player.morale);
+    if (player && player.morale !== null) found.set(player.id, player.morale);
   }
   morale.value = found;
 }

@@ -3,7 +3,7 @@ import { resolve } from 'node:path';
 import { describe, expect, it } from 'vitest';
 import { NATION_NAMES } from '../../../src/shared/domain/national-teams';
 import { formAction, hiddenInputs } from '../lib/html';
-import { toNationCode } from '../lib/nationalities';
+import { nationFromBirthPlace, toNationCode } from '../lib/nationalities';
 import {
   extractFlightPayload,
   findObjects,
@@ -13,16 +13,23 @@ import {
 import {
   canonicalTeamSlug,
   cityFromAcbAddress,
+  coachSlugs,
+  parseCoachProfile,
   parsePlayerProfile,
   parseRoster,
+  parseStaff,
   parseStandings as parseAcbStandings,
+  parseMatchHeadCoaches,
   parseTeamStats,
+  pickStartingCoach,
   playerSlugs,
   toSourceStats as acbStats
 } from '../sources/acb-parse';
 import {
+  birthPlaceOf,
   cityFromAddress,
   parseAccumulatedStats,
+  parseCoachBox,
   parsePlayerPage,
   parseStandings as parseFebStandings,
   parseTeamPage,
@@ -39,6 +46,16 @@ describe('nacionalidades del juego', () => {
       expect(toNationCode(code), code).toBe(code);
       expect(toNationCode(name), name).toBe(code);
     }
+  });
+
+  it('deduce la nacionalidad del lugar de nacimiento: provincia española o país', () => {
+    expect(nationFromBirthPlace('Burgos (Burgos)')).toBe('ESP');
+    expect(nationFromBirthPlace('Donostia-San Sebastián (Guipúzcoa)')).toBe('ESP');
+    expect(nationFromBirthPlace('Palma de Mallorca (Illes Balears)')).toBe('ESP');
+    expect(nationFromBirthPlace('Adeje (Santa Cruz de Tenerife)')).toBe('ESP');
+    expect(nationFromBirthPlace('Montevideo (Uruguay)')).toBe('URU');
+    expect(nationFromBirthPlace('Ciudad (Provincia)')).toBeNull();
+    expect(nationFromBirthPlace(null)).toBeNull();
   });
 });
 
@@ -146,6 +163,93 @@ describe('acb.com', () => {
     expect(cityFromAcbAddress('Ángel Villena, 16 Accesorio, (Roig Arena, Puerta L1)')).toBeNull();
     expect(cityFromAcbAddress('Calle Falsa 1, 46013 València')).toBe('València');
   });
+
+  it('lee los técnicos de la plantilla, en su orden y una vez cada uno', () => {
+    const staff = parseStaff(fixture('acb-plantilla-tecnicos.html'));
+    expect(staff.map((entry) => entry.coach.id)).toEqual([
+      '20300003',
+      '30000002',
+      '20300002',
+      '20300001'
+    ]);
+    expect(staff[3]).toEqual({
+      coach: {
+        id: '20300001',
+        firstName: 'José',
+        lastName: 'Inicial',
+        nicknameFirstName: 'Pepe',
+        nicknameLastName: 'Inicial',
+        gameRole: 'Entrenador'
+      },
+      licensing: 'CRE',
+      age: 60,
+      nationalityCountry: 'Italia',
+      isLicenseActive: true
+    });
+    expect(staff[2]?.coach.nicknameFirstName).toBeNull();
+    // La plantilla de jugadores no los confunde con jugadores.
+    expect(parseRoster(fixture('acb-plantilla-tecnicos.html'))).toEqual([]);
+  });
+
+  it('el del inicio es el que firmó el acta del primer partido, no el primero de la lista', () => {
+    const staff = parseStaff(fixture('acb-plantilla-tecnicos.html'));
+    // El acta lo escribe con el nombre de uso, y da igual un espacio de más o una tilde.
+    const start = pickStartingCoach(staff, 'pepe  INICIAL');
+    expect(start.head?.coach.id).toBe('20300001');
+    expect(start.source).toBe('match');
+    // Los que vinieron después, por orden de llegada: la plantilla va al revés.
+    expect(start.later.map((entry) => entry.coach.id)).toEqual(['20300002', '20300003']);
+    // También vale el nombre legal.
+    expect(pickStartingCoach(staff, 'Segundo Interino').head?.coach.id).toBe('20300002');
+  });
+
+  it('sin acta que lo aclare, el más antiguo de la lista; el ayudante nunca es primero', () => {
+    const staff = parseStaff(fixture('acb-plantilla-tecnicos.html'));
+    expect(pickStartingCoach(staff, null)).toMatchObject({
+      head: { coach: { id: '20300001' } },
+      source: 'order'
+    });
+    // Un nombre que no está en la plantilla tampoco pone a nadie de fuera.
+    expect(pickStartingCoach(staff, 'Otro Técnico').source).toBe('order');
+    // Ni el ayudante CRE pasa a primero por su licencia de extranjero.
+    expect(pickStartingCoach(staff, 'Andrea Ayudante').head?.coach.id).toBe('20300001');
+    const onlyAssistants = staff.filter((entry) => entry.coach.gameRole !== 'Entrenador');
+    expect(pickStartingCoach(onlyAssistants, null)).toMatchObject({
+      head: { coach: { id: '30000002' } },
+      source: 'guessed'
+    });
+    expect(pickStartingCoach([], null)).toEqual({ head: null, later: [], source: 'order' });
+  });
+
+  it('lee el primer entrenador de cada equipo en el acta de un partido', () => {
+    expect(parseMatchHeadCoaches(fixture('acb-partido.html'))).toEqual(
+      new Map([
+        ['13', 'Pepe  Inicial'],
+        ['9', 'Otro Técnico']
+      ])
+    );
+  });
+
+  it('el primer partido de cada equipo es el más temprano ya jugado, no el de la jornada 1', () => {
+    const { standings } = parseAcbStandings(fixture('acb-clasificacion.html'));
+    // La jornada 1 del primero se aplazó y la jugó después que la 2.
+    expect(standings.map((row) => [row.clubId, row.firstMatchId])).toEqual([
+      ['9', '104002'],
+      ['13', null]
+    ]);
+  });
+
+  it('lee la ficha del entrenador y los enlaces a fichas de entrenador', () => {
+    expect(parseCoachProfile(fixture('acb-entrenador.html'))).toEqual({
+      birthDate: '20-06-1966',
+      birthPlace: 'Ciudad Inventada',
+      nationality: 'Italia'
+    });
+    expect(parseCoachProfile(fixture('acb-plantilla-tecnicos.html'))).toBeNull();
+    expect(coachSlugs(fixture('acb-plantilla-tecnicos.html')).get('20300001')).toBe(
+      'jose-inicial-20300001'
+    );
+  });
 });
 
 describe('baloncestoenvivo.feb.es', () => {
@@ -177,6 +281,21 @@ describe('baloncestoenvivo.feb.es', () => {
         weight: '95'
       }
     ]);
+  });
+
+  it('lee el recuadro del entrenador, y nada si viene vacío', () => {
+    const html = fixture('feb-equipo.html');
+    expect(parseTeamPage(html).coach).toEqual({
+      personId: '200001',
+      fullName: 'JOSE MARIA TECNICO DE PRUEBA',
+      birth: '25/05/1978 Onda (Castellón)'
+    });
+    const empty = html
+      .replace('JOSE MARIA TECNICO DE PRUEBA', '')
+      .replace('25/05/1978 Onda (Castellón)', '');
+    expect(parseCoachBox(empty)).toBeNull();
+    expect(birthPlaceOf('25/05/1978 Onda (Castellón)')).toBe('Onda (Castellón)');
+    expect(birthPlaceOf('22/04/1979')).toBeNull();
   });
 
   it('prepara el postback con todos los campos ocultos y la URL del formulario', () => {
