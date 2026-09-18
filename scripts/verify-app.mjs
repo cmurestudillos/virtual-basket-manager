@@ -844,8 +844,8 @@ const mejorMarca = await page.locator('main li').first().innerText();
 console.log('mejor marca:', mejorMarca.split('\n').join(' · '));
 await page.screenshot({ path: `${SHOTS}/23d-records.png` });
 
-// La pestaña «Carrera» no se comprueba aquí: esta partida es de modo mánager y
-// allí no existe. Sale al final, con la partida de carrera.
+// La hoja de servicios (Mánager → Ficha) con las acciones de carrera no se
+// comprueba aquí: esta partida es de modo mánager. Sale al final, con la de carrera.
 
 // Con la temporada entera jugada hay desgaste y enfermería de verdad.
 await goTo('Equipo', 'Entrenamiento');
@@ -922,11 +922,9 @@ const nuevoClub = await page.locator('header').first().innerText();
 console.log('tras firmar:', nuevoClub.replace(/\n/g, ' · '));
 await page.screenshot({ path: `${SHOTS}/26-club-nuevo.png` });
 
-// La hoja de servicios tiene que contar ya las dos etapas.
-await goTo('Club', 'Historial');
-await page.waitForTimeout(1500);
-await page.getByRole('button', { name: 'Carrera' }).click();
-await page.waitForTimeout(1200);
+// La hoja de servicios (Mánager → Ficha) tiene que contar ya las dos etapas.
+await goTo('Mánager', 'Ficha');
+await page.waitForTimeout(2000);
 console.log('etapas en la hoja de servicios:', await page.locator('main li').count());
 const etapas = await page.locator('main li').first().innerText();
 console.log('etapa en curso:', etapas.split('\n').join(' · '));
@@ -944,10 +942,8 @@ console.log('avanzar día:', fechaConBanquillo, '->', await fechaDelJuego());
 await page.screenshot({ path: `${SHOTS}/28-carrera-en-marcha.png` });
 
 // Y se dimite: dos pasos desde la hoja de servicios, y de vuelta al paro.
-await goTo('Club', 'Historial');
-await page.waitForTimeout(1500);
-await page.getByRole('button', { name: 'Carrera' }).click();
-await page.waitForTimeout(1000);
+await goTo('Mánager', 'Ficha');
+await page.waitForTimeout(2000);
 await page.getByRole('button', { name: 'Dimitir' }).click();
 await page.waitForTimeout(400);
 await page.getByRole('button', { name: 'Confirmar dimisión' }).click();
@@ -1138,7 +1134,7 @@ await enLaVentanaMinima('inicio', '36j-inicio-1280');
 //
 // Ya en la ventana mínima: la barra lateral lleva dos iconos más y Equipo cinco
 // pestañas, y las dos cosas tienen que caber a 1280×720. El calendario y las
-// fichas de club ya son de verdad (paso 2); Mánager sigue en construcción.
+// fichas de club ya son de verdad (paso 2), y Mánager con su ranking (paso 3).
 
 /** El título de la barra de sección y las pestañas que enseña. */
 async function barraDeSeccion() {
@@ -1214,9 +1210,58 @@ await enLaVentanaMinima('calendario', '37a-calendario-1280');
 
 await goTo('Mánager', 'Ficha');
 console.log('mánager:', await barraDeSeccion());
-await enLaVentanaMinima('ficha del mánager', '37b-manager-ficha-vacia');
+await page.getByText('Ranking del mundo', { exact: true }).waitFor({ timeout: 10_000 });
+console.log(
+  'tu ficha:',
+  (await page.locator('main h1').first().innerText()).trim(),
+  '· filas del historial y del top 5:',
+  await page.locator('main tbody tr').count(),
+  '· cabe a lo alto:',
+  await cabeALoAlto()
+);
+await enLaVentanaMinima('ficha del mánager', '37b-manager-ficha');
+
 await goTo('Mánager', 'Ranking');
-await enLaVentanaMinima('ranking de entrenadores', '37c-ranking-vacio');
+await page.locator('main tbody tr').first().waitFor({ timeout: 10_000 });
+console.log(
+  'ranking:',
+  await page.locator('main tbody tr').count(),
+  'filas ·',
+  (
+    await page
+      .getByText(/Página \d+ \/ \d+/)
+      .first()
+      .innerText()
+      .catch(() => 'sin rótulo')
+  ).trim()
+);
+const primerEntrenador = (await page.locator('main tbody tr').first().innerText()).replace(
+  /\s+/g,
+  ' '
+);
+console.log('primero del mundo:', primerEntrenador);
+await enLaVentanaMinima('ranking de entrenadores', '37c-ranking');
+await page.getByRole('button', { name: 'Mi puesto' }).click();
+await page.waitForTimeout(1500);
+console.log(
+  'mi puesto:',
+  (
+    await page
+      .locator('main tbody tr.is-mine')
+      .first()
+      .innerText()
+      .catch(() => 'no está')
+  ).replace(/\s+/g, ' ')
+);
+await page.screenshot({ path: `${SHOTS}/37c2-ranking-mi-puesto.png` });
+
+// La ficha de otro entrenador, desde la primera fila del ranking del mundo.
+await goTo('Mánager', 'Ranking');
+await page.locator('main tbody tr').first().waitFor({ timeout: 10_000 });
+await page.locator('main tbody tr').first().getByRole('link').first().click();
+await page.getByText('Ranking del mundo', { exact: true }).waitFor({ timeout: 10_000 });
+console.log('ficha ajena:', (await page.locator('main h1').first().innerText()).trim());
+await enLaVentanaMinima('ficha de otro entrenador', '37c3-entrenador-ajeno');
 
 // Tu club, pestaña «Club» de Equipo: la misma ficha que la de cualquiera, pero
 // sin niebla y con la moral.

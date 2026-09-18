@@ -17,6 +17,7 @@
  */
 import { computed, onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
+import { formatWhole } from '@renderer/shared/format';
 import type { CatalogLeague, CatalogScope, CatalogTeam } from '@shared/contracts/teams.contract';
 import { matchKits } from '@shared/domain/court';
 import { estimateSeconds, formatEstimate } from '@shared/domain/simulation-scope';
@@ -27,6 +28,7 @@ import {
   AppBackdrop,
   AppBadge,
   AppButton,
+  AppCheckbox,
   AppEmpty,
   AppField,
   AppFlag,
@@ -386,7 +388,7 @@ const summaryItems = computed<KeyValueItem[]>(() => {
     {
       id: 'cost',
       label: 'Simulación',
-      value: `unos ${scopeGames.value.toLocaleString('es-ES')} partidos, ≈ ${scopeEstimate.value} al año`
+      value: `unos ${formatWhole(scopeGames.value)} partidos, ≈ ${scopeEstimate.value} al año`
     }
   ];
 });
@@ -642,15 +644,10 @@ async function create(): Promise<void> {
                 </button>
               </div>
 
-              <label class="flex cursor-pointer items-start gap-3 bg-tv-cell p-3 text-sm">
-                <input
-                  v-model="dismissalEnabled"
-                  type="checkbox"
-                  class="mt-0.5 h-4 w-4 shrink-0 accent-tv-blue"
-                />
+              <AppCheckbox v-model="dismissalEnabled" class="w-full bg-tv-cell p-3">
                 <span>
                   <span class="font-bold">El consejo puede despedirte</span>
-                  <span class="block text-xs text-tv-muted">
+                  <span class="block text-xs font-normal text-tv-muted">
                     {{
                       careerMode
                         ? 'Sin despido tampoco hay carrera que hacer: nadie te echa de tu club.'
@@ -658,7 +655,7 @@ async function create(): Promise<void> {
                     }}
                   </span>
                 </span>
-              </label>
+              </AppCheckbox>
             </div>
           </AppPanel>
         </div>
@@ -698,12 +695,11 @@ async function create(): Promise<void> {
                     country.code === managedCountry ? 'cursor-default' : 'cursor-pointer'
                   ]"
                 >
-                  <input
-                    type="checkbox"
-                    class="h-4 w-4 accent-tv-blue"
-                    :checked="isActive(country.code)"
+                  <AppCheckbox
+                    :model-value="isActive(country.code)"
                     :disabled="country.code === managedCountry"
-                    @change="toggleCountry(country.code)"
+                    :label="country.name"
+                    @update:model-value="toggleCountry(country.code)"
                   />
                   <span class="flex items-center gap-2 font-semibold">
                     {{ country.name }}
@@ -727,13 +723,13 @@ async function create(): Promise<void> {
                 <div class="grid grid-cols-2 gap-3">
                   <AppStat label="Países" size="md">{{ activeCountries.size }}</AppStat>
                   <AppStat label="Partidos" size="md">
-                    {{ scopeGames.toLocaleString('es-ES') }}
+                    {{ formatWhole(scopeGames) }}
                   </AppStat>
                 </div>
                 <AppStat label="Simulación">≈ {{ scopeEstimate }}</AppStat>
                 <p class="bg-tv-cell p-3 text-center text-xs text-tv-muted">
                   {{ activeCountries.size }} {{ activeCountries.size === 1 ? 'país' : 'países' }} ·
-                  unos {{ scopeGames.toLocaleString('es-ES') }} partidos y
+                  unos {{ formatWhole(scopeGames) }} partidos y
                   <span class="font-bold text-tv-ink">≈ {{ scopeEstimate }}</span>
                   de simulación por temporada, competiciones continentales y selecciones incluidas.
                 </p>

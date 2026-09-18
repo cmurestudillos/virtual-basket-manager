@@ -42,7 +42,8 @@ const SHORTCUTS: Record<string, string> = {
   finances: 'Ir a finanzas',
   history: 'Ir al historial',
   competition: 'Ir a competición',
-  market: 'Ir al mercado'
+  market: 'Ir al mercado',
+  'team-profile': 'Ir a la ficha del club'
 };
 
 export function shortcutLabel(route: InboxRoute): string {

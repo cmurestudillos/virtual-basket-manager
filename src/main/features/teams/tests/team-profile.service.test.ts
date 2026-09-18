@@ -86,7 +86,8 @@ describe('la ficha de un club ajeno', () => {
     expect(profile.name).not.toBe('');
     expect(profile.pavilionCapacity).toBeGreaterThan(0);
     expect(profile.competitionName).not.toBe('');
-    expect(profile.coach).toBeNull();
+    // Su entrenador de la IA, que es público como el de cualquier club.
+    expect(profile.coach).toMatchObject({ id: `coach-${RIVAL_TEAM}`, isManager: false });
     expect(profile.objective.label).not.toBe('');
     expect(profile.standing?.teamId).toBe(RIVAL_TEAM);
     expect(profile.leagueTeams).toBeGreaterThan(1);

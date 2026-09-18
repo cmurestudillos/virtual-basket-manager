@@ -264,6 +264,48 @@ describe('cambio de banquillo', () => {
   });
 });
 
+describe('los banquillos de la liga', () => {
+  const conEntrenadores: InboxNames = {
+    ...names,
+    coach: (id) => `Entrenador ${id}`,
+    coachExit: (coachId) =>
+      coachId === 'echado'
+        ? { reason: 'dismissed', toTeamId: null }
+        : coachId === 'fichado'
+          ? { reason: 'left', toTeamId: 'grande' }
+          : { reason: 'retired', toTeamId: null }
+  };
+
+  it('un aviso por club que cambia de entrenador, con el porqué', () => {
+    const avisos = diffSnapshots(
+      snapshot({ coaches: { a: 'echado', b: 'fichado', c: 'mayor', d: 'sigue' } }),
+      snapshot({ coaches: { a: 'nuevo-a', b: 'nuevo-b', c: 'nuevo-c', d: 'sigue' } }),
+      conEntrenadores
+    );
+
+    expect(avisos.map((aviso) => aviso.title)).toEqual([
+      'Equipo a destituye a Entrenador echado',
+      'Entrenador fichado se marcha a Equipo grande',
+      'Entrenador mayor se retira'
+    ]);
+    expect(avisos.every((aviso) => aviso.category === 'press')).toBe(true);
+    expect(avisos[0]!.route).toEqual({ name: 'team-profile', params: { teamId: 'a' } });
+  });
+
+  it('una foto sin entrenadores, o un club que no estaba antes, no avisan', () => {
+    expect(diffSnapshots(snapshot(), snapshot({ coaches: { a: 'x' } }), conEntrenadores)).toEqual(
+      []
+    );
+    expect(
+      diffSnapshots(
+        snapshot({ coaches: { a: 'x' } }),
+        snapshot({ coaches: { a: 'x', b: 'y' } }),
+        conEntrenadores
+      )
+    ).toEqual([]);
+  });
+});
+
 describe('contratos que acaban', () => {
   it('uno solo, o varios juntos en un aviso', () => {
     expect(expiringContractDrafts([], 2)).toEqual([]);

@@ -96,6 +96,13 @@ export const router = createRouter({
           name: 'coach-ranking',
           component: () => import('@renderer/features/coaches/pages/CoachRankingPage.vue')
         },
+        // La ficha de cualquier entrenador (fase 5, paso 3): sección Mánager, sin
+        // pestaña propia, como `team-profile` en Competición.
+        {
+          path: 'manager/coach/:coachId',
+          name: 'coach-profile',
+          component: () => import('@renderer/features/coaches/pages/CoachPage.vue')
+        },
         {
           path: 'lineup',
           name: 'lineup',

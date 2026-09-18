@@ -356,3 +356,96 @@ export function toNationCode(raw: string | null | undefined): string | null {
   }
   return null;
 }
+
+/**
+ * Las provincias españolas, como las escribe la FEB entre paréntesis tras la
+ * ciudad de nacimiento («Onda (Castellón)»), con sus nombres oficiales en las
+ * otras lenguas. Ya normalizadas como {@link normalizeCountryText}.
+ */
+const SPANISH_PROVINCES = new Set(
+  [
+    'Álava',
+    'Araba',
+    'Albacete',
+    'Alicante',
+    'Alacant',
+    'Almería',
+    'Asturias',
+    'Ávila',
+    'Badajoz',
+    'Baleares',
+    'Illes Balears',
+    'Islas Baleares',
+    'Barcelona',
+    'Burgos',
+    'Cáceres',
+    'Cádiz',
+    'Cantabria',
+    'Castellón',
+    'Castelló',
+    'Ciudad Real',
+    'Córdoba',
+    'A Coruña',
+    'La Coruña',
+    'Coruña',
+    'Coruña, A',
+    'Cuenca',
+    'Girona',
+    'Gerona',
+    'Granada',
+    'Guadalajara',
+    'Guipúzcoa',
+    'Gipuzkoa',
+    'Huelva',
+    'Huesca',
+    'Jaén',
+    'León',
+    'Lleida',
+    'Lérida',
+    'Lugo',
+    'Madrid',
+    'Málaga',
+    'Murcia',
+    'Navarra',
+    'Nafarroa',
+    'Ourense',
+    'Orense',
+    'Palencia',
+    'Las Palmas',
+    'Palmas, Las',
+    'Pontevedra',
+    'La Rioja',
+    'Rioja, La',
+    'Salamanca',
+    'Santa Cruz de Tenerife',
+    'Segovia',
+    'Sevilla',
+    'Soria',
+    'Tarragona',
+    'Teruel',
+    'Toledo',
+    'Valencia',
+    'València',
+    'Valladolid',
+    'Vizcaya',
+    'Bizkaia',
+    'Zamora',
+    'Zaragoza',
+    'Ceuta',
+    'Melilla'
+  ].map(normalizeCountryText)
+);
+
+/**
+ * La nacionalidad que se deduce de un lugar de nacimiento («Burgos (Burgos)»,
+ * «Montevideo (Uruguay)»): si lo de entre paréntesis es una provincia
+ * española, `ESP`; si es un país, el suyo. `null` si no se puede saber.
+ * Nacer en un sitio no es tener su pasaporte, pero para quien la fuente no da
+ * nacionalidad es la mejor pista que hay.
+ */
+export function nationFromBirthPlace(place: string | null | undefined): string | null {
+  if (!place) return null;
+  const region = /\(([^()]+)\)\s*$/.exec(place)?.[1]?.trim() ?? place;
+  if (SPANISH_PROVINCES.has(normalizeCountryText(region))) return 'ESP';
+  return toNationCode(region);
+}

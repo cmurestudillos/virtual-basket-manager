@@ -8,7 +8,10 @@ import {
   openSaveDatabase,
   type SaveDatabase
 } from '../../../database/save-database';
+import { generateClubCoach } from '@shared/domain/coaches';
+import { createRng, seedFromString } from '@shared/engine/basketball/rng';
 import {
+  coachesTable,
   competitionsTable,
   gameStateTable,
   playersTable,
@@ -17,7 +20,7 @@ import {
   teamsTable,
   teamTacticsTable
 } from '../../../database/schema/save';
-import { loadDataset } from '../dataset';
+import { loadDataset, type Dataset } from '../dataset';
 import { seedSave } from '../save-seeder';
 
 /**
@@ -196,5 +199,110 @@ describe('seedSave', () => {
     // `basketballIQ` en el dominio, `basketball_iq` en la tabla: es justo el
     // campo que un `spread` del objeto de atributos se dejaría por el camino.
     expect(row?.basketballIq).toBe(expected.attributes.basketballIQ);
+  });
+});
+
+describe('seedSave con entrenadores reales (edición privada)', () => {
+  // Un mundo pequeño —sólo España— en el que dos clubes traen a su entrenador
+  // de verdad, como el dataset real en la ACB y la Primera FEB.
+  const REAL_COACH = {
+    firstName: 'Técnico',
+    lastName: 'De Verdad',
+    nationality: 'ITA',
+    birthDate: '1961-04-01'
+  };
+  const USER_CLUB_COACH = {
+    firstName: 'Otro',
+    lastName: 'Real',
+    nationality: 'ESP',
+    birthDate: '1978-05-25'
+  };
+  let realDirectory: string;
+  let realPath: string;
+  let realDb: SaveDatabase;
+
+  beforeAll(() => {
+    const full = loadDataset(SEED_DIRECTORY);
+    const competitions = full.competitions.filter((row) => row.country === 'ESP');
+    const ids = new Set(competitions.map((row) => row.id));
+    const teams = full.teams
+      .filter((team) => ids.has(team.competitionId))
+      .map((team) =>
+        team.id === 'liga-nacional-2'
+          ? { ...team, coach: REAL_COACH }
+          : team.id === 'liga-nacional-1'
+            ? { ...team, coach: USER_CLUB_COACH }
+            : team
+      );
+    const teamIds = new Set(teams.map((team) => team.id));
+    const small: Dataset = {
+      ...full,
+      competitions,
+      teams,
+      players: full.players.filter((player) => teamIds.has(player.teamId))
+    };
+
+    realDirectory = mkdtempSync(join(tmpdir(), 'vbm-save-real-'));
+    realPath = join(realDirectory, 'partida.sqlite');
+    realDb = openSaveDatabase(realPath, MIGRATIONS);
+    seedSave(realDb, small, { managedTeamId: 'liga-nacional-1', managerName: 'Carlos' });
+  });
+
+  afterAll(() => {
+    closeSaveDatabase(realPath);
+    rmSync(realDirectory, { recursive: true, force: true });
+  });
+
+  it('el club lleva a su entrenador real, con su nombre, bandera y fecha', () => {
+    const row = realDb
+      .select()
+      .from(coachesTable)
+      .where(eq(coachesTable.id, 'coach-liga-nacional-2'))
+      .get();
+    expect(row).toMatchObject({
+      teamId: 'liga-nacional-2',
+      firstName: 'Técnico',
+      lastName: 'De Verdad',
+      nationality: 'ITA',
+      retired: false
+    });
+    expect(row?.birthDate?.toISOString().slice(0, 10)).toBe('1961-04-01');
+  });
+
+  it('la reputación sale de la misma semilla que la de uno inventado, no de su fama', () => {
+    const row = realDb
+      .select()
+      .from(coachesTable)
+      .where(eq(coachesTable.id, 'coach-liga-nacional-2'))
+      .get();
+    const team = realDb.select().from(teamsTable).where(eq(teamsTable.id, 'liga-nacional-2')).get();
+    const expected = generateClubCoach({
+      country: team!.country,
+      clubReputation: team!.reputation,
+      tier: 1,
+      today: new Date(Date.UTC(loadDataset(SEED_DIRECTORY).seasonStartYear, 8, 1)),
+      rng: createRng(seedFromString('liga-nacional-2-entrenador')),
+      real: { ...REAL_COACH, birthDate: new Date('1961-04-01T00:00:00Z') }
+    });
+    expect(row?.baseReputation).toBe(expected.baseReputation);
+  });
+
+  it('el real del club del usuario empieza en la bolsa, como el inventado', () => {
+    const row = realDb
+      .select()
+      .from(coachesTable)
+      .where(eq(coachesTable.id, 'coach-liga-nacional-1'))
+      .get();
+    expect(row).toMatchObject({ teamId: null, firstName: 'Otro', lastName: 'Real' });
+  });
+
+  it('los clubes sin entrenador real siguen con uno inventado', () => {
+    const row = realDb
+      .select()
+      .from(coachesTable)
+      .where(eq(coachesTable.id, 'coach-liga-nacional-3'))
+      .get();
+    expect(row?.teamId).toBe('liga-nacional-3');
+    expect(row?.firstName).not.toBe('Técnico');
   });
 });

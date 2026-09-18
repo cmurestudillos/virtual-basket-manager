@@ -66,6 +66,11 @@ export interface ClubSnapshot {
   calledUp?: Record<string, string>;
   /** Jugadores del club descontentos. Opcional por las fotos de antes. */
   unhappy?: string[];
+  /**
+   * El entrenador de cada club de la liga del usuario (el suyo no), por id de
+   * club. Opcional por las fotos de antes de los entrenadores de la IA.
+   */
+  coaches?: Record<string, string>;
 }
 
 /** A dónde lleva un aviso al pulsarlo. */
@@ -90,6 +95,16 @@ export interface InboxNames {
   tier: (competitionId: string) => number;
   /** Competición a la que pertenece una temporada. */
   seasonCompetition: (seasonId: string) => string;
+  /** Nombre de un entrenador. Opcional: sólo lo piden los cambios de banquillo. */
+  coach?: (coachId: string) => string;
+  /**
+   * Cómo dejó un entrenador un club: despedido, marchado (y adónde) o
+   * retirado; `null` si no consta.
+   */
+  coachExit?: (
+    coachId: string,
+    teamId: string
+  ) => { reason: 'dismissed' | 'left' | 'retired' | null; toTeamId: string | null };
 }
 
 /**
@@ -122,8 +137,65 @@ export function diffSnapshots(
     ...titleDrafts(before, after, names),
     ...divisionDrafts(before, after, names),
     ...callupDrafts(before, after, names),
-    ...unhappyDrafts(before, after, names)
+    ...unhappyDrafts(before, after, names),
+    ...coachDrafts(before, after, names)
   ];
+}
+
+/**
+ * Los cambios de banquillo en la liga del usuario: un aviso por club, que
+ * cuenta a la vez quién se va y quién llega (el carrusel nunca deja un
+ * banquillo vacío, así que un despido siempre trae un fichaje). Lo que pasa en
+ * otras ligas no es noticia; y si el usuario cambia de liga, sólo se comparan
+ * los clubes que estaban en las dos fotos.
+ */
+function coachDrafts(before: ClubSnapshot, after: ClubSnapshot, names: InboxNames): InboxDraft[] {
+  const previous = before.coaches ?? {};
+  const drafts: InboxDraft[] = [];
+
+  for (const [teamId, coachId] of Object.entries(after.coaches ?? {})) {
+    const outgoingId = previous[teamId];
+    if (!outgoingId || outgoingId === coachId) {
+      continue;
+    }
+    const team = names.team(teamId);
+    const incoming = names.coach?.(coachId) ?? 'Un entrenador nuevo';
+    const outgoing = names.coach?.(outgoingId) ?? 'su entrenador';
+    const exit = names.coachExit?.(outgoingId, teamId) ?? { reason: null, toTeamId: null };
+    const route = { name: 'team-profile', params: { teamId } };
+
+    if (exit.reason === 'dismissed') {
+      drafts.push({
+        category: 'press',
+        title: `${team} destituye a ${outgoing}`,
+        body: `${incoming} es el nuevo entrenador del equipo.`,
+        route
+      });
+    } else if (exit.reason === 'retired') {
+      drafts.push({
+        category: 'press',
+        title: `${outgoing} se retira`,
+        body: `Deja el banquillo de ${team}. Le sustituye ${incoming}.`,
+        route
+      });
+    } else if (exit.reason === 'left' && exit.toTeamId) {
+      drafts.push({
+        category: 'press',
+        title: `${outgoing} se marcha a ${names.team(exit.toTeamId)}`,
+        body: `${team} ficha a ${incoming} para sustituirle.`,
+        route
+      });
+    } else {
+      drafts.push({
+        category: 'press',
+        title: `Cambio de banquillo en ${team}`,
+        body: `${incoming} sustituye a ${outgoing}.`,
+        route
+      });
+    }
+  }
+
+  return drafts;
 }
 
 /**

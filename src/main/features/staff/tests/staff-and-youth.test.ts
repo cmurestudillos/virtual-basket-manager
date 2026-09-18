@@ -111,12 +111,11 @@ describe('cuerpo técnico', () => {
     expect(staff.levels(MANAGED_TEAM).scout).toBe(0);
   });
 
-  it('no se puede tocar el cuerpo técnico de un rival', () => {
-    const rival = staff.get(RIVAL_TEAM);
-
+  it('no se puede ver ni tocar el cuerpo técnico de un rival', () => {
     const libre = staff.get(MANAGED_TEAM).candidates[0]!;
 
-    expect(rival.isManaged).toBe(false);
+    // Lleva los sueldos: la nómina de otro club no se ve nunca.
+    expect(() => staff.get(RIVAL_TEAM)).toThrow(/no lo dirige el usuario/);
     expect(() => staff.hire({ teamId: RIVAL_TEAM, staffId: libre.id })).toThrow(
       /no lo dirige el usuario/
     );

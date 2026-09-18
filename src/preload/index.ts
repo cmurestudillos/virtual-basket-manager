@@ -32,6 +32,13 @@ import type {
 } from '@shared/contracts/calendar.contract';
 import type { HistoryApi, HistoryView } from '@shared/contracts/history.contract';
 import type { CareerApi, CareerStatus } from '@shared/contracts/career.contract';
+// Entrenadores y ranking (fase 5).
+import type {
+  CoachesApi,
+  CoachProfile,
+  CoachRankingPage,
+  CoachRankingRequest
+} from '@shared/contracts/coaches.contract';
 import type { DraftApi, DraftView } from '@shared/contracts/draft.contract';
 import type {
   CallupResult,
@@ -189,6 +196,14 @@ const season: SeasonApi = {
 const calendar: CalendarApi = {
   getMonth: (request: CalendarMonthRequest) =>
     ipcRenderer.invoke(IPC_CHANNELS.calendarGetMonth, request) as Promise<CalendarMonth>
+};
+
+// Entrenadores y ranking (fase 5).
+const coaches: CoachesApi = {
+  ranking: (request: CoachRankingRequest) =>
+    ipcRenderer.invoke(IPC_CHANNELS.coachesRanking, request) as Promise<CoachRankingPage>,
+  getProfile: (coachId?: string | null) =>
+    ipcRenderer.invoke(IPC_CHANNELS.coachesGetProfile, coachId ?? null) as Promise<CoachProfile>
 };
 
 const rotation: RotationApi = {
@@ -385,6 +400,7 @@ export const api = {
   gameState,
   season,
   calendar,
+  coaches,
   rotation,
   tactics,
   stats,

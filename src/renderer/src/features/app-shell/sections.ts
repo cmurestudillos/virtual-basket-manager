@@ -83,7 +83,10 @@ export const GAME_SECTIONS: readonly GameSection[] = [
     tabs: [
       { route: 'manager', label: 'Ficha' },
       { route: 'coach-ranking', label: 'Ranking' }
-    ]
+    ],
+    // La ficha de cualquier entrenador se abre desde el ranking y las fichas de
+    // club: cuenta como Mánager, con sus pestañas a la vista.
+    also: ['coach-profile']
   },
   {
     id: 'national',

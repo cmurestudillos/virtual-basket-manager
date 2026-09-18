@@ -29,6 +29,18 @@ export interface DatasetCompetition {
   nbaFormat?: boolean;
 }
 
+/**
+ * El entrenador real de un club. Sólo lo trae el dataset de la edición privada,
+ * en las ligas con datos reales; sin él, el entrenador se inventa.
+ */
+export interface DatasetCoach {
+  firstName: string;
+  lastName: string;
+  nationality: string;
+  /** `AAAA-MM-DD`. */
+  birthDate: string;
+}
+
 export interface DatasetTeam {
   id: string;
   name: string;
@@ -40,6 +52,8 @@ export interface DatasetTeam {
   pavilionCapacity: number;
   reputation: number;
   budgetCents: number;
+  /** Entrenador real (edición privada); ausente en el mundo inventado. */
+  coach?: DatasetCoach;
 }
 
 export interface DatasetPlayer {

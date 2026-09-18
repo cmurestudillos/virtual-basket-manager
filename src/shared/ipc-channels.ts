@@ -36,6 +36,9 @@ export const IPC_CHANNELS = {
   seasonStartNext: 'season:startNext',
   // Calendario mensual (fase 5).
   calendarGetMonth: 'calendar:getMonth',
+  // Entrenadores y ranking (fase 5).
+  coachesRanking: 'coaches:ranking',
+  coachesGetProfile: 'coaches:getProfile',
   rotationGet: 'rotation:get',
   rotationSave: 'rotation:save',
   rotationAuto: 'rotation:auto',

@@ -63,12 +63,32 @@ export interface AcbStanding {
   fullName: string;
   abbreviatedName: string | null;
   matchesPlayed: number | null;
+  /** El primer partido de liga regular que jugó (el más temprano); `null` si no se sabe. */
+  firstMatchId: string | null;
 }
 
 export interface AcbStandings {
   season: number | null;
   totalRounds: number | null;
   standings: AcbStanding[];
+}
+
+/**
+ * El primer partido que jugó un equipo, de los de su fila de la clasificación
+ * (una jornada por partido). Cuenta la fecha y no el número de jornada: un
+ * partido de la primera jornada aplazado se jugó después que los de la segunda.
+ */
+function firstMatchOf(row: JsonObject): string | null {
+  const rounds = Array.isArray(row.rounds) ? (row.rounds as JsonObject[]) : [];
+  let first: { id: string; at: string } | null = null;
+  for (const round of rounds) {
+    const match = obj(round, 'matchData');
+    const id = str(match, 'id');
+    const at = str(match, 'startDateTime');
+    if (!id || !at || str(match, 'matchStatus') !== 'FINALIZED') continue;
+    if (!first || at < first.at) first = { id, at };
+  }
+  return first?.id ?? null;
 }
 
 export function parseStandings(html: string): AcbStandings {
@@ -89,7 +109,8 @@ export function parseStandings(html: string): AcbStandings {
       teamId: str(team, 'id') ?? '',
       fullName: str(team, 'fullName') ?? '',
       abbreviatedName: str(team, 'abbreviatedName'),
-      matchesPlayed: num(row, 'matchesPlayed')
+      matchesPlayed: num(row, 'matchesPlayed'),
+      firstMatchId: firstMatchOf(row)
     });
   }
   return {
@@ -157,6 +178,154 @@ export function parseRoster(html: string): AcbRosterEntry[] {
     });
   }
   return entries;
+}
+
+export interface AcbCoachRef {
+  id: string;
+  firstName: string;
+  lastName: string;
+  /** El nombre de uso, partido igual que el legal: nombre y apellido del apodo. */
+  nicknameFirstName: string | null;
+  nicknameLastName: string | null;
+  /** «Entrenador» el primero, «Entrenador Ayudante» los demás. */
+  gameRole: string | null;
+}
+
+export interface AcbStaffEntry {
+  coach: AcbCoachRef;
+  /** Cupo de la licencia (CTE, CRE): no dice quién es el primer entrenador. */
+  licensing: string | null;
+  age: number | null;
+  nationalityCountry: string | null;
+  isLicenseActive: boolean | null;
+}
+
+/**
+ * Los técnicos de la plantilla, en el orden de la web: los que llevan `coach`.
+ * Salen todos los de la temporada, también los que se fueron a mitad.
+ */
+export function parseStaff(html: string): AcbStaffEntry[] {
+  const entries: AcbStaffEntry[] = [];
+  for (const row of findObjects(flightDataOf(html), (o) => 'coach' in o && 'licensing' in o)) {
+    const coach = obj(row, 'coach');
+    const id = str(coach, 'id');
+    if (!coach || !id) continue;
+    const active = row.isLicenseActive;
+    entries.push({
+      coach: {
+        id,
+        firstName: str(coach, 'firstName') ?? '',
+        lastName: str(coach, 'lastName') ?? '',
+        nicknameFirstName: str(coach, 'nicknameFirstName'),
+        nicknameLastName: str(coach, 'nicknameLastName'),
+        gameRole: str(coach, 'gameRole')
+      },
+      licensing: str(row, 'licensing'),
+      age: num(row, 'age'),
+      nationalityCountry: str(row, 'nationalityCountry'),
+      isLicenseActive: typeof active === 'boolean' ? active : null
+    });
+  }
+  return entries;
+}
+
+export interface AcbStartingCoach {
+  /** `null` si la plantilla no trae técnicos. */
+  head: AcbStaffEntry | null;
+  /** Los primeros entrenadores que vinieron después, del primero al último. */
+  later: AcbStaffEntry[];
+  /**
+   * Cómo se ha sabido: por el acta del primer partido (`match`), por el orden
+   * de la plantilla porque el acta no lo aclara (`order`) o, sin nadie marcado
+   * como primer entrenador, el primero de la lista (`guessed`).
+   */
+  source: 'match' | 'order' | 'guessed';
+}
+
+const HEAD_COACH_ROLE = 'entrenador';
+
+/** Un nombre para comparar: sin tildes, en minúsculas y con los espacios justos. */
+function comparableName(name: string): string {
+  return name.normalize('NFD').replace(/\p{M}/gu, '').toLowerCase().replace(/\s+/g, ' ').trim();
+}
+
+/** ¿Es este técnico el que el acta escribe así? Vale el nombre de uso y el legal. */
+function isNamed(entry: AcbStaffEntry, name: string): boolean {
+  const wanted = comparableName(name);
+  const { coach } = entry;
+  return [
+    `${coach.nicknameFirstName ?? ''} ${coach.nicknameLastName ?? ''}`,
+    `${coach.firstName} ${coach.lastName}`
+  ].some((candidate) => comparableName(candidate) === wanted);
+}
+
+/**
+ * El primer entrenador con el que el club empezó la temporada.
+ *
+ * Quién es primer entrenador lo marca `gameRole` («Entrenador» frente a
+ * «Entrenador Ayudante»), no la licencia: CRE y CTE son cupos, y en la 2025-26
+ * hay ayudantes CRE y primeros entrenadores CTE. Cuando un club cambió de
+ * entrenador, la plantilla los trae a todos pero su orden no dice quién
+ * empezó (el de ahora va primero, y con tres ya no se sabe el del medio). Eso
+ * lo dice el acta del primer partido de liga, `startName`: el que la firmó es
+ * el del inicio. Sin acta, o si su nombre no está en la plantilla, se toma el
+ * último de la lista, que es el más antiguo.
+ */
+export function pickStartingCoach(
+  staff: readonly AcbStaffEntry[],
+  startName: string | null
+): AcbStartingCoach {
+  const heads = staff.filter(
+    (entry) => entry.coach.gameRole?.trim().toLowerCase() === HEAD_COACH_ROLE
+  );
+  if (heads.length === 0) {
+    return { head: staff[0] ?? null, later: [], source: staff.length > 0 ? 'guessed' : 'order' };
+  }
+  const named = startName ? heads.find((entry) => isNamed(entry, startName)) : undefined;
+  const head = named ?? (heads.at(-1) as AcbStaffEntry);
+  // La plantilla va del más reciente al más antiguo: al revés, por orden de llegada.
+  const later = heads.filter((entry) => entry !== head).reverse();
+  return { head, later, source: named ? 'match' : 'order' };
+}
+
+/**
+ * El primer entrenador de cada equipo en el acta de un partido de live.acb.com
+ * (la pestaña de estadísticas): id de club → nombre tal cual lo escribe.
+ */
+export function parseMatchHeadCoaches(html: string): Map<string, string> {
+  const coaches = new Map<string, string>();
+  for (const side of findObjects(flightDataOf(html), (o) => 'headCoach' in o && 'team' in o)) {
+    const clubId = str(obj(side, 'team'), 'clubId');
+    const name = str(side, 'headCoach');
+    if (clubId && name) coaches.set(clubId, name);
+  }
+  return coaches;
+}
+
+export interface AcbCoachProfile {
+  /** «01-04-1961». */
+  birthDate: string | null;
+  birthPlace: string | null;
+  nationality: string | null;
+}
+
+export function parseCoachProfile(html: string): AcbCoachProfile | null {
+  const data = findObjects(flightDataOf(html), (o) => 'birthDate' in o && 'coach' in o)[0];
+  if (!data) return null;
+  return {
+    birthDate: str(data, 'birthDate'),
+    birthPlace: str(data, 'birthPlace'),
+    nationality: str(data, 'nationality')
+  };
+}
+
+/** Los enlaces a fichas de entrenador: id → slug completo («nombre-apellido-20300000»). */
+export function coachSlugs(html: string): Map<string, string> {
+  const slugs = new Map<string, string>();
+  for (const match of html.matchAll(/\/entrenadores\/([a-z0-9-]+-(\d+))/g)) {
+    if (!slugs.has(match[2] ?? '')) slugs.set(match[2] ?? '', match[1] ?? '');
+  }
+  return slugs;
 }
 
 export interface AcbPhase {

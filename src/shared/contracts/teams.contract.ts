@@ -25,15 +25,19 @@ export interface TeamSummary {
   budgetCents: number | null;
   /** Jugadores en plantilla. */
   rosterSize: number;
-  /** Su entrenador. Hueco preparado: los entrenadores de la IA llegan después. */
+  /** Su entrenador: el de la IA o el usuario. `null` sólo si el banquillo está vacío. */
   coach: TeamCoachRef | null;
 }
 
-/** El entrenador de un club, lo justo para nombrarlo (lo rellena el paso de entrenadores). */
+/** El entrenador de un club, lo justo para nombrarlo y situarlo. */
 export interface TeamCoachRef {
   id: string;
   name: string;
   nationality: string;
+  /** 1-100; la pantalla la pinta en estrellas. */
+  reputation: number;
+  /** Si es el usuario. */
+  isManager: boolean;
 }
 
 // --- Ficha de un club --------------------------------------------------------
@@ -123,7 +127,7 @@ export interface TeamProfile {
   /** 1 es la máxima categoría del país. */
   tier: number;
   isManaged: boolean;
-  /** Hueco preparado: los entrenadores de la IA llegan después. */
+  /** Su entrenador: el de la IA o el usuario. */
   coach: TeamCoachRef | null;
   /** Media del equipo según el ojeador; `null` si no hay con qué ojearla. */
   overall: number | null;

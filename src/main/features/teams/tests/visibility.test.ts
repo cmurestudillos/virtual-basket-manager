@@ -60,7 +60,10 @@ describe('la caja y las cuentas', () => {
     expect(teams.get(RIVAL_TEAM)?.budgetCents).toBeNull();
     const others = teams.list().filter((team) => team.id !== MANAGED_TEAM);
     expect(others.length).toBeGreaterThan(0);
-    expect(others.every((team) => team.budgetCents === null && team.coach === null)).toBe(true);
+    expect(others.every((team) => team.budgetCents === null)).toBe(true);
+    // El entrenador sí es público: cada club lleva el suyo, y el del club propio es el usuario.
+    expect(others.every((team) => team.coach !== null && !team.coach.isManager)).toBe(true);
+    expect(teams.get(MANAGED_TEAM)?.coach).toMatchObject({ id: 'manager', isManager: true });
   });
 
   it('las finanzas de otro club se rechazan', () => {

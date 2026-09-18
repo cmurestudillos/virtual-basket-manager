@@ -72,13 +72,18 @@ export class StaffService {
   /** Ver el porqué del resolutor en {@link SeasonService}. */
   constructor(private readonly resolveDb: () => SaveDatabase) {}
 
+  /**
+   * El cuerpo técnico del club propio.
+   *
+   * Sólo del propio: lleva los sueldos de cada técnico, y la nómina de otro
+   * club no se ve nunca. Lo que un rival deja ver de su banquillo sale de su
+   * ficha de club, no de aquí.
+   */
   get(teamId: string): TeamStaff {
     const validated = teamIdRequestSchema.parse({ teamId });
     const repository = new StaffRepository(this.resolveDb());
-    const teamName = repository.findTeamName(validated.teamId);
-    if (!teamName) {
-      throw new TeamNotFoundError(validated.teamId);
-    }
+    this.requireManaged(repository, validated.teamId);
+    const teamName = repository.findTeamName(validated.teamId) as string;
 
     const members = repository.listByTeam(validated.teamId).map(toMember);
     const covered = new Set(members.map((member) => member.role));

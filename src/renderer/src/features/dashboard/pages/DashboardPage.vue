@@ -34,7 +34,12 @@ import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { useContinueStore } from '@renderer/features/season/continue.store';
 import { useInboxStore } from '@renderer/features/inbox/inbox.store';
-import { formatMatchDate, formatMoney, formatShortDate } from '@renderer/shared/format';
+import {
+  formatMatchDate,
+  formatMoney,
+  formatShortDate,
+  formatWhole
+} from '@renderer/shared/format';
 import CareerOffers from '@renderer/features/career/components/CareerOffers.vue';
 import ConfidenceRings from '@renderer/features/club/components/ConfidenceRings.vue';
 import MailPanel from '@renderer/features/inbox/components/MailPanel.vue';
@@ -333,7 +338,6 @@ const AVERAGE = new Intl.NumberFormat('es-ES', {
   minimumFractionDigits: 1,
   maximumFractionDigits: 1
 });
-const WHOLE = new Intl.NumberFormat('es-ES');
 
 const LEADER_CATEGORIES: { id: string; label: string; pick: (row: PlayerSeasonStats) => number }[] =
   [
@@ -400,16 +404,16 @@ const economyItems = computed(() =>
 const arenaItems = computed(() =>
   finances.value
     ? [
-        { id: 'capacity', label: 'Aforo', value: WHOLE.format(finances.value.capacity) },
+        { id: 'capacity', label: 'Aforo', value: formatWhole(finances.value.capacity) },
         {
           id: 'attendance',
           label: 'Asistencia prevista',
-          value: WHOLE.format(finances.value.expectedAttendance)
+          value: formatWhole(finances.value.expectedAttendance)
         },
         {
           id: 'season-tickets',
           label: 'Abonados',
-          value: WHOLE.format(finances.value.seasonTicketHolders)
+          value: formatWhole(finances.value.seasonTicketHolders)
         }
       ]
     : []

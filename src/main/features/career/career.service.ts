@@ -11,20 +11,20 @@ import {
   managerReputationLabel,
   offerCountFor,
   tempts,
-  vacancyChance,
-  type CareerSeasonRecord
+  vacancyChance
 } from '@shared/domain/career';
 import { createRng, seedFromString } from '@shared/engine/basketball/rng';
 import { countryName } from '@shared/domain/simulation-scope';
-import { computeStandings } from '@shared/domain/standings';
 import type { SaveDatabase } from '../../database/save-database';
-import type { CareerSpellRow } from '../../database/schema/save';
 import { BoardService } from '../club/board.service';
+// Entrenadores de la IA (fase 5): fichar por un club echa a su entrenador.
+import { CoachService } from '../coaches/coaches.service';
 import { HistoryRepository } from '../history/history.repository';
 import { NationalService } from '../national/national.service';
 import { SeasonRepository } from '../season/season.repository';
 import { SeasonService } from '../season/season.service';
 import { CareerRepository } from './career.repository';
+import { managerSeasonRecords, positionOf, withinSpell } from './career-records';
 
 export class NotInCareerModeError extends Error {
   constructor() {
@@ -80,7 +80,7 @@ export class CareerService {
     const state = repository.gameState();
 
     if (!state.careerMode) {
-      return apagada(state.managerName);
+      return this.managerModeStatus(db, repository);
     }
 
     // Si el consejo le ha destituido, aquí es donde la carrera se entera y
@@ -90,7 +90,7 @@ export class CareerService {
 
     const open = repository.openSpell();
     const spells = this.describeSpells(repository);
-    const records = this.seasonRecords(db, repository);
+    const records = managerSeasonRecords(db);
     const reputation = managerReputation(records);
     const titles = records.reduce((sum, record) => sum + record.titles, 0);
 
@@ -205,8 +205,7 @@ export class CareerService {
 
     this.closeSpellIfDismissed(repository, state.seasonNumber);
 
-    const records = this.seasonRecords(db, repository);
-    const reputation = managerReputation(records);
+    const reputation = managerReputation(managerSeasonRecords(db));
     const offers = this.currentOffers(db, repository, reputation);
     if (!offers.some((offer) => offer.teamId === teamId)) {
       throw new OfferNotAvailableError(teamId);
@@ -241,6 +240,11 @@ export class CareerService {
       new BoardService(() => db).ensureForSeason(state.seasonNumber, teams, competition.tier);
     }
 
+    // Y el banquillo cambia de manos también para los entrenadores: el de la
+    // IA que había en el club nuevo se va a la bolsa y el que dejas lo cubre
+    // el carrusel.
+    new CoachService(() => db).ensure();
+
     return this.getStatus();
   }
 
@@ -255,7 +259,7 @@ export class CareerService {
     if (!repository.gameState().careerMode) {
       throw new NotInCareerModeError();
     }
-    const reputation = managerReputation(this.seasonRecords(db, repository));
+    const reputation = managerReputation(managerSeasonRecords(db));
     const national = new NationalService(this.resolveDb);
     if (!national.vacancies(reputation).some((vacancy) => vacancy.teamId === teamId)) {
       throw new OfferNotAvailableError(teamId);
@@ -275,6 +279,46 @@ export class CareerService {
   }
 
   // ------------------------------------------------------------------------
+
+  /**
+   * El modo mánager no tiene carrera, pero sí hoja de servicios: lo que vales,
+   * tus etapas, tus títulos y tu selección se calculan igual que en carrera,
+   * porque salen en la cabecera y en el ranking de entrenadores. Lo que no hay
+   * es mercado: ni ofertas ni acciones, y el despido sigue siendo el final.
+   */
+  private managerModeStatus(db: SaveDatabase, repository: CareerRepository): CareerStatus {
+    const state = repository.gameState();
+    const records = managerSeasonRecords(db);
+    const reputation = managerReputation(records);
+    const titles = records.reduce((sum, record) => sum + record.titles, 0);
+    const open = repository.openSpell();
+    const currentTeamId = open?.teamId ?? state.managedTeamId;
+
+    const national = new NationalService(this.resolveDb);
+    const nationalSpells = national.spells();
+    const nationalTeamId = national.userTeamId();
+
+    return {
+      careerMode: false,
+      managerName: state.managerName,
+      reputation,
+      reputationLabel: managerReputationLabel(reputation),
+      unemployed: false,
+      currentTeamName: currentTeamId ? (repository.findTeam(currentTeamId)?.name ?? null) : null,
+      spells: this.describeSpells(repository),
+      seasonsManaged: records.length,
+      titles: titles + nationalSpells.reduce((sum, spell) => sum + spell.titles, 0),
+      offers: [],
+      offersWhileEmployed: false,
+      canResign: false,
+      canWait: false,
+      currentDate: state.currentDate.getTime(),
+      nationalTeamName: nationalTeamId ? (repository.findTeam(nationalTeamId)?.name ?? null) : null,
+      nationalSpells,
+      nationalOffers: [],
+      canLeaveNational: false
+    };
+  }
 
   /** Cierra la etapa en curso si el consejo del club ha destituido al entrenador. */
   private closeSpellIfDismissed(repository: CareerRepository, seasonNumber: number): void {
@@ -302,80 +346,6 @@ export class CareerService {
         (row) => row.championTeamId === spell.teamId && withinSpell(spell, row.seasonNumber)
       ).length
     }));
-  }
-
-  /**
-   * Una ficha por temporada dirigida, que es lo que valora el dominio.
-   *
-   * Sin etapas guardadas —una partida de antes del modo carrera— se da por
-   * hecho que siempre dirigió al club de hoy, que es justo lo que pasaba.
-   */
-  private seasonRecords(db: SaveDatabase, repository: CareerRepository): CareerSeasonRecord[] {
-    const history = new HistoryRepository(db);
-    const spells = repository.spells();
-    const state = repository.gameState();
-    const champions = repository.champions();
-    const records: CareerSeasonRecord[] = [];
-
-    for (const season of history.seasons()) {
-      const competition = repository.findCompetition(season.competitionId);
-      if (!competition || competition.format !== 'league') {
-        continue;
-      }
-
-      const teamId = teamManagedIn(spells, season.seasonNumber, state.managedTeamId);
-      if (!teamId) {
-        continue;
-      }
-      const lastRound = history.lastRoundOf(season.id, teamId);
-      if (lastRound === null) {
-        continue;
-      }
-
-      const team = repository.findTeam(teamId);
-      const standing = this.positionOf(history, season.id, teamId);
-      const spell = spells.find(
-        (row) => withinSpell(row, season.seasonNumber) && row.teamId === teamId
-      );
-
-      records.push({
-        position: standing.position,
-        teams: standing.teams,
-        tier: competition.tier,
-        clubReputation: team?.reputation ?? 50,
-        titles: champions.filter(
-          (row) => row.seasonNumber === season.seasonNumber && row.championTeamId === teamId
-        ).length,
-        dismissed: spell?.endReason === 'dismissed' && spell.endSeason === season.seasonNumber
-      });
-    }
-
-    return records;
-  }
-
-  /** Puesto de un club en una temporada, recalculado de sus partidos. */
-  private positionOf(
-    history: HistoryRepository,
-    seasonId: string,
-    teamId: string
-  ): { position: number | null; teams: number } {
-    const teamIds = history.teamIdsInSeason(seasonId);
-    const played = history.playedRegularGames(seasonId).map((game) => ({
-      homeTeamId: game.homeTeamId,
-      awayTeamId: game.awayTeamId,
-      homeScore: game.homeScore as number,
-      awayScore: game.awayScore as number
-    }));
-
-    if (played.length === 0) {
-      return { position: null, teams: teamIds.length };
-    }
-
-    const standings = computeStandings(teamIds, played);
-    return {
-      position: standings.find((row) => row.teamId === teamId)?.position ?? null,
-      teams: standings.length
-    };
   }
 
   /**
@@ -436,7 +406,7 @@ export class CareerService {
     const history = new HistoryRepository(db);
     const standingOf = (competitionId: string, teamId: string) => {
       const season = repository.seasonOf(competitionId, seasonNumber);
-      return season ? this.positionOf(history, season.id, teamId) : { position: null, teams: 0 };
+      return season ? positionOf(history, season.id, teamId) : { position: null, teams: 0 };
     };
 
     const eligible = repository
@@ -499,23 +469,6 @@ function monthKey(date: Date): string {
   return `${date.getUTCFullYear()}-${String(date.getUTCMonth() + 1).padStart(2, '0')}`;
 }
 
-/** Si una temporada cae dentro de una etapa. */
-function withinSpell(spell: CareerSpellRow, seasonNumber: number): boolean {
-  return seasonNumber >= spell.startSeason && seasonNumber <= (spell.endSeason ?? Infinity);
-}
-
-/** Qué club dirigía el entrenador en una temporada dada. */
-function teamManagedIn(
-  spells: readonly CareerSpellRow[],
-  seasonNumber: number,
-  fallback: string | null
-): string | null {
-  if (spells.length === 0) {
-    return fallback;
-  }
-  return spells.find((spell) => withinSpell(spell, seasonNumber))?.teamId ?? null;
-}
-
 /** «Un paso arriba», «un club más pequeño»: de un vistazo, adónde vas. */
 function stepLabel(offered: number, previous: number): string {
   const gap = offered - previous;
@@ -524,28 +477,4 @@ function stepLabel(offered: number, previous: number): string {
   if (gap <= -12) return 'Un paso atrás';
   if (gap <= -4) return 'Un club algo menor';
   return 'Un club parecido';
-}
-
-/** El modo mánager no tiene carrera: se responde apagada en vez de fallar. */
-function apagada(managerName: string): CareerStatus {
-  return {
-    careerMode: false,
-    managerName,
-    reputation: 0,
-    reputationLabel: '',
-    unemployed: false,
-    currentTeamName: null,
-    spells: [],
-    seasonsManaged: 0,
-    titles: 0,
-    offers: [],
-    offersWhileEmployed: false,
-    canResign: false,
-    canWait: false,
-    currentDate: 0,
-    nationalTeamName: null,
-    nationalSpells: [],
-    nationalOffers: [],
-    canLeaveNational: false
-  };
 }

@@ -91,6 +91,18 @@ describe('modo mánager: no hay carrera', () => {
     expect(status.unemployed).toBe(false);
   });
 
+  it('pero sí hay hoja de servicios: reputación, etapa y club, sin acciones', () => {
+    const status = career.getStatus();
+
+    expect(status.reputation).toBeGreaterThan(0);
+    expect(status.reputationLabel).not.toBe('');
+    expect(status.spells).toHaveLength(1);
+    expect(status.currentTeamName).not.toBeNull();
+    expect(status.canResign).toBe(false);
+    expect(status.canWait).toBe(false);
+    expect(status.nationalOffers).toHaveLength(0);
+  });
+
   it('aunque te echen, no se puede fichar por nadie', () => {
     getDismissed();
 

@@ -84,6 +84,8 @@ import { YouthService } from '../youth/youth.service';
 import { MatchService } from '../match/match.service';
 import { DraftService } from '../draft/draft.service';
 import { NationalService } from '../national/national.service';
+// Entrenadores de la IA y su carrusel (fase 5).
+import { CoachService } from '../coaches/coaches.service';
 import { SeasonRepository } from './season.repository';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -147,6 +149,7 @@ export class SeasonService {
   private readonly marketService: MarketService;
   private readonly nationalService: NationalService;
   private readonly draftService: DraftService;
+  private readonly coachService: CoachService;
 
   /**
    * La conexión llega como resolutor y no como instancia porque la partida
@@ -163,6 +166,7 @@ export class SeasonService {
     this.marketService = new MarketService(resolveDb);
     this.nationalService = new NationalService(resolveDb);
     this.draftService = new DraftService(resolveDb);
+    this.coachService = new CoachService(resolveDb);
   }
 
   /**
@@ -709,6 +713,10 @@ export class SeasonService {
 
     const today = repository.gameState().currentDate;
     const nextSeasonStart = new Date(Date.UTC(season.startYear + 1, 8, 1));
+    // Los banquillos de la IA cierran el curso antes de que nadie cambie de
+    // liga: los despidos del verano se juzgan con la clasificación y la
+    // categoría del año que acaba, y las cifras de cada tramo se congelan.
+    this.coachService.closeSeason(season.seasonNumber, nextSeasonStart);
     // Antes de subir el contador: los ascensos se deciden con las
     // clasificaciones del curso que acaba de terminar, y el calendario del
     // siguiente ya tiene que encontrar a cada equipo en su división.
@@ -719,6 +727,9 @@ export class SeasonService {
     this.fitnessService.startNewSeason(today, nextSeasonStart);
     // Y el mercado se mueve solo: vencen contratos y la IA cubre sus huecos.
     this.marketService.processOffseason(nextSeasonStart);
+    // Y abren el siguiente: banquillos cubiertos, tramos nuevos y la bolsa de
+    // entrenadores libres repuesta con jóvenes.
+    this.coachService.openSeason(season.seasonNumber + 1, nextSeasonStart);
 
     return this.getCurrent();
   }
@@ -1710,6 +1721,12 @@ export class SeasonService {
     this.fitnessService.advanceDays(from, to, { training: !offseason });
 
     const months = monthStartsBetween(from, to);
+    // Cada cambio de mes mueve los banquillos de la IA: despidos de mitad de
+    // temporada y fichajes, en todas las ligas que se juegan y también sin
+    // entrenador en el banquillo del usuario. Cada liga mira su propia fase.
+    for (const monthStart of months) {
+      this.coachService.monthlyMoves(monthStart);
+    }
     if (months.length === 0 || offseason) {
       return;
     }

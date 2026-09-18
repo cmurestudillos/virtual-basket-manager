@@ -120,6 +120,13 @@
       "when": 1789563821678,
       "tag": "0016_small_drax",
       "breakpoints": true
+    },
+    {
+      "idx": 17,
+      "version": "6",
+      "when": 1789725802998,
+      "tag": "0017_oval_wrecking_crew",
+      "breakpoints": true
     }
   ]
 }

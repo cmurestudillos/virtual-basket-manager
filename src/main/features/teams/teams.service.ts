@@ -4,6 +4,7 @@ import type {
   CatalogLeague,
   CatalogScope,
   CatalogTeam,
+  TeamCoachRef,
   TeamSummary
 } from '@shared/contracts/teams.contract';
 import {
@@ -13,6 +14,8 @@ import {
   estimateNationalGames
 } from '@shared/domain/simulation-scope';
 import type { SaveDatabase } from '../../database/save-database';
+// Entrenadores de la IA (fase 5): cada club con el suyo.
+import { CoachService } from '../coaches/coaches.service';
 import { loadDataset } from '../saves/dataset';
 import { applyWorldEdits, type WorldEdit } from '../world-editor/apply-world-edits';
 import { TeamsRepository, type TeamWithContext } from './teams.repository';
@@ -37,13 +40,18 @@ export class TeamsService {
   list(): TeamSummary[] {
     const repository = new TeamsRepository(this.resolveDb());
     const managedTeamId = repository.managedTeamId();
-    return repository.list().map((row) => toSummary(row, managedTeamId));
+    const coaches = new CoachService(this.resolveDb).coachRefs();
+    return repository
+      .list()
+      .map((row) => toSummary(row, managedTeamId, coaches.get(row.id) ?? null));
   }
 
   get(id: string): TeamSummary | null {
     const repository = new TeamsRepository(this.resolveDb());
     const row = repository.findById(id);
-    return row ? toSummary(row, repository.managedTeamId()) : null;
+    return row
+      ? toSummary(row, repository.managedTeamId(), new CoachService(this.resolveDb).coachOf(id))
+      : null;
   }
 
   /**
@@ -182,11 +190,15 @@ export class TeamsService {
  * usuario: la de los demás no se ve desde fuera, y mandarla al renderer era
  * enseñarla a quien abriera las herramientas de desarrollo.
  */
-function toSummary(row: TeamWithContext, managedTeamId: string | null): TeamSummary {
+function toSummary(
+  row: TeamWithContext,
+  managedTeamId: string | null,
+  coach: TeamCoachRef | null
+): TeamSummary {
   return {
     ...row,
     budgetCents: row.id === managedTeamId ? row.budgetCents : null,
-    // Los entrenadores de la IA todavía no existen: el hueco queda preparado.
-    coach: null
+    // El entrenador sí es público: el de la IA, o el usuario en su club.
+    coach
   };
 }

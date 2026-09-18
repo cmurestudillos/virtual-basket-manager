@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { formatWhole } from '@renderer/shared/format';
 import type { StandingEntry } from '@shared/contracts/season.contract';
 import { matchKits } from '@shared/domain/court';
 import { AppEmpty, AppPanel, AppSectionTitle, AppStat, TeamBadge } from '@renderer/shared/ui';
@@ -60,7 +61,7 @@ const highlights = computed<Highlight[]>(() => {
       title: 'Mejor ataque',
       team: attack,
       stats: [
-        { label: 'Puntos a favor', value: attack.pointsFor.toLocaleString('es-ES') },
+        { label: 'Puntos a favor', value: formatWhole(attack.pointsFor) },
         { label: 'Por partido', value: DECIMAL.format(perGame(attack.pointsFor, attack.played)) }
       ]
     });
@@ -76,7 +77,7 @@ const highlights = computed<Highlight[]>(() => {
       title: 'Mejor defensa',
       team: defense,
       stats: [
-        { label: 'Puntos en contra', value: defense.pointsAgainst.toLocaleString('es-ES') },
+        { label: 'Puntos en contra', value: formatWhole(defense.pointsAgainst) },
         {
           label: 'Por partido',
           value: DECIMAL.format(perGame(defense.pointsAgainst, defense.played))

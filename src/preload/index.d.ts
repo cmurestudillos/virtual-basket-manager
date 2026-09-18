@@ -6,6 +6,8 @@ import type { GameStateApi } from '@shared/contracts/game-state.contract';
 import type { SeasonApi } from '@shared/contracts/season.contract';
 // Calendario mensual (fase 5).
 import type { CalendarApi } from '@shared/contracts/calendar.contract';
+// Entrenadores y ranking (fase 5).
+import type { CoachesApi } from '@shared/contracts/coaches.contract';
 import type { MatchApi } from '@shared/contracts/match.contract';
 import type { RotationApi } from '@shared/contracts/rotation.contract';
 import type { TacticsApi } from '@shared/contracts/tactics.contract';
@@ -31,6 +33,7 @@ export interface VbmApi {
   gameState: GameStateApi;
   season: SeasonApi;
   calendar: CalendarApi;
+  coaches: CoachesApi;
   rotation: RotationApi;
   tactics: TacticsApi;
   stats: StatsApi;

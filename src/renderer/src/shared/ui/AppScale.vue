@@ -7,6 +7,9 @@
  * que convierte el número en una decisión.
  *
  * Como IBM: carril azul y pulgar rectangular pequeño. Va sobre papel.
+ *
+ * `update:modelValue` sale con cada paso del arrastre; `change`, sólo al
+ * soltar, para quien no quiera mandar un cambio por paso (el partido en vivo).
  */
 
 withDefaults(
@@ -18,11 +21,12 @@ withDefaults(
     /** Los rótulos de los extremos, y del medio si se pasan tres. */
     stops: readonly string[];
     hint?: string;
+    disabled?: boolean;
   }>(),
-  { min: 1, max: 10, hint: '' }
+  { min: 1, max: 10, hint: '', disabled: false }
 );
 
-defineEmits<{ 'update:modelValue': [value: number] }>();
+defineEmits<{ 'update:modelValue': [value: number]; change: [value: number] }>();
 </script>
 
 <template>
@@ -40,7 +44,9 @@ defineEmits<{ 'update:modelValue': [value: number] }>();
       class="scale-input"
       :value="modelValue"
       :aria-label="label"
+      :disabled="disabled"
       @input="$emit('update:modelValue', Number(($event.target as HTMLInputElement).value))"
+      @change="$emit('change', Number(($event.target as HTMLInputElement).value))"
     />
 
     <div class="flex justify-between text-xs text-tv-muted">
@@ -79,5 +85,10 @@ defineEmits<{ 'update:modelValue': [value: number] }>();
 .scale-input:focus-visible {
   outline: 2px solid var(--color-tv-blue);
   outline-offset: 2px;
+}
+
+.scale-input:disabled {
+  cursor: not-allowed;
+  opacity: 0.5;
 }
 </style>

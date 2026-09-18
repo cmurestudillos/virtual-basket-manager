@@ -190,41 +190,41 @@ traduciendo una diferencia por su signo.
 Cada componente dice en su comentario sobre qué fondo va: casi todos, sobre
 papel; `AppPageHeader` y las pestañas `underline`, sobre el marco oscuro.
 
-| Componente        | Para qué                                                                           |
-| ----------------- | ---------------------------------------------------------------------------------- |
-| `AppPageHeader`   | Título de pantalla y, a su lado, el dato que dice dónde estás (sobre el marco)     |
-| `AppPanel`        | El panel: rótulo añil y cuerpo claro; `hint`, `actions`, hueco `header`, `scroll`  |
-| `AppSectionTitle` | El subrótulo añil de un apartado dentro de un panel                                |
-| `AppStat`         | Una cifra grande en su caja gris, con la etiqueta arriba                           |
-| `AppButton`       | `primary`, `secondary`, `ghost`, `danger` × `sm`, `md`, `lg`; galón con `arrow`    |
-| `AppTabs`         | `underline` en la barra de sección, `pills` para elegir entre iguales              |
-| `AppMeter`        | Barra de 0 a 100 con su número                                                     |
-| `AppBadge`        | Etiqueta pequeña rellena, con tono                                                 |
-| `AppField`        | Etiqueta, control y explicación                                                    |
-| `AppEmpty`        | Lo que se enseña cuando todavía no hay nada                                        |
-| `AppRing`         | El 0-100 en anillo con la escala de cuatro tramos; `unknown` para «sin ojear»      |
-| `AppStars`        | Estrellas (y medias) en su caja negra: potencial, pabellón, reputación             |
-| `AppSegmented`    | Dos o tres opciones excluyentes, todas a la vista                                  |
-| `AppScale`        | Deslizador con los extremos con nombre                                             |
-| `AppSelect`       | El selector negro de los filtros                                                   |
-| `AppInput`        | La caja de texto negra: filtros, nombres, cifras; `dense` para ir en un rótulo     |
-| `AppCheckbox`     | La casilla de borde azul que se rellena al marcarla; hereda el color de la letra   |
-| `AppStepper`      | «−», la cifra en su caja negra y «+»: minutos de la rotación, precio de la entrada |
-| `AppPager`        | Flechas azules «< >» con el texto en medio: jornada, semana, mes, página           |
-| `AppModal`        | Diálogo con rótulo añil y botones abajo; foco, Escape y `role="dialog"`            |
-| `TeamBadge`       | Escudo dibujado con la equipación y las iniciales; bandera si es selección         |
-| `FixtureCard`     | La tarjeta naranja de un partido; `featured` es el PRÓXIMO PARTIDO del inicio      |
-| `LeaderCard`      | El líder de una estadística: cara, nombre, partidos y la cifra en su caja gris     |
-| `AppAvatar`       | La cara de un jugador o un técnico, generada a partir de una semilla               |
-| `AppFlag`         | La bandera de un país por su código de tres letras                                 |
-| `AppDrawer`       | Cajón lateral encima de la pantalla: los mandos del banquillo                      |
-| `AppBackdrop`     | El fondo morado con franjas, todo CSS: menú, asistente, vacíos y el partido        |
-| `PositionChip`    | El puesto en su chip cian: B, E, A, AP, P                                          |
-| `ResultBlock`     | «V» verde o «D» granate en su bloque; `sm`/`md`, marcador al lado o debajo         |
-| `PlayerName`      | «Nombre APELLIDO», «N. APELLIDO» o en dos líneas                                   |
-| `MoodIcon`        | El ánimo en cinco niveles, con flecha y color                                      |
-| `AttributeGrid`   | Atributos en números grandes, en columnas, con los fuertes en verde claro          |
-| `KeyValueList`    | La tabla clave-valor de una ficha                                                  |
+| Componente        | Para qué                                                                                                   |
+| ----------------- | ---------------------------------------------------------------------------------------------------------- |
+| `AppPageHeader`   | Título de pantalla y, a su lado, el dato que dice dónde estás (sobre el marco)                             |
+| `AppPanel`        | El panel: rótulo añil y cuerpo claro; `hint`, `actions`, hueco `header`, `scroll`                          |
+| `AppSectionTitle` | El subrótulo añil de un apartado dentro de un panel                                                        |
+| `AppStat`         | Una cifra grande en su caja gris, con la etiqueta arriba                                                   |
+| `AppButton`       | `primary`, `secondary`, `ghost`, `danger` × `sm`, `md`, `lg`; galón con `arrow`                            |
+| `AppTabs`         | `underline` en la barra de sección, `pills` para elegir entre iguales                                      |
+| `AppMeter`        | Barra de 0 a 100 con su número                                                                             |
+| `AppBadge`        | Etiqueta pequeña rellena, con tono                                                                         |
+| `AppField`        | Etiqueta, control y explicación                                                                            |
+| `AppEmpty`        | Lo que se enseña cuando todavía no hay nada                                                                |
+| `AppRing`         | El 0-100 en anillo con la escala de cuatro tramos; `unknown` para «sin ojear»                              |
+| `AppStars`        | Estrellas (y medias) en su caja negra: potencial, pabellón, reputación                                     |
+| `AppSegmented`    | Dos o tres opciones excluyentes, todas a la vista                                                          |
+| `AppScale`        | Deslizador con los extremos con nombre; `change` al soltar y `disabled`                                    |
+| `AppSelect`       | El selector negro de los filtros                                                                           |
+| `AppInput`        | La caja de texto negra: filtros, nombres, cifras; `dense` para ir en un rótulo                             |
+| `AppCheckbox`     | La casilla de borde azul; hereda el color de la letra. Sin texto, suelta (con `label`) para filas y celdas |
+| `AppStepper`      | «−», la cifra en su caja negra y «+»: minutos de la rotación, precio de la entrada                         |
+| `AppPager`        | Flechas azules «< >» con el texto en medio: jornada, semana, mes, página                                   |
+| `AppModal`        | Diálogo con rótulo añil y botones abajo; foco, Escape y `role="dialog"`                                    |
+| `TeamBadge`       | Escudo dibujado con la equipación y las iniciales; bandera si es selección                                 |
+| `FixtureCard`     | La tarjeta naranja de un partido; `featured` es el PRÓXIMO PARTIDO del inicio                              |
+| `LeaderCard`      | El líder de una estadística: cara, nombre, partidos y la cifra en su caja gris                             |
+| `AppAvatar`       | La cara de un jugador o un técnico, generada a partir de una semilla                                       |
+| `AppFlag`         | La bandera de un país por su código de tres letras                                                         |
+| `AppDrawer`       | Cajón lateral encima de la pantalla: los mandos del banquillo                                              |
+| `AppBackdrop`     | El fondo morado con franjas, todo CSS: menú, asistente, vacíos y el partido                                |
+| `PositionChip`    | El puesto en su chip cian: B, E, A, AP, P                                                                  |
+| `ResultBlock`     | «V» verde o «D» granate en su bloque; `sm`/`md`, marcador al lado o debajo                                 |
+| `PlayerName`      | «Nombre APELLIDO», «N. APELLIDO» o en dos líneas                                                           |
+| `MoodIcon`        | El ánimo en cinco niveles, con flecha y color                                                              |
+| `AttributeGrid`   | Atributos en números grandes, en columnas, con los fuertes en verde claro                                  |
+| `KeyValueList`    | La tabla clave-valor de una ficha                                                                          |
 
 Las **estrellas** de un valor de 0 a 100 —potencial, reputación de un club, de
 una selección o del entrenador— se cuentan siempre con `toStars()`
@@ -326,18 +326,18 @@ Fuera del kit quedan dos cosas a propósito:
   **La pantalla no esconde nada por su cuenta**: pinta lo que manda el proceso
   principal, que es quien aplica la visibilidad.
 
-  | Pieza                | Qué hace                                                                                                                                                                            |
-  | -------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-  | `TeamProfileView`    | La ficha entera: carga `teams.getProfile(teamId)`, las pestañas Resumen · Plantilla · Estadísticas · Partidos · Tácticas y los vacíos                                               |
-  | `TeamProfileHeader`  | Escudo, nombre, país y reputación; media del equipo en anillo (con «±» del ojeador o «?»); competición y puesto; pabellón; entrenador                                               |
-  | `TeamProfileSummary` | Tres columnas que caben en 1280×720: temporada y forma (`ResultBlock`) con el objetivo; cara a cara con tu club (o próximos partidos en el propio) y palmarés; líderes y lesionados |
-  | `TeamProfileSquad`   | La tabla de `SquadPage` vista por el ojeador; la columna Moral sólo si llega (el club propio)                                                                                       |
-  | `TeamProfileStats`   | Medias de temporada de la plantilla en su liga                                                                                                                                      |
-  | `TeamProfileGames`   | Jugados a la izquierda con «V»/«D» y pendientes a la derecha, cada uno con la franja de su competición                                                                              |
-  | `TeamProfileTactics` | Pizarra y quinteto habitual si hay informe; si no, el aviso «Sin informe del analista»                                                                                              |
-  | `TeamProfilePage`    | `/game/club/:teamId`, en la sección Competición                                                                                                                                     |
-  | `OwnClubPage`        | La pestaña «Club» de Equipo: la misma vista con el club de la partida                                                                                                               |
-  | `ClubsPage`          | La pestaña «Clubes» de Competición: los clubes de una liga (elegida en el selector negro) con puesto, reputación, pabellón y entrenador; la fila abre la ficha                      |
+  | Pieza                | Qué hace                                                                                                                                                                                |
+  | -------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `TeamProfileView`    | La ficha entera: carga `teams.getProfile(teamId)`, las pestañas Resumen · Plantilla · Estadísticas · Partidos · Tácticas y los vacíos                                                   |
+  | `TeamProfileHeader`  | Escudo, nombre, país y reputación; media del equipo en anillo (con «±» del ojeador o «?»); competición y puesto; pabellón; entrenador con cara, `CoachLink` y estrellas                 |
+  | `TeamProfileSummary` | Tres columnas que caben en 1280×720: temporada y forma (`ResultBlock`) con el objetivo; cara a cara con tu club (o próximos partidos en el propio) y palmarés; líderes y lesionados     |
+  | `TeamProfileSquad`   | La tabla de `SquadPage` vista por el ojeador; la columna Moral sólo si llega (el club propio)                                                                                           |
+  | `TeamProfileStats`   | Medias de temporada de la plantilla en su liga                                                                                                                                          |
+  | `TeamProfileGames`   | Jugados a la izquierda con «V»/«D» y pendientes a la derecha, cada uno con la franja de su competición                                                                                  |
+  | `TeamProfileTactics` | Pizarra y quinteto habitual si hay informe; si no, el aviso «Sin informe del analista»                                                                                                  |
+  | `TeamProfilePage`    | `/game/club/:teamId`, en la sección Competición                                                                                                                                         |
+  | `OwnClubPage`        | La pestaña «Club» de Equipo: la misma vista con el club de la partida                                                                                                                   |
+  | `ClubsPage`          | La pestaña «Clubes» de Competición: los clubes de una liga (elegida en el selector negro) con puesto, reputación, pabellón y entrenador; la fila abre la ficha y el entrenador, la suya |
 
   Se llega a la ficha desde el nombre o el escudo de un club en la
   clasificación y en `GameRow`, desde la lista de clubes, el mercado, la ficha
@@ -353,6 +353,27 @@ Fuera del kit quedan dos cosas a propósito:
   (`analystReportsRivals`, `scoutRivalTactics`, `describeTactics`), que salió
   de la previa del partido para que la ficha y la previa decidan igual cuándo
   se ve.
+
+- **Los entrenadores**, en `features/coaches/` (fase 5, paso 3). La ficha del
+  mánager de IBM (130718): INFO con la cara, la bandera y la reputación, al lado
+  el ranking del mundo (top 5 y tu fila debajo), las cifras en cajas y el
+  historial. La misma vista para el usuario y para cualquier otro entrenador de
+  la partida: lo que cambia es que la del usuario lleva su carrera.
+
+  | Pieza               | Qué hace                                                                                                                                                                                                                                                               |
+  | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+  | `CoachProfileView`  | La ficha entera: carga `coaches.getProfile(coachId)` (sin id, la del usuario); INFO, «Ranking del mundo», «En su carrera» y «Este curso» con `AppStat`, e historial por temporada con el curso en juego marcado. Huecos `info` (al pie de INFO) y por defecto (debajo) |
+  | `CoachRankingTable` | Las filas del ranking; `compact` para el top 5 (puesto, entrenador, club, reputación, puntos). La fila del usuario en `is-mine` y, si no sale, `pinned` debajo tras un hueco, pegada abajo en un panel con scroll. El desglose de los puntos, en el `title`            |
+  | `CoachLink`         | Bandera y «Nombre APELLIDO» con enlace a la ficha: la del usuario lleva a `manager` y cualquier otra a `coach-profile`. No sube el clic a la fila                                                                                                                      |
+  | `coach-avatar.ts`   | La semilla de la cara: el nombre en el usuario (como la barra de arriba, que no tiene su id) y el id en los demás, para que sea la misma cara en todas partes                                                                                                          |
+  | `ManagerPage`       | La pestaña Ficha: la vista del usuario y, en carrera, «Dimitir» y «Dejar la selección» en dos pasos y las etapas en clubes y selecciones (en `li`: el arnés las cuenta)                                                                                                |
+  | `CoachPage`         | `/game/manager/coach/:coachId`, en la sección Mánager sin pestaña propia; sin acciones de carrera                                                                                                                                                                      |
+  | `CoachRankingPage`  | La pestaña Ranking: tabla paginada de 25 en 25 (el paginador en el rótulo), alcance en el selector negro (mundo, continente, país o competición) y «Mi puesto» abajo                                                                                                   |
+
+  Se llega a la ficha de un entrenador desde el ranking, el top 5 de otra ficha,
+  la cabecera de la ficha de un club y la columna Entrenador de Clubes. Sin
+  entrenador (banquillo vacío), «Sin entrenador». **La pantalla no calcula
+  nada**: puestos, puntos y reputación llegan hechos del proceso principal.
 
 #### Qué se ve de un club ajeno
 
@@ -401,14 +422,14 @@ marco.
 GameRail
 ```
 
-| Pieza              | Qué hace                                                                                                                                                                                                                  |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GameTopBar`       | Degradado `tv-chrome` → negro → `tv-chrome-2`. Escudo en bloque blanco sesgado, equipo y caja, entrenador (cara, bandera y, en carrera, reputación en estrellas), fecha y día con la temporada, «Avanzar día» y CONTINUAR |
-| `GameRail`         | `tv-rail`, 48 px. Un icono por sección con `aria-label` y etiqueta al pasar por encima; la activa con barra azul. Correo lleva los no leídos. Abajo, Ajustes y Salir al menú                                              |
-| `SectionBar`       | `tv-bar`, 50 px. TÍTULO de la sección, raya y pestañas (enlaces del router con el aspecto de `AppTabs` `underline`); con una sola pantalla no hay pestañas                                                                |
-| `ActionBar`        | `tv-footer`, 55 px, botones a la derecha. Oculta si la pantalla no le mete nada. No es un `<footer>`: las pantallas tienen el suyo                                                                                        |
-| `AdvanceDaysModal` | «Avance de días»: el mes con hoy recuadrado, el próximo partido con su rival y qué se simula. Sale si el avance tarda más de 350 ms                                                                                       |
-| `GameIcon`         | Los iconos del marco, a trazo, dibujados aquí. Nunca los de IBM                                                                                                                                                           |
+| Pieza              | Qué hace                                                                                                                                                                                                                              |
+| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `GameTopBar`       | Degradado `tv-chrome` → negro → `tv-chrome-2`. Escudo en bloque blanco sesgado, equipo y caja, entrenador (cara, bandera y reputación en estrellas, en carrera y en mánager), fecha y día con la temporada, «Avanzar día» y CONTINUAR |
+| `GameRail`         | `tv-rail`, 48 px. Un icono por sección con `aria-label` y etiqueta al pasar por encima; la activa con barra azul. Correo lleva los no leídos. Abajo, Ajustes y Salir al menú                                                          |
+| `SectionBar`       | `tv-bar`, 50 px. TÍTULO de la sección, raya y pestañas (enlaces del router con el aspecto de `AppTabs` `underline`); con una sola pantalla no hay pestañas                                                                            |
+| `ActionBar`        | `tv-footer`, 55 px, botones a la derecha. Oculta si la pantalla no le mete nada. No es un `<footer>`: las pantallas tienen el suyo                                                                                                    |
+| `AdvanceDaysModal` | «Avance de días»: el mes con hoy recuadrado, el próximo partido con su rival y qué se simula. Sale si el avance tarda más de 350 ms                                                                                                   |
+| `GameIcon`         | Los iconos del marco, a trazo, dibujados aquí. Nunca los de IBM                                                                                                                                                                       |
 
 Dentro del marco la pantalla va sobre **`tv-canvas`**, liso: el fondo con franjas
 es sólo del menú, el asistente y los vacíos (decisión 11). El marco no se
@@ -437,19 +458,20 @@ y un icono en `GameIcon`.
 | Calendario  | —                                                                            |
 | Mercado     | —                                                                            |
 | Club        | Finanzas, Historial                                                          |
-| Mánager     | Ficha, Ranking                                                               |
+| Mánager     | Ficha, Ranking (y la ficha de cualquier entrenador)                          |
 | Selecciones | —                                                                            |
 
 Las de la fase 5, con sus rutas:
 
-| Pantalla                | Ruta                    | Nombre          | Sección     |
-| ----------------------- | ----------------------- | --------------- | ----------- |
-| Calendario mensual      | `/game/calendar`        | `calendar`      | Calendario  |
-| Ficha del mánager       | `/game/manager`         | `manager`       | Mánager     |
-| Ranking de entrenadores | `/game/manager/ranking` | `coach-ranking` | Mánager     |
-| Tu club                 | `/game/team/club`       | `own-club`      | Equipo      |
-| Clubes                  | `/game/clubs`           | `clubs`         | Competición |
-| Ficha de cualquier club | `/game/club/:teamId`    | `team-profile`  | Competición |
+| Pantalla                | Ruta                           | Nombre          | Sección     |
+| ----------------------- | ------------------------------ | --------------- | ----------- |
+| Calendario mensual      | `/game/calendar`               | `calendar`      | Calendario  |
+| Ficha del mánager       | `/game/manager`                | `manager`       | Mánager     |
+| Ranking de entrenadores | `/game/manager/ranking`        | `coach-ranking` | Mánager     |
+| Ficha de un entrenador  | `/game/manager/coach/:coachId` | `coach-profile` | Mánager     |
+| Tu club                 | `/game/team/club`              | `own-club`      | Equipo      |
+| Clubes                  | `/game/clubs`                  | `clubs`         | Competición |
+| Ficha de cualquier club | `/game/club/:teamId`           | `team-profile`  | Competición |
 
 - **Calendario**, justo detrás de Competición: es lo mismo visto por fechas.
   Por eso la pestaña «Calendario» de Competiciones pasó a llamarse
@@ -458,7 +480,8 @@ Las de la fase 5, con sus rutas:
 - **Mánager**, entre Club y Selecciones: el club es quien te paga y la
   selección el otro banquillo que llevas; las tres hablan de ti como
   entrenador, no del día a día del equipo. La pestaña Carrera de Historial se
-  mudará aquí.
+  mudó aquí (paso 3): las etapas, «Dimitir» y «Dejar la selección» están en la
+  Ficha, en modo carrera; Historial se queda con Temporadas, Palmarés y Récords.
 - **`own-club`** y no `club`: `club` ya es el id de la sección de Finanzas e
   Historial, y la ficha del propio club es una cosa distinta de la de cualquier
   otro (`team-profile`), aunque acaben compartiendo piezas.
@@ -635,6 +658,11 @@ club propio, previa con la media del ojeador). La ficha del jugador pide ya las
 estadísticas en la liga de su club. El arnés abre la ficha de un rival desde la
 clasificación, comprueba lo que no debe verse y captura sus cinco pestañas a
 1280×720. Queda el paso 3: entrenadores de la IA, ranking y sección Mánager.
+
+El paso 3 hizo la sección **Mánager** de verdad: la Ficha (con la pestaña
+Carrera de Historial mudada dentro), el Ranking de todo el mundo y la ficha de
+cualquier entrenador; el entrenador con enlace y estrellas en la ficha de club
+y en Clubes, y la reputación en la barra de arriba también en modo mánager.
 
 ## Cómo no se pudre
 

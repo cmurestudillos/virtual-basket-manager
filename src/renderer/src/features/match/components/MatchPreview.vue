@@ -7,6 +7,7 @@
  * Se pasa con «Continuar»; quien tenga prisa se la salta entera de una vez.
  */
 import { computed, defineAsyncComponent, ref } from 'vue';
+import { formatWhole } from '@renderer/shared/format';
 import type {
   MatchPreview,
   MatchPreviewAverages,
@@ -114,7 +115,7 @@ function keyPlayerOf(team: MatchPreviewTeam) {
             <p class="text-sm text-white/80">
               {{ preview.neutralVenue ? 'Sede neutral' : preview.pavilionName }}
               <template v-if="!preview.neutralVenue">
-                (aforo {{ preview.pavilionCapacity.toLocaleString('es-ES') }})
+                (aforo {{ formatWhole(preview.pavilionCapacity) }})
               </template>
             </p>
           </div>

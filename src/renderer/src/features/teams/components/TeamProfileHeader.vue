@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { formatWhole } from '@renderer/shared/format';
 import type { TeamProfile } from '@shared/contracts/teams.contract';
 import { matchKits } from '@shared/domain/court';
 import { CONFERENCE_LABELS, type Conference } from '@shared/domain/nba';
 import { countryName } from '@shared/domain/simulation-scope';
 import { toStars } from '@shared/domain/stars';
 import {
+  AppAvatar,
   AppFlag,
   AppPanel,
   AppRing,
@@ -14,15 +16,17 @@ import {
   TONE_TEXT,
   TeamBadge
 } from '@renderer/shared/ui';
+import CoachLink from '@renderer/features/coaches/components/CoachLink.vue';
+import { coachAvatarSeed } from '@renderer/features/coaches/coach-avatar';
 
 /**
  * «INFORMACIÓN DEL EQUIPO», a todo el ancho, como IBM (125912): escudo, nombre,
  * país y reputación; la media del equipo en su anillo; la competición con el
- * puesto; el pabellón, y el entrenador.
+ * puesto; el pabellón, y el entrenador (cara, bandera, nombre que abre su ficha
+ * y reputación en estrellas).
  *
  * La media es la que ve el ojeador: sin ojeador llega vacía y el anillo enseña
- * la «?». El entrenador es un hueco preparado: hasta que existan los de la IA
- * sólo dice que no hay datos.
+ * la «?». El entrenador de un club es público, sea de la IA o el usuario.
  */
 
 const props = defineProps<{ profile: TeamProfile }>();
@@ -42,7 +46,7 @@ const place = computed(() => {
   return `${standing.position}º de ${props.profile.leagueTeams}`;
 });
 
-const capacity = computed(() => props.profile.pavilionCapacity.toLocaleString('es-ES'));
+const capacity = computed(() => formatWhole(props.profile.pavilionCapacity));
 </script>
 
 <template>
@@ -106,12 +110,30 @@ const capacity = computed(() => props.profile.pavilionCapacity.toLocaleString('e
 
       <div class="flex min-w-0 flex-col bg-tv-cell">
         <AppSectionTitle size="xs">Entrenador</AppSectionTitle>
-        <div class="flex flex-1 items-center justify-center gap-2 px-3 py-2 text-center">
+        <div class="flex flex-1 items-center justify-center gap-3 px-3 py-2">
           <template v-if="profile.coach">
-            <AppFlag :code="profile.coach.nationality" size="md" />
-            <span class="truncate font-semibold">{{ profile.coach.name }}</span>
+            <AppAvatar
+              kind="coach"
+              :seed="coachAvatarSeed(profile.coach)"
+              :name="profile.coach.name"
+              :size="40"
+            />
+            <div class="flex min-w-0 flex-col gap-1 text-sm">
+              <CoachLink
+                :id="profile.coach.id"
+                :name="profile.coach.name"
+                :nationality="profile.coach.nationality"
+                :is-manager="profile.coach.isManager"
+              />
+              <AppStars
+                :value="toStars(profile.coach.reputation)"
+                label="Reputación del entrenador"
+                :size="12"
+                class="self-start"
+              />
+            </div>
           </template>
-          <span v-else class="text-sm text-tv-muted">Sin datos</span>
+          <span v-else class="text-sm text-tv-muted">Sin entrenador</span>
         </div>
       </div>
     </div>

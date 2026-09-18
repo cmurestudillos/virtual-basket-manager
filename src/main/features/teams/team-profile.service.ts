@@ -25,6 +25,8 @@ import { perGame } from '@shared/domain/season-stats';
 import { NO_SCOUT_ERROR } from '@shared/domain/staff';
 import type { SaveDatabase } from '../../database/save-database';
 import type { CompetitionRow, GameRow } from '../../database/schema/save';
+// Entrenadores de la IA (fase 5).
+import { CoachService } from '../coaches/coaches.service';
 import { HistoryRepository } from '../history/history.repository';
 import { buildEngineTeam } from '../match/engine-input';
 import { analystReportsRivals, describeTactics } from '../match/rival-scouting';
@@ -109,8 +111,8 @@ export class TeamProfileService {
       competitionName: competition.name,
       tier: competition.tier,
       isManaged,
-      // Los entrenadores de la IA todavía no existen: el hueco queda preparado.
-      coach: null,
+      // El de la IA, o el usuario si es su club.
+      coach: new CoachService(this.resolveDb).coachOf(team.id),
       // Sin ojeador no se sabe ni la media, igual que en la ficha del jugador.
       overall: error >= NO_SCOUT_ERROR ? null : teamOverall(squad.map((player) => player.overall)),
       uncertainty: Math.round(error),

@@ -69,6 +69,26 @@ export interface SourcePlayer {
   stats: SourceStats | null;
 }
 
+/**
+ * El primer entrenador de un equipo: el que empezó la temporada, que es el que
+ * está en el banquillo el día que arranca la partida.
+ */
+export interface SourceCoach {
+  /** Identificador del entrenador en su fuente. */
+  sourceId: string;
+  /** Nombre de uso («Pepe», «Nacho»), que es como se le conoce. */
+  firstName: string;
+  lastName: string;
+  /** `AAAA-MM-DD`; `null` si la fuente no lo da. */
+  birthDate: string | null;
+  /** Edad declarada, para cuando no hay fecha de nacimiento. */
+  age: number | null;
+  /** Código de tres letras FIBA/COI; `null` si no se reconoce o no se puede deducir. */
+  nationality: string | null;
+  /** Nacionalidad (o lugar de nacimiento, si es de donde se deduce) tal cual la fuente. */
+  nationalityRaw: string | null;
+}
+
 export interface SourceTeam {
   sourceId: string;
   name: string;
@@ -80,6 +100,8 @@ export interface SourceTeam {
   /** Puesto final de la liga regular; `null` si no se sabe. */
   finalPosition: number | null;
   players: SourcePlayer[];
+  /** Primer entrenador; `null` si la fuente no lo da y ausente en extracciones de antes. */
+  coach?: SourceCoach | null;
 }
 
 export interface SourceLeague {

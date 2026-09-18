@@ -4,122 +4,45 @@
  *
  * Es la pantalla que le da sentido a jugar diez temporadas: lo que se ha
  * ganado, por dónde ha pasado el club y qué marcas se han dejado por el camino.
- * También es la memoria que necesita el modo carrera —un entrenador vale lo que
- * dice su palmarés— así que lo que se enseña aquí es justo lo que haría falta
- * para que otro club te fichara.
+ * La hoja de servicios del entrenador (la antigua pestaña Carrera) vive desde la
+ * fase 5 en la sección Mánager, con su ficha y el ranking: esto es la historia
+ * del club, no la tuya.
  *
  * Con la piel de IBM: las pestañas y el resumen van en la barra de sección, las
  * temporadas en una tabla, el palmarés en vitrinas con su trofeo y su cifra, y
- * los récords y la hoja de servicios en listas con aspecto de tabla (celdas
- * grises separadas por huecos; lo tuyo, en azul pálido). Son listas y no tablas
- * porque el arnés cuenta sus filas como `li`.
+ * los récords en una lista con aspecto de tabla (celdas grises separadas por
+ * huecos; lo tuyo, en azul pálido). Es lista y no tabla porque el arnés cuenta
+ * sus filas como `li`.
  */
 import { computed, onMounted, ref } from 'vue';
-import { useRouter } from 'vue-router';
 import type { HistoryView } from '@shared/contracts/history.contract';
-import type { CareerStatus } from '@shared/contracts/career.contract';
-import { matchKits } from '@shared/domain/court';
-import { toStars } from '@shared/domain/stars';
 import {
-  AppAvatar,
   AppBadge,
-  AppButton,
   AppEmpty,
   AppFlag,
   AppPanel,
-  AppRing,
-  AppStars,
   AppStat,
   AppTabs,
-  KeyValueList,
   PlayerName,
   TONE_TEXT,
-  TeamBadge,
-  type KeyValueItem
+  type TabOption
 } from '@renderer/shared/ui';
 import PageToolbar from '@renderer/features/app-shell/components/PageToolbar.vue';
 
-type Tab = 'seasons' | 'trophies' | 'records' | 'career';
+type Tab = 'seasons' | 'trophies' | 'records';
 
-const router = useRouter();
 const tab = ref<Tab>('seasons');
 const view = ref<HistoryView | null>(null);
-/** La hoja de servicios del entrenador. Sólo existe en partidas de carrera. */
-const career = ref<CareerStatus | null>(null);
 
-const TABS = computed(() => [
+const TABS: TabOption[] = [
   { id: 'seasons', label: 'Temporadas' },
   { id: 'trophies', label: 'Palmarés' },
-  { id: 'records', label: 'Récords' },
-  ...(career.value?.careerMode ? [{ id: 'career', label: 'Carrera' }] : [])
-]);
-
-const MANAGER_FACTS: KeyValueItem[] = [
-  { id: 'reputation', label: 'Reputación' },
-  { id: 'club', label: 'Club' },
-  { id: 'national', label: 'Selección' }
+  { id: 'records', label: 'Récords' }
 ];
 
 onMounted(async () => {
   view.value = await window.api.history.get();
-  career.value = await window.api.career.getStatus();
 });
-
-/** «Temporadas 1-3» o «Temporada 4 · en curso». */
-function spellYears(spell: CareerStatus['spells'][number]): string {
-  if (spell.endSeason === null) {
-    return `Temporada ${spell.startSeason} · en curso`;
-  }
-  if (spell.endSeason === spell.startSeason) {
-    return `Temporada ${spell.startSeason}`;
-  }
-  return `Temporadas ${spell.startSeason}-${spell.endSeason}`;
-}
-
-/**
- * Dimitir va en dos pasos: el primero pregunta. Irse de un banquillo no se
- * deshace, y un clic suelto no debería dejar a nadie en el paro.
- */
-const confirmingResign = ref(false);
-const confirmingLeave = ref(false);
-
-/** Dejar la selección, también en dos pasos. */
-async function leaveNational(): Promise<void> {
-  if (!confirmingLeave.value) {
-    confirmingLeave.value = true;
-    return;
-  }
-  resigning.value = true;
-  try {
-    career.value = await window.api.career.leaveNational();
-  } finally {
-    resigning.value = false;
-    confirmingLeave.value = false;
-  }
-}
-const resigning = ref(false);
-
-async function resign(): Promise<void> {
-  if (!confirmingResign.value) {
-    confirmingResign.value = true;
-    return;
-  }
-  resigning.value = true;
-  try {
-    career.value = await window.api.career.resign();
-    view.value = await window.api.history.get();
-    await router.push({ name: 'dashboard' });
-  } finally {
-    resigning.value = false;
-    confirmingResign.value = false;
-  }
-}
-
-function spellEnd(spell: CareerStatus['spells'][number]): string {
-  if (spell.endReason === 'dismissed') return 'destituido';
-  if (spell.endReason === 'left') return 'se marchó';
-  return '';
-}
 
 const subtitle = computed(() => {
   const current = view.value;
@@ -161,8 +84,6 @@ const TROPHY_COLOR: Record<string, string> = {
 function trophyColor(format: string): string {
   return TROPHY_COLOR[format] ?? TROPHY_COLOR.league!;
 }
-
-const kitOf = (teamId: string) => matchKits(teamId, '').home;
 </script>
 
 <template>
@@ -261,156 +182,6 @@ const kitOf = (teamId: string) => matchKits(teamId, '').home;
         </li>
       </ul>
     </AppPanel>
-
-    <!-- La hoja de servicios del entrenador -->
-    <div
-      v-else-if="tab === 'career'"
-      class="grid grid-cols-[minmax(0,24rem)_minmax(0,1fr)] items-start gap-3"
-    >
-      <AppPanel title="Mánager" :hint="career?.reputationLabel ?? ''">
-        <div v-if="career" class="flex flex-col gap-3">
-          <div class="flex items-center gap-3">
-            <AppAvatar
-              kind="coach"
-              :seed="career.managerName"
-              :name="career.managerName"
-              :size="64"
-            />
-            <p class="min-w-0 flex-1 truncate text-lg font-bold">{{ career.managerName }}</p>
-            <AppRing :value="career.reputation" label="Reputación" :size="56" />
-          </div>
-
-          <KeyValueList :items="MANAGER_FACTS">
-            <template #value="{ item }">
-              <template v-if="item.id === 'reputation'">
-                {{ career.reputationLabel }}
-                <AppStars :value="toStars(career.reputation)" label="Reputación" />
-              </template>
-              <template v-else-if="item.id === 'club'">
-                {{ career.currentTeamName ?? 'Sin equipo' }}
-              </template>
-              <template v-else>{{ career.nationalTeamName ?? '—' }}</template>
-            </template>
-          </KeyValueList>
-
-          <div class="grid grid-cols-2 gap-3">
-            <AppStat label="Temporadas" size="md" boxed>{{ career.seasonsManaged }}</AppStat>
-            <AppStat label="Títulos" size="md" boxed>{{ career.titles }}</AppStat>
-          </div>
-
-          <div v-if="career.canResign" class="flex flex-col gap-2 bg-tv-cell px-3 py-2">
-            <p class="text-sm">
-              {{
-                confirmingResign
-                  ? `¿Dejar ${career.currentTeamName}? Te quedas sin equipo y buscas otro banquillo.`
-                  : `Diriges a ${career.currentTeamName}.`
-              }}
-            </p>
-            <span class="flex justify-end gap-2">
-              <AppButton
-                v-if="confirmingResign"
-                size="sm"
-                variant="ghost"
-                :disabled="resigning"
-                @click="confirmingResign = false"
-              >
-                Seguir en el club
-              </AppButton>
-              <AppButton
-                size="sm"
-                :variant="confirmingResign ? 'danger' : 'secondary'"
-                :disabled="resigning"
-                @click="resign"
-              >
-                {{ confirmingResign ? 'Confirmar dimisión' : 'Dimitir' }}
-              </AppButton>
-            </span>
-          </div>
-
-          <div v-if="career.canLeaveNational" class="flex flex-col gap-2 bg-tv-cell px-3 py-2">
-            <p class="text-sm">
-              {{
-                confirmingLeave
-                  ? `¿Dejar ${career.nationalTeamName}? El club no se toca.`
-                  : `Diriges a ${career.nationalTeamName}.`
-              }}
-            </p>
-            <span class="flex justify-end gap-2">
-              <AppButton
-                v-if="confirmingLeave"
-                size="sm"
-                variant="ghost"
-                :disabled="resigning"
-                @click="confirmingLeave = false"
-              >
-                Seguir con la selección
-              </AppButton>
-              <AppButton
-                size="sm"
-                :variant="confirmingLeave ? 'danger' : 'secondary'"
-                :disabled="resigning"
-                @click="leaveNational"
-              >
-                {{ confirmingLeave ? 'Confirmar' : 'Dejar la selección' }}
-              </AppButton>
-            </span>
-          </div>
-        </div>
-      </AppPanel>
-
-      <div class="flex flex-col gap-3">
-        <AppPanel title="Clubes dirigidos" flush>
-          <AppEmpty v-if="!career || career.spells.length === 0">
-            Todavía no has dirigido a nadie.
-          </AppEmpty>
-          <ul v-else class="flex flex-col gap-[3px] p-[3px] text-sm">
-            <li
-              v-for="spell in [...career.spells].reverse()"
-              :key="`${spell.teamId}-${spell.startSeason}`"
-              class="flex min-h-10 items-center gap-3 px-3 py-1.5"
-              :class="spell.endSeason === null ? 'bg-tv-select' : 'bg-tv-cell'"
-            >
-              <TeamBadge :name="spell.teamName" :kit="kitOf(spell.teamId)" :size="24" />
-              <span class="font-semibold">{{ spell.teamName }}</span>
-              <span class="text-xs" :class="TONE_TEXT.neutral">{{ spellYears(spell) }}</span>
-              <AppBadge v-if="spell.endReason === 'dismissed'" tone="bad">
-                {{ spellEnd(spell) }}
-              </AppBadge>
-              <AppBadge v-else-if="spellEnd(spell)">{{ spellEnd(spell) }}</AppBadge>
-              <span v-if="spell.titles > 0" class="ml-auto font-bold">
-                {{ spell.titles }} {{ spell.titles === 1 ? 'título' : 'títulos' }}
-              </span>
-            </li>
-          </ul>
-        </AppPanel>
-
-        <AppPanel
-          v-if="career && (career.nationalSpells.length > 0 || career.canLeaveNational)"
-          title="Selecciones"
-          flush
-        >
-          <AppEmpty v-if="career.nationalSpells.length === 0">
-            Todavía no has dirigido a ninguna selección.
-          </AppEmpty>
-          <ul v-else class="flex flex-col gap-[3px] p-[3px] text-sm">
-            <li
-              v-for="spell in [...career.nationalSpells].reverse()"
-              :key="`${spell.teamId}-${spell.startSeason}`"
-              class="flex min-h-10 items-center gap-3 px-3 py-1.5"
-              :class="spell.endSeason === null ? 'bg-tv-select' : 'bg-tv-cell'"
-            >
-              <AppFlag :code="spell.teamId.replace('seleccion-', '').toUpperCase()" />
-              <span class="font-semibold">{{ spell.teamName }}</span>
-              <span class="text-xs" :class="TONE_TEXT.neutral">{{ spellYears(spell) }}</span>
-              <AppBadge v-if="spellEnd(spell)">{{ spellEnd(spell) }}</AppBadge>
-              <span v-if="spell.titles > 0" class="ml-auto font-bold">
-                {{ spell.titles }} {{ spell.titles === 1 ? 'Mundial' : 'Mundiales' }}
-              </span>
-            </li>
-          </ul>
-        </AppPanel>
-      </div>
-    </div>
 
     <!-- Récords -->
     <AppPanel v-else title="Récords de la partida" hint="la mejor marca vista hasta ahora" flush>

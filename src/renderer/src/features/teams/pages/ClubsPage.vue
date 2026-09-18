@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
 import { useRouter } from 'vue-router';
+import { formatWhole } from '@renderer/shared/format';
 import type { StandingEntry } from '@shared/contracts/season.contract';
 import type { TeamSummary } from '@shared/contracts/teams.contract';
 import { matchKits } from '@shared/domain/court';
@@ -17,11 +18,12 @@ import {
   type SelectOption
 } from '@renderer/shared/ui';
 import PageToolbar from '@renderer/features/app-shell/components/PageToolbar.vue';
+import CoachLink from '@renderer/features/coaches/components/CoachLink.vue';
 
 /**
  * Los clubes de una liga, pestaña «Clubes» de Competición: escudo, equipo,
  * ciudad, puesto, reputación, pabellón y entrenador. Cada fila abre la ficha
- * del club. La liga se elige en el selector negro de la barra de sección, como
+ * del club; el nombre del entrenador, la suya. La liga se elige en el selector negro de la barra de sección, como
  * en Competiciones.
  *
  * Las ligas que se juegan van primero, en el orden de la temporada; detrás, las
@@ -194,13 +196,16 @@ function openTeam(teamId: string): void {
               <AppStars :value="toStars(team.reputation)" label="Reputación" :size="12" />
             </td>
             <td class="max-w-56 truncate" :title="team.pavilionName">{{ team.pavilionName }}</td>
-            <td class="numeric">{{ team.pavilionCapacity.toLocaleString('es-ES') }}</td>
-            <td class="max-w-40 truncate">
-              <span v-if="team.coach" class="flex items-center gap-2">
-                <AppFlag :code="team.coach.nationality" />
-                <span class="truncate">{{ team.coach.name }}</span>
-              </span>
-              <span v-else class="text-tv-muted">-</span>
+            <td class="numeric">{{ formatWhole(team.pavilionCapacity) }}</td>
+            <td class="max-w-48">
+              <CoachLink
+                v-if="team.coach"
+                :id="team.coach.id"
+                :name="team.coach.name"
+                :nationality="team.coach.nationality"
+                :is-manager="team.coach.isManager"
+              />
+              <span v-else class="text-tv-muted">Sin entrenador</span>
             </td>
           </tr>
         </tbody>
