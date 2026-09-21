@@ -358,6 +358,18 @@ export function toNationCode(raw: string | null | undefined): string | null {
 }
 
 /**
+ * El código COI de una fuente que da códigos ISO de tres letras (`DNK`,
+ * `HRV`, `NGA`). A diferencia de {@link toNationCode}, el ISO se prueba antes
+ * que el COI, porque hay siglas que en uno y otro son países distintos. Si no
+ * es un ISO conocido, como `toNationCode`.
+ */
+export function nationFromIso3(raw: string | null | undefined): string | null {
+  if (!raw) return null;
+  const upper = raw.trim().toUpperCase();
+  return BY_ISO3.get(upper) ?? toNationCode(raw);
+}
+
+/**
  * Las provincias españolas, como las escribe la FEB entre paréntesis tras la
  * ciudad de nacimiento («Onda (Castellón)»), con sus nombres oficiales en las
  * otras lenguas. Ya normalizadas como {@link normalizeCountryText}.

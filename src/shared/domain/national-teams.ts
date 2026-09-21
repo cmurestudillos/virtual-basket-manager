@@ -105,6 +105,7 @@ export const NATION_NAMES: Record<string, string> = {
   IRL: 'Irlanda',
   ISL: 'Islandia',
   JAM: 'Jamaica',
+  LUX: 'Luxemburgo',
   NOR: 'Noruega',
   ROU: 'Rumanía',
   RUS: 'Rusia',

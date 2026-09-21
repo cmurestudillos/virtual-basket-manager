@@ -104,8 +104,34 @@ export interface SourceTeam {
   coach?: SourceCoach | null;
 }
 
+/**
+ * Una liga real de la que sólo se meten en el juego algunos equipos, en una
+ * liga de otra categoría: el ascendido de la segunda división que ocupa la
+ * plaza que le falta a la primera. La liga entera se extrae igual, porque los
+ * atributos salen del percentil de cada jugador **en su liga**; con un solo
+ * equipo no habría con quién compararle.
+ */
+export interface SourceGuest {
+  /** Liga del juego en la que juegan esos equipos (`italia-1`); tiene que ser real. */
+  into: string;
+  /** `sourceId` de los equipos que se meten; el resto sólo sirve de escala. */
+  teamIds: string[];
+  /**
+   * Con qué liga ficticia se traduce el percentil a atributos: la del nivel
+   * de esta liga, no la de destino, para que el equipo llegue con su nivel.
+   * `stepsDown` baja esa escala otro tanto por cada paso, extrapolando la
+   * distancia a la categoría de encima (0,5 es medio escalón): para ligas más
+   * bajas que cualquier ficticia.
+   */
+  scale: { league: string; stepsDown?: number };
+}
+
 export interface SourceLeague {
-  /** Identificador de la liga en el juego: `liga-nacional`, `liga-plata`… */
+  /**
+   * Identificador de la liga en el juego: `liga-nacional`, `liga-plata`… En
+   * una liga invitada (`guest`) es sólo un nombre propio (`italia-a2`): no
+   * existe en el juego.
+   */
   competitionId: string;
   /** Nombre real: «Liga Endesa», «Primera FEB». */
   name: string;
@@ -119,4 +145,6 @@ export interface SourceLeague {
   teams: SourceTeam[];
   /** Avisos del extractor para revisar a mano (nacionalidades no reconocidas…). */
   warnings: string[];
+  /** Si sólo algunos de sus equipos entran en el juego, en otra liga. */
+  guest?: SourceGuest;
 }

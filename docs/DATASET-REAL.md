@@ -73,11 +73,15 @@ lo detectan antes de empezar y dicen cómo recuperarlo.
 
 Se extraen de webs públicas con scripts propios y se convierten al mismo formato
 de `dataset.json` que el ficticio (estadísticas → los 21 atributos). Orden
-decidido: **España primero (ACB y Primera FEB)** y después país a país.
+decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)** y
+así país a país.
 
 ```
-pnpm real:acb     # Liga Endesa      → .real-data-cache/sources/acb-2025.json
-pnpm real:feb     # Primera FEB      → .real-data-cache/sources/feb-2025.json
+pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
+pnpm real:feb     # Primera FEB        → .real-data-cache/sources/feb-2025.json
+pnpm real:feb2    # Segunda FEB (Este) → .real-data-cache/sources/feb2-este-2025.json
+pnpm real:lba     # Serie A italiana   → .real-data-cache/sources/lba-2025.json
+pnpm real:lnp     # Serie A2 italiana  → .real-data-cache/sources/lnp-a2-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -90,6 +94,9 @@ inventado.
 | ----------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
 | Liga Endesa (`liga-nacional`) | `acb.com`                 | Los datos que Next.js incrusta en el HTML (`self.__next_f`), con `editionId=90`. Clasificación, plantilla, estadísticas de liga regular y ficha. |
 | Primera FEB (`liga-plata`)    | `baloncestoenvivo.feb.es` | ASP.NET: calendario, clasificación de liga regular y estadísticas acumuladas por _postback_. Dos segundos entre peticiones.                      |
+| Segunda FEB, grupo Este       | `baloncestoenvivo.feb.es` | Igual que la Primera (`feb-extract.ts`), con la fase «Liga Regular "ESTE"». Sólo entra un equipo, en `liga-plata` (ver «Equipos invitados»).     |
+| Serie A (`italia-1`)          | `legabasket.it`           | La API JSON de su web (`/api`). Equipos del año, plantilla, club, estadísticas de liga regular, calendario y actas. Un segundo entre peticiones. |
+| Serie A2 italiana             | `legapallacanestro.com`   | JSON de `lnpstat.domino.it` (clasificación, calendario) y Drupal (estadísticas por Ajax, ficha). Sólo entra un equipo, en `italia-1`.            |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -99,11 +106,75 @@ inventado.
 - Todo lo descargado se guarda en `.real-data-cache/http` (fuera de git) y no se
   vuelve a pedir; `--force` lo descarga de nuevo.
 
+#### Serie A (legabasket.it)
+
+- **Equipos**: `/teams/get-teams?year=2025` da los **15** de la 2025-26: uno fue
+  excluido a mitad de temporada y sus partidos se anularon (28 jornadas de liga
+  regular). La plaza 16.ª del juego es para el campeón de la A2 (ver «Equipos
+  invitados»).
+- **Plantilla** (`/teams/get-team-roster`): es la del final de la temporada, con
+  el puesto final de la liga regular (`rnk_sum.r_s.pos`). Quien se fue a mitad
+  sólo sale en las estadísticas y su ficha (`/players/get-player-by-id`) es la de
+  hoy: de ella se toman nacimiento, país, altura y puesto, pero el dorsal y el
+  cupo sólo si la ficha es de la 2025-26. Quien se fue sin jugar no entra.
+- **Estadísticas**: `/teams/get-team-players-stats` con `s=2025&cs_id=1&ct_id=4`
+  (Serie A, liga regular); sin esos parámetros la API da la temporada en curso.
+  Los minutos vienen enteros; los puntos de cada equipo cuadran con los de su
+  calendario. Trae titularidades, mates, tapones recibidos y la valoración de la
+  Lega.
+- **País**: los jugadores traen el código ISO (`DNK`, `HRV`, `NGA`), que se
+  traduce al del COI **probando antes el ISO** (`nationFromIso3`).
+- **Puestos**: Playmaker y Play/Guardia → base; Guardia y Guardia/Ala → escolta;
+  Ala/Centro → ala-pívot; Centro → pívot. «Ala» es alero o ala-pívot, que la LBA
+  no distingue: desde 205 cm, ala-pívot (`POWER_FORWARD_CM`). Los canteranos
+  vienen con «-» y sin altura: sin puesto.
+- **Ciudad**: la de la sede del club (`company_town_name`) y, si no hay, la del
+  pabellón. El pabellón de algunos clubes está en otro municipio (Mestre,
+  Villorba, Desio…) y así el club conserva su ciudad. Un club tiene la sede
+  fuera de su ciudad y va a mano en `CLUB_CITIES`.
+- La copa del país toma su nombre real: **Coppa Italia**.
+
+#### Equipos invitados (la plaza que falta)
+
+La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
+17, y la del juego 18. La plaza que falta se completa con un equipo de la
+categoría de abajo, extraído aparte como **liga invitada**
+(`SourceLeague.guest`):
+
+- **Italia**: el **ganador de la final de los playoffs de la A2** (la A2
+  2025-26 tuvo dos ascensos, el primero de la liga regular y el de los playoffs;
+  se eligió el de la final). Va fijo en `lnp.ts` (`PROMOTED_TEAM_ID`): la web no
+  publica los playoffs en un formato legible.
+- **España**: el club de **Huesca**, que jugó la 2025-26 en el grupo Este de la
+  Segunda FEB (`feb2.ts`, `HUESCA_TEAM_ID`).
+
+Cómo entran:
+
+- Se extrae **la liga de abajo entera** (o el grupo), porque los atributos salen
+  del percentil de cada jugador **en su liga**; sólo los equipos de
+  `guest.teamIds` pasan al dataset.
+- La escala es la de **su categoría**, no la de destino: el percentil se traduce
+  con la liga ficticia de `guest.scale.league`. La A2 italiana usa la Liga Plata
+  ficticia (la segunda categoría con la que se calibró el juego). La Segunda FEB
+  es una tercera categoría sin liga ficticia equivalente: usa la Liga Plata
+  bajada **medio escalón** (`stepsDown: 0.5`), extrapolando percentil a
+  percentil la distancia entre la Liga Nacional y la Liga Plata ficticias
+  (`scaleReference`). Así el invitado llega como un recién ascendido: con la
+  plantilla de su nivel, por debajo de la liga.
+- Entra **el último** de la liga de destino (puesto 16.º o 18.º) para la
+  reputación, que se reparte entre todos los equipos, invitados incluidos. Por
+  eso, al pasar la Primera FEB de 17 a 18, la reputación de la mitad baja sube
+  un punto (y con ella el presupuesto y el aforo estimado); los jugadores no
+  cambian.
+- Sus jugadores llevan ids propios (`<liga>-<liga invitada>-p<id>`) y no se
+  mete a nadie que ya juegue en la liga de destino (mismo nombre y fecha).
+- Con 16 y 18 equipos las dos ligas vuelven a ser pares: sin descansos.
+
 ### Conversión (`real:build`)
 
 - **Sustituye liga a liga** conservando el id de la ficticia, así que
   calendario, ascensos, copa y plazas europeas siguen igual. La copa del país
-  toma su nombre real (Copa del Rey).
+  toma su nombre real (Copa del Rey, Coppa Italia).
 - **Plantillas**: cada jugador en un solo equipo (donde más minutos jugó) y como
   mucho `MAX_ROSTER`, quitando a los que menos jugaron.
 - **Atributos**: cada jugador se coloca en un percentil de su liga y recibe el
@@ -127,9 +198,9 @@ inventado.
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, **el que empezó la temporada**, que es el que está en el
-banquillo el día que arranca la partida; en la Primera FEB, el que publica la
-ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
+en la Liga Endesa y la Serie A, **el que empezó la temporada**, que es el que
+está en el banquillo el día que arranca la partida; en la Primera FEB, el que
+publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
 
 - **Liga Endesa**: el array `staff` de la plantilla. Quién es primer
@@ -152,6 +223,31 @@ siguen inventados.
   uso como el de los jugadores, y la fecha con el lugar de nacimiento a veces.
   La FEB no da la nacionalidad: se deduce del lugar (provincia española →
   `ESP`, país → el suyo) y, sin lugar, se pone la del club y se avisa.
+- **Serie A**: el del **acta del primer partido de liga regular jugado** por el
+  club, por fecha (`/championships/get-championships-matches-by-id`,
+  `home_coach_*` y `visitor_coach_*`). Manda el acta y no `coaches_extra`, que
+  es el entrenador con contrato ese día: cuando un ayudante se sienta un
+  partido, el acta lo dice y el contrato no. Se descargan las actas de todos los
+  partidos de liga regular (una por partido, la comparten los dos equipos) y
+  `real:lba` avisa de cada club con más de un entrenador en el banquillo, en
+  orden de llegada y con sus partidos, interinos de un partido incluidos.
+  Nombre, fecha y lugar salen de su ficha (`/coaches/get-coaches-by-id`). La LBA
+  escribe el lugar como ciudad («Bergamo»), ciudad y país («Ciudad (CRO)», con
+  abreviaturas propias como `BOS`) o sólo el país en italiano («Croazia»); una
+  ciudad sin país es italiana, porque la LBA sólo lo añade a las de fuera
+  (`nationFromLbaPlace`).
+- Lo que la ficha de la LBA no da (en la 2025-26, la fecha de casi todos los
+  entrenadores del inicio) va a mano en
+  `resources/real-data/manual/lba-entrenadores.json`, por id de entrenador de la
+  LBA, con la fecha y el lugar escritos como en la FEB (`birth`: «dd/mm/aaaa
+  Ciudad (País)») y la fuente de cada dato. Lo que da la LBA manda.
+- **Serie A2** y **Segunda FEB**: sólo el del equipo invitado. La LNP no publica
+  los técnicos de temporadas pasadas: el de la A2 es el del inicio de temporada
+  y va a mano en `resources/real-data/manual/lnp-entrenadores.json` (por id de
+  equipo, con nombre, apellido y `birth`). El de la Segunda FEB es el de la
+  ficha, como en la Primera; con el recuadro vacío va en
+  `feb-entrenadores.json` con el mismo criterio que la FEB: el del final de la
+  temporada.
 - En el formato común es `SourceTeam.coach` y en el dataset, `DatasetTeam.coach`
   (nombre, apellidos, nacionalidad y fecha). El ficticio no lo lleva nunca.
 - Sin fecha de nacimiento, la edad de la fuente se convierte en el 1 de julio

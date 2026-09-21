@@ -1,0 +1,31 @@
+{
+  "players": [
+    {
+      "player_id": 7001,
+      "player_name": "Giocatore",
+      "player_surname": "Primo",
+      "played_matches": 26,
+      "start_formation": 20,
+      "played_minutes_sum": 612,
+      "points_sum": 301,
+      "shots_2p_realized_sum": 80,
+      "shots_2p_total_sum": 140,
+      "shots_3p_realized_sum": 30,
+      "shots_3p_total_sum": 85,
+      "free_throws_realized_sum": 51,
+      "free_throws_total_sum": 66,
+      "offensive_rebound_sum": 40,
+      "defensive_rebound_sum": 110,
+      "assists_sum": 35,
+      "regain_balls_sum": 18,
+      "lost_balls_sum": 29,
+      "ball_stop_given_sum": 12,
+      "ball_stop_received_sum": 9,
+      "done_fouls_sum": 60,
+      "suffered_fouls_sum": 55,
+      "slam_dunk_sum": 14,
+      "rating_lega_sum": 330
+    },
+    { "player_id": 7002, "player_name": "Ragazzo", "player_surname": "Del Vivaio", "played_matches": 0 }
+  ]
+}

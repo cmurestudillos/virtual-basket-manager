@@ -1,0 +1,9 @@
+{
+  "matches": [
+    { "championships_match_id": 3, "match_date": "2025-10-12T18:00:00.000Z", "game_status": "2", "ctype_name": "Regular Season" },
+    { "championships_match_id": 1, "match_date": "2025-09-27T18:45:00.000Z", "game_status": "2", "ctype_name": "Fase Finale" },
+    { "championships_match_id": 2, "match_date": "2025-10-05T16:00:00.000Z", "game_status": "2", "ctype_name": "Regular Season" },
+    { "championships_match_id": 4, "match_date": "2026-05-10T18:00:00.000Z", "game_status": "2", "ctype_name": "Play Off" },
+    { "championships_match_id": 5, "match_date": "2026-01-18T18:00:00.000Z", "game_status": "0", "ctype_name": "Regular Season" }
+  ]
+}

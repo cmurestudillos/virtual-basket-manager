@@ -7,8 +7,22 @@ import type {
 import { POSITIONS, type Position } from '../../../src/shared/domain/positions';
 import { MAX_ROSTER } from '../../../src/shared/domain/youth';
 import { WORLD, type LeagueTier } from '../../seed-data/leagues.mts';
-import { ageFrom, jitter, rateLeague, referenceFrom, type RatedPlayer } from './ratings';
-import type { SourceCoach, SourceLeague, SourcePlayer, SourceTeam } from './source-types';
+import {
+  ageFrom,
+  jitter,
+  quantileOf,
+  rateLeague,
+  referenceFrom,
+  type LeagueReference,
+  type RatedPlayer
+} from './ratings';
+import type {
+  SourceCoach,
+  SourceGuest,
+  SourceLeague,
+  SourcePlayer,
+  SourceTeam
+} from './source-types';
 
 /**
  * Monta el dataset de la edición privada: el mundo ficticio con las ligas que
@@ -20,6 +34,11 @@ import type { SourceCoach, SourceLeague, SourcePlayer, SourceTeam } from './sour
  * (`liga-nacional`, `liga-plata`), de modo que el calendario, los ascensos, la
  * copa y las plazas europeas siguen funcionando sin tocar el juego.
  *
+ * Las ligas invitadas (`SourceLeague.guest`) no sustituyen a ninguna: de ellas
+ * sólo entran unos equipos, detrás de los de una liga real y con la escala de
+ * su propia categoría, para completar una liga real que tiene menos equipos
+ * que la del juego.
+ *
  * Lo que la fuente no da se rellena aquí, siempre igual para el mismo jugador
  * (nada de azar: regenerar el dataset no puede cambiarle la ficha a nadie):
  * peso, envergadura, potencial, sueldo, contrato y valor.
@@ -27,7 +46,8 @@ import type { SourceCoach, SourceLeague, SourcePlayer, SourceTeam } from './sour
 
 /** Nombres reales de las copas de los países con liga real. */
 const REAL_CUPS: Record<string, { name: string; shortName: string }> = {
-  ESP: { name: 'Copa del Rey', shortName: 'Copa' }
+  ESP: { name: 'Copa del Rey', shortName: 'Copa' },
+  ITA: { name: 'Coppa Italia', shortName: 'Coppa' }
 };
 
 /** Altura típica por puesto: para quien no la trae y para deducir el puesto. */
@@ -50,6 +70,8 @@ export interface MergeReport {
   unknownNationalities: string[];
   /** Equipos sin entrenador real: se les inventa uno al crear la partida. */
   withoutCoach: string[];
+  /** En una liga invitada, la liga del juego en la que entran sus equipos. */
+  guestOf?: string;
 }
 
 export interface MergeResult {
@@ -218,12 +240,74 @@ function clamp(value: number, min: number, max: number): number {
   return Math.round(Math.min(max, Math.max(min, value)));
 }
 
+/** Los jugadores de una liga ficticia. */
+function fictitiousPlayersOf(fictitious: Dataset, competitionId: string): DatasetPlayer[] {
+  const teamIds = new Set(
+    fictitious.teams.filter((team) => team.competitionId === competitionId).map((team) => team.id)
+  );
+  return fictitious.players.filter((player) => teamIds.has(player.teamId));
+}
+
+/** La categoría de encima de una liga ficticia en su país; `null` si es la primera. */
+function tierAbove(competitionId: string): LeagueTier | null {
+  for (const country of WORLD) {
+    const index = country.tiers.findIndex((entry) => entry.id === competitionId);
+    if (index > 0) return country.tiers[index - 1] ?? null;
+  }
+  return null;
+}
+
+/**
+ * La escala con la que se traducen a atributos los percentiles de una liga
+ * invitada: la de la liga ficticia que se diga y, con `stepsDown`, bajada otro
+ * tanto por cada paso extrapolando la distancia a la categoría de encima,
+ * percentil a percentil. Así una tercera división, que no tiene liga ficticia
+ * equivalente, queda por debajo de la segunda como ésta de la primera.
+ */
+export function scaleReference(fictitious: Dataset, scale: SourceGuest['scale']): LeagueReference {
+  const base = referenceFrom(fictitiousPlayersOf(fictitious, scale.league));
+  const steps = scale.stepsDown ?? 0;
+  const upperTier = steps > 0 ? tierAbove(scale.league) : null;
+  if (!upperTier) return base;
+  const upper = referenceFrom(fictitiousPlayersOf(fictitious, upperTier.id));
+  const attributes = {} as LeagueReference['attributes'];
+  for (const key of Object.keys(base.attributes) as (keyof LeagueReference['attributes'])[]) {
+    const values = base.attributes[key];
+    attributes[key] = values
+      .map((value, index) => {
+        const above = quantileOf(upper.attributes[key], index / Math.max(1, values.length - 1));
+        return value - steps * (above - value);
+      })
+      .sort((a, b) => a - b);
+  }
+  return { attributes };
+}
+
+/** Nombre y fecha de nacimiento: para no meter dos veces a la misma persona. */
+function personKey(player: Pick<SourcePlayer, 'firstName' | 'lastName' | 'birthDate'>): string {
+  return `${slugify(`${player.firstName} ${player.lastName}`)}|${player.birthDate ?? ''}`;
+}
+
 export function mergeRealLeagues(
   fictitious: Dataset,
   sources: readonly SourceLeague[],
   knownNationalities: ReadonlySet<string>
 ): MergeResult {
-  const replaced = new Set(sources.map((source) => source.competitionId));
+  // Primero las ligas que sustituyen a una ficticia y después las invitadas,
+  // que se meten en una de ellas.
+  const hosts = sources.filter((source) => !source.guest);
+  const guests = sources.filter((source) => source.guest);
+  const replaced = new Set(hosts.map((source) => source.competitionId));
+  const guestSlots = new Map<string, number>();
+  for (const source of guests) {
+    const guest = source.guest as SourceGuest;
+    if (!replaced.has(guest.into)) {
+      throw new Error(
+        `${source.name} mete equipos en ${guest.into}, que no es una liga real: extrae antes esa liga.`
+      );
+    }
+    guestSlots.set(guest.into, (guestSlots.get(guest.into) ?? 0) + guest.teamIds.length);
+  }
   const competitions = fictitious.competitions.map((competition) => ({ ...competition }));
   const keptTeams = fictitious.teams.filter((team) => !replaced.has(team.competitionId));
   const keptTeamIds = new Set(keptTeams.map((team) => team.id));
@@ -233,8 +317,124 @@ export function mergeRealLeagues(
   );
   const reports: MergeReport[] = [];
   const ratedByLeague = new Map<string, RatedPlayer[]>();
+  /** Equipos ya puestos en cada liga real y quién juega en ella. */
+  const placed = new Map<string, number>();
+  const peopleIn = new Map<string, Set<string>>();
 
-  for (const source of sources) {
+  interface Placement {
+    source: SourceLeague;
+    /** Liga del juego en la que entra. */
+    competitionId: string;
+    reputation: number;
+    /** Con qué empiezan los ids de sus jugadores. */
+    playerIdPrefix: string;
+    ratedBySource: ReadonlyMap<SourcePlayer, RatedPlayer>;
+    unknown: Set<string>;
+    withoutCoach: string[];
+  }
+
+  /** Un equipo real y su plantilla, ya con atributos, en su liga del juego. */
+  function addTeam(sourceTeam: SourceTeam, roster: readonly SourcePlayer[], at: Placement): void {
+    const { source, competitionId, reputation, unknown, withoutCoach } = at;
+    const tier = tierOf(competitionId);
+    const capacityBase = tier?.capacity ?? 5000;
+    const teamId = `${competitionId}-${slugify(sourceTeam.name)}`;
+    const city = sourceTeam.city ?? sourceTeam.name;
+    const coach = datasetCoachFor(sourceTeam.coach, source, knownNationalities);
+    const coachNationality = sourceTeam.coach?.nationality ?? null;
+    if (!coach) withoutCoach.push(sourceTeam.name);
+    else if (!coachNationality || !knownNationalities.has(coachNationality)) {
+      unknown.add(`${coachNationality ?? 'sin dato'} (entrenador de ${sourceTeam.name})`);
+    }
+    teams.push({
+      id: teamId,
+      name: sourceTeam.name,
+      shortName:
+        sourceTeam.shortName ??
+        sourceTeam.name
+          .replace(/[^\p{L}]/gu, '')
+          .slice(0, 3)
+          .toUpperCase(),
+      city,
+      country: source.country,
+      competitionId,
+      pavilionName: sourceTeam.pavilionName ?? `Pabellón de ${city}`,
+      pavilionCapacity:
+        sourceTeam.pavilionCapacity ?? Math.round(capacityBase * (0.45 + reputation / 110)),
+      reputation,
+      // La misma fórmula que el mundo ficticio: el presupuesto sale de la
+      // reputación, y el motor económico está calibrado con ella.
+      budgetCents: (300_000 + reputation * 58_000) * 100,
+      ...(coach ? { coach } : {})
+    });
+
+    const people = peopleIn.get(competitionId) ?? new Set<string>();
+    peopleIn.set(competitionId, people);
+    for (const sourcePlayer of roster) {
+      people.add(personKey(sourcePlayer));
+      const entry = at.ratedBySource.get(sourcePlayer) as RatedPlayer;
+      const seed = `${source.competitionId}:${sourcePlayer.sourceId}`;
+      const nationality =
+        sourcePlayer.nationality && knownNationalities.has(sourcePlayer.nationality)
+          ? sourcePlayer.nationality
+          : source.country;
+      if (!sourcePlayer.nationality || !knownNationalities.has(sourcePlayer.nationality)) {
+        unknown.add(sourcePlayer.nationality ?? sourcePlayer.nationalityRaw ?? '(vacía)');
+      }
+      const birthDate = birthDateFor(sourcePlayer, source.seasonStartYear);
+      const age = ageFrom(birthDate, source.seasonStartYear) ?? 26;
+      const height = sourcePlayer.heightCm ?? HEIGHT_BY_POSITION[entry.position];
+      // El sueldo y el valor se escalan con la media, igual que el
+      // generador ficticio los escala con su nivel.
+      const level = entry.overall;
+
+      players.push({
+        id: `${at.playerIdPrefix}-p${slugify(sourcePlayer.sourceId)}`,
+        teamId,
+        firstName: sourcePlayer.firstName,
+        lastName: sourcePlayer.lastName,
+        nationality,
+        birthDate,
+        position: entry.position,
+        secondaryPosition: neighbour(entry.position, `${seed}:second`),
+        heightCm: height,
+        weightKg:
+          sourcePlayer.weightKg ?? Math.round((height - 100) * 0.92 + jitter(`${seed}:weight`) * 6),
+        wingspanCm: height + clamp(4 + jitter(`${seed}:wingspan`) * 5, 0, 9),
+        attributes: entry.attributes,
+        potential: clamp(
+          entry.overall + Math.max(0, 24 - age) * 1.6 + jitter(`${seed}:potential`) * 4,
+          entry.overall,
+          97
+        ),
+        wageCents: Math.round(Math.pow(level / 10, 3.1) * 1_200) * 100,
+        contractUntil: `${source.seasonStartYear + clamp(2.5 + jitter(`${seed}:contract`) * 1.5, 1, 4)}-06-30`,
+        valueCents: Math.round(Math.pow(level / 10, 3.6) * 9_000) * 100
+      });
+    }
+  }
+
+  /** Atributos de toda una liga real, con el nivel de cada equipo en ella. */
+  function rateSource(
+    source: SourceLeague,
+    reference: LeagueReference
+  ): ReturnType<typeof selectRosters> & { rated: RatedPlayer[] } {
+    const selection = selectRosters(source);
+    const strength = new Map<SourcePlayer, number | null>();
+    for (const [sourceTeam, roster] of selection.rosters) {
+      const value = teamStrength(sourceTeam.finalPosition, source.teams.length);
+      for (const sourcePlayer of roster) strength.set(sourcePlayer, value);
+    }
+    const rated = rateLeague(
+      [...selection.rosters.values()].flat(),
+      reference,
+      positionFor,
+      (sourcePlayer) => strength.get(sourcePlayer) ?? null
+    );
+    return { ...selection, rated };
+  }
+
+  for (const source of hosts) {
     const competition = competitions.find((entry) => entry.id === source.competitionId);
     if (!competition) {
       throw new Error(`La liga ${source.competitionId} no existe en el dataset ficticio.`);
@@ -251,119 +451,97 @@ export function mergeRealLeagues(
     }
 
     const tier = tierOf(source.competitionId);
-    const fictitiousTeamIds = new Set(
-      fictitious.teams
-        .filter((team) => team.competitionId === source.competitionId)
-        .map((team) => team.id)
-    );
-    const reference = referenceFrom(
-      fictitious.players.filter((player) => fictitiousTeamIds.has(player.teamId))
-    );
-
-    const { rosters, droppedDuplicates, droppedOverRoster } = selectRosters(source);
-    const allPlayers = [...rosters.values()].flat();
-    const strength = new Map<SourcePlayer, number | null>();
-    for (const [sourceTeam, roster] of rosters) {
-      const value = teamStrength(sourceTeam.finalPosition, source.teams.length);
-      for (const sourcePlayer of roster) strength.set(sourcePlayer, value);
-    }
-    const rated = rateLeague(
-      allPlayers,
-      reference,
-      positionFor,
-      (sourcePlayer) => strength.get(sourcePlayer) ?? null
-    );
+    const reference = referenceFrom(fictitiousPlayersOf(fictitious, source.competitionId));
+    const { rosters, droppedDuplicates, droppedOverRoster, rated } = rateSource(source, reference);
     ratedByLeague.set(source.competitionId, rated);
     const ratedBySource = new Map(rated.map((entry) => [entry.source, entry]));
     const unknown = new Set<string>();
     const withoutCoach: string[] = [];
+    // Los invitados van detrás, pero la reputación se reparte entre todos.
+    const total = source.teams.length + (guestSlots.get(source.competitionId) ?? 0);
 
     const ordered = [...source.teams].sort(
       (a, b) => (a.finalPosition ?? 99) - (b.finalPosition ?? 99) || a.name.localeCompare(b.name)
     );
     ordered.forEach((sourceTeam, index) => {
-      const reputation = reputationFor(sourceTeam.finalPosition, index, ordered.length, tier);
-      const capacityBase = tier?.capacity ?? 5000;
-      const teamId = `${source.competitionId}-${slugify(sourceTeam.name)}`;
-      const city = sourceTeam.city ?? sourceTeam.name;
-      const coach = datasetCoachFor(sourceTeam.coach, source, knownNationalities);
-      const coachNationality = sourceTeam.coach?.nationality ?? null;
-      if (!coach) withoutCoach.push(sourceTeam.name);
-      else if (!coachNationality || !knownNationalities.has(coachNationality)) {
-        unknown.add(`${coachNationality ?? 'sin dato'} (entrenador de ${sourceTeam.name})`);
-      }
-      teams.push({
-        id: teamId,
-        name: sourceTeam.name,
-        shortName:
-          sourceTeam.shortName ??
-          sourceTeam.name
-            .replace(/[^\p{L}]/gu, '')
-            .slice(0, 3)
-            .toUpperCase(),
-        city,
-        country: source.country,
+      addTeam(sourceTeam, rosters.get(sourceTeam) ?? [], {
+        source,
         competitionId: source.competitionId,
-        pavilionName: sourceTeam.pavilionName ?? `Pabellón de ${city}`,
-        pavilionCapacity:
-          sourceTeam.pavilionCapacity ?? Math.round(capacityBase * (0.45 + reputation / 110)),
-        reputation,
-        // La misma fórmula que el mundo ficticio: el presupuesto sale de la
-        // reputación, y el motor económico está calibrado con ella.
-        budgetCents: (300_000 + reputation * 58_000) * 100,
-        ...(coach ? { coach } : {})
+        reputation: reputationFor(sourceTeam.finalPosition, index, total, tier),
+        playerIdPrefix: source.competitionId,
+        ratedBySource,
+        unknown,
+        withoutCoach
       });
-
-      for (const sourcePlayer of rosters.get(sourceTeam) ?? []) {
-        const entry = ratedBySource.get(sourcePlayer) as RatedPlayer;
-        const seed = `${source.competitionId}:${sourcePlayer.sourceId}`;
-        const nationality =
-          sourcePlayer.nationality && knownNationalities.has(sourcePlayer.nationality)
-            ? sourcePlayer.nationality
-            : source.country;
-        if (!sourcePlayer.nationality || !knownNationalities.has(sourcePlayer.nationality)) {
-          unknown.add(sourcePlayer.nationality ?? sourcePlayer.nationalityRaw ?? '(vacía)');
-        }
-        const birthDate = birthDateFor(sourcePlayer, source.seasonStartYear);
-        const age = ageFrom(birthDate, source.seasonStartYear) ?? 26;
-        const height = sourcePlayer.heightCm ?? HEIGHT_BY_POSITION[entry.position];
-        // El sueldo y el valor se escalan con la media, igual que el
-        // generador ficticio los escala con su nivel.
-        const level = entry.overall;
-
-        players.push({
-          id: `${source.competitionId}-p${slugify(sourcePlayer.sourceId)}`,
-          teamId,
-          firstName: sourcePlayer.firstName,
-          lastName: sourcePlayer.lastName,
-          nationality,
-          birthDate,
-          position: entry.position,
-          secondaryPosition: neighbour(entry.position, `${seed}:second`),
-          heightCm: height,
-          weightKg:
-            sourcePlayer.weightKg ??
-            Math.round((height - 100) * 0.92 + jitter(`${seed}:weight`) * 6),
-          wingspanCm: height + clamp(4 + jitter(`${seed}:wingspan`) * 5, 0, 9),
-          attributes: entry.attributes,
-          potential: clamp(
-            entry.overall + Math.max(0, 24 - age) * 1.6 + jitter(`${seed}:potential`) * 4,
-            entry.overall,
-            97
-          ),
-          wageCents: Math.round(Math.pow(level / 10, 3.1) * 1_200) * 100,
-          contractUntil: `${source.seasonStartYear + clamp(2.5 + jitter(`${seed}:contract`) * 1.5, 1, 4)}-06-30`,
-          valueCents: Math.round(Math.pow(level / 10, 3.6) * 9_000) * 100
-        });
-      }
     });
+    placed.set(source.competitionId, ordered.length);
 
     reports.push({
       competitionId: source.competitionId,
       name: source.name,
       teams: source.teams.length,
-      players: allPlayers.length,
+      players: rated.length,
       estimated: rated.filter((entry) => entry.estimated).length,
+      droppedDuplicates,
+      droppedOverRoster,
+      unknownNationalities: [...unknown].sort(),
+      withoutCoach
+    });
+  }
+
+  for (const source of guests) {
+    const guest = source.guest as SourceGuest;
+    const into = guest.into;
+    const tier = tierOf(into);
+    const total = (placed.get(into) ?? 0) + (guestSlots.get(into) ?? 0);
+    const { rosters, rated } = rateSource(source, scaleReference(fictitious, guest.scale));
+    const ratedBySource = new Map(rated.map((entry) => [entry.source, entry]));
+    const unknown = new Set<string>();
+    const withoutCoach: string[] = [];
+    const kept: RatedPlayer[] = [];
+    let droppedDuplicates = 0;
+    // Sólo cuentan los de los equipos invitados, no los de toda su liga.
+    let droppedOverRoster = 0;
+
+    const invited = source.teams.filter((team) => guest.teamIds.includes(team.sourceId));
+    if (invited.length !== guest.teamIds.length) {
+      throw new Error(`${source.name}: faltan equipos invitados (${guest.teamIds.join(', ')}).`);
+    }
+    for (const sourceTeam of invited) {
+      // Quien ya juega en la liga de destino (fichado a mitad de temporada,
+      // cedido) se queda allí: sus números en esa liga dicen más.
+      const selected = rosters.get(sourceTeam) ?? [];
+      droppedOverRoster +=
+        new Set(sourceTeam.players.map((entry) => entry.sourceId)).size - selected.length;
+      const people = peopleIn.get(into) ?? new Set<string>();
+      const roster = (rosters.get(sourceTeam) ?? []).filter((sourcePlayer) => {
+        const duplicate = sourcePlayer.birthDate !== null && people.has(personKey(sourcePlayer));
+        if (duplicate) droppedDuplicates += 1;
+        return !duplicate;
+      });
+      // Detrás de los de la liga real: el que sube es el último de la categoría.
+      const position = (placed.get(into) ?? 0) + 1;
+      placed.set(into, position);
+      addTeam({ ...sourceTeam, finalPosition: position }, roster, {
+        source,
+        competitionId: into,
+        reputation: reputationFor(position, position - 1, total, tier),
+        playerIdPrefix: `${into}-${slugify(source.competitionId)}`,
+        ratedBySource,
+        unknown,
+        withoutCoach
+      });
+      for (const sourcePlayer of roster) kept.push(ratedBySource.get(sourcePlayer) as RatedPlayer);
+    }
+    ratedByLeague.set(source.competitionId, kept);
+
+    reports.push({
+      competitionId: source.competitionId,
+      name: source.name,
+      guestOf: into,
+      teams: invited.length,
+      players: kept.length,
+      estimated: kept.filter((entry) => entry.estimated).length,
       droppedDuplicates,
       droppedOverRoster,
       unknownNationalities: [...unknown].sort(),

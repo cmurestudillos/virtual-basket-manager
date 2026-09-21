@@ -136,8 +136,11 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
     expect(leaked.map(key)).toEqual([]);
   });
 
-  // Los entrenadores reales: los clubes de la ACB y la Primera FEB llevan el suyo.
-  const coachLeagues = ['liga-nacional', 'liga-plata'].filter((id) => realLeagues.has(id));
+  // Los entrenadores reales: los clubes de la ACB, la Primera FEB y la Serie A
+  // (con el que sube de la A2) llevan el suyo.
+  const coachLeagues = ['liga-nacional', 'liga-plata', 'italia-1'].filter((id) =>
+    realLeagues.has(id)
+  );
   const coachedTeams = realTeams.filter((team) => coachLeagues.includes(team.competitionId));
   const coachName = (coach: { firstName: string; lastName: string }): string =>
     `${coach.firstName} ${coach.lastName}`.trim().toLowerCase();
@@ -145,7 +148,7 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
     coachedTeams.flatMap((team) => (team.coach ? [coachName(team.coach)] : []))
   );
 
-  it('todos los clubes de la ACB y la Primera FEB llevan a su entrenador real', () => {
+  it('todos los clubes de las ligas con entrenadores reales llevan el suyo', () => {
     expect(coachedTeams.length).toBeGreaterThan(0);
     const missing = coachedTeams.filter(
       (team) => !team.coach?.firstName.trim() || !team.coach.lastName.trim()
