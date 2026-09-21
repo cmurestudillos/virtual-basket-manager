@@ -147,4 +147,19 @@ export interface SourceLeague {
   warnings: string[];
   /** Si sólo algunos de sus equipos entran en el juego, en otra liga. */
   guest?: SourceGuest;
+  /**
+   * En una liga que sí sustituye a la suya, los equipos que no juegan en ella
+   * sino en la de encima: los ascendidos que completan una primera división
+   * con menos equipos que la del juego (ÉLITE 2 → Pro A). Se valoran con su
+   * liga entera y la escala de su liga, como un invitado, pero sin extraer la
+   * liga dos veces.
+   */
+  promoted?: SourcePromotion;
+}
+
+export interface SourcePromotion {
+  /** Liga del juego en la que juegan esos equipos (`francia-1`); tiene que ser real. */
+  into: string;
+  /** `sourceId` de los equipos que suben, en el orden en que entran (el último, el último). */
+  teamIds: string[];
 }

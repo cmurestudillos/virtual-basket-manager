@@ -73,8 +73,8 @@ lo detectan antes de empezar y dicen cómo recuperarlo.
 
 Se extraen de webs públicas con scripts propios y se convierten al mismo formato
 de `dataset.json` que el ficticio (estadísticas → los 21 atributos). Orden
-decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)** y
-así país a país.
+decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**,
+**Francia (Betclic ÉLITE y ÉLITE 2)** y así país a país.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -82,6 +82,8 @@ pnpm real:feb     # Primera FEB        → .real-data-cache/sources/feb-2025.jso
 pnpm real:feb2    # Segunda FEB (Este) → .real-data-cache/sources/feb2-este-2025.json
 pnpm real:lba     # Serie A italiana   → .real-data-cache/sources/lba-2025.json
 pnpm real:lnp     # Serie A2 italiana  → .real-data-cache/sources/lnp-a2-2025.json
+pnpm real:lnb     # ÉLITE y ÉLITE 2    → .real-data-cache/sources/lnb-elite-2025.json
+                  #                      y lnb-elite2-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -97,6 +99,8 @@ inventado.
 | Segunda FEB, grupo Este       | `baloncestoenvivo.feb.es` | Igual que la Primera (`feb-extract.ts`), con la fase «Liga Regular "ESTE"». Sólo entra un equipo, en `liga-plata` (ver «Equipos invitados»).     |
 | Serie A (`italia-1`)          | `legabasket.it`           | La API JSON de su web (`/api`). Equipos del año, plantilla, club, estadísticas de liga regular, calendario y actas. Un segundo entre peticiones. |
 | Serie A2 italiana             | `legapallacanestro.com`   | JSON de `lnpstat.domino.it` (clasificación, calendario) y Drupal (estadísticas por Ajax, ficha). Sólo entra un equipo, en `italia-1`.            |
+| Betclic ÉLITE (`francia-1`)   | `lnb.fr` + Sportradar     | API JSON de la LNB (`api-prod.lnb.fr`, con token) y actas del widget de Sportradar del «match center». Ver «Francia».                            |
+| ÉLITE 2 (`francia-2`)         | `lnb.fr` + Sportradar     | Igual. Sus dos ascendidos juegan en `francia-1` (ver «Equipos invitados»).                                                                       |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -134,6 +138,64 @@ inventado.
   fuera de su ciudad y va a mano en `CLUB_CITIES`.
 - La copa del país toma su nombre real: **Coppa Italia**.
 
+#### Francia (lnb.fr y Sportradar)
+
+`pnpm real:lnb` extrae las dos ligas y deja `lnb-elite-2025.json`
+(`francia-1`) y `lnb-elite2-2025.json` (`francia-2`).
+
+- **API de la LNB** (`api-prod.lnb.fr`, la de su web): pide un token que da
+  `lnb.fr/api/token` y caduca a los quince minutos. `LnbApi` lo renueva solo
+  (y otra vez si la API contesta 401); las cabeceras no forman parte de la
+  clave de caché de `lib/http.ts`, que ahora admite cuerpos JSON. Ojo:
+  `www.lnb.fr` redirige a la portada, hay que usar `lnb.fr`.
+  - `competition/getDivisionCompetitionByYear?year=2025`: la liga regular es la
+    de abreviatura PROA o PROB con filtro GENERAL (302 y 303); de ahí sale el
+    `season_id` para Sportradar.
+  - `altrstats/getStandingByCompetition` (POST): la **clasificación oficial**,
+    con las sanciones ya descontadas (Monaco y Le Portel, −1 victoria; Aix-
+    Maurienne, un partido dado por perdido). Se usa tal cual.
+  - `teams/getRoster`: todos los que pasaron por el club, también los que se
+    fueron; `person/getPersonDetail` (POST, una por jugador): peso, altura y
+    fechas de alta y baja en el club.
+  - `altrstats/getCoachingStaff` (POST): los primeros entrenadores con fechas.
+  - `match/getMatchDetails/<uuid>`: el pabellón como «Pabellón (Ciudad)».
+- **Actas de Sportradar** (`embed-api.eui.connect.sportradar.com/v1/embed/12`,
+  el widget del «match center» de la LNB), sin token: `fixtures?state=…` da
+  los partidos de la liga regular y `fixture_detail?fixtureId=…` el acta de
+  cada uno; las estadísticas son **la suma de las actas** (titularidades,
+  minutos, tiros, rebotes, tapones recibidos, faltas y la «évaluation»). La API
+  de la LNB sólo da totales de los jugadores con partidos suficientes. De la
+  tabla `statistics_persons` se toman los mates y las faltas recibidas. El
+  `state` es el JSON de la temporada comprimido con zlib en base64 de URL
+  (`widgetState`). Es **lento**: dos o tres segundos por acta, 620 actas, una
+  media hora la primera vez.
+- Los UUID de persona y equipo de Sportradar son los `person_id`/`team_id` de
+  la LNB, pero la plantilla sólo trae el id numérico: jugador y acta se cruzan
+  **por nombre dentro del equipo** (casan todos menos tres canteranos de tres
+  partidos, que entran sin ficha y se avisa).
+- Un par de actas no cuadran con el tanteo (uno a seis puntos) y alguna sale
+  con seis titulares: se avisa y se usan. El Quimper–Aix-Maurienne del
+  11-11-2025 está 0-0 en el calendario (dado por ganado) pero se jugó: **sus
+  estadísticas cuentan**.
+- **Puestos**: «1 - Meneur» … «5 - Pivot»; con dos («2/3 - Arrière/Ailier»)
+  cuenta **el primero**, el principal, salvo «3/4» (alero o ala-pívot), que se
+  separa por altura como el «Ala» de la LBA: desde 205 cm (`POWER_FORWARD_CM`),
+  ala-pívot. Sin puesto, el montaje lo deduce por la altura. El cupo (JFL…) no
+  lo publica la LNB: `null`.
+- **Nombres**: la LNB sólo da el corto («Paris», «Chalon/Saône»); el nombre
+  completo del club va en `CLUB_NAMES` (`lnb.ts`), como los de España e
+  Italia («Paris Basketball», «Élan Chalon»). El corto sigue sirviendo para
+  cruzar datos (pabellones).
+- **Bajas**: quien se fue a mitad sin jugar no entra (baja anterior al último
+  partido de la liga); una baja anterior al alta (la LNB pone `2025-06-30` a
+  fichajes de invierno) no dice nada. Quien cambió de club dentro de la liga
+  sale en los dos y el montaje le deja donde más minutos jugó.
+- **Pabellón y aforo**: el pabellón donde más partidos jugó en casa; la LNB no
+  da aforos, así que van a mano en `resources/real-data/manual/lnb-pabellones.json`
+  (por nombre de equipo de la LNB, con aforo, nombre del pabellón, ciudad del
+  club y fuente de cada uno). Sin aforo, el montaje lo estima y se avisa.
+- La copa del país toma su nombre real: **Coupe de France**.
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -147,6 +209,17 @@ categoría de abajo, extraído aparte como **liga invitada**
   publica los playoffs en un formato legible.
 - **España**: el club de **Huesca**, que jugó la 2025-26 en el grupo Este de la
   Segunda FEB (`feb2.ts`, `HUESCA_TEAM_ID`).
+- **Francia**: la Betclic ÉLITE 2025-26 tuvo **16** equipos y la Pro A del juego
+  tiene 18; la ÉLITE 2 tuvo **20** y la Pro B tiene 18. Los dos que suben
+  (**Roanne**, primero de la liga regular, y **Pau-Lacq-Orthez**, campeón de
+  los playoffs de ascenso) pasan a `francia-1` y así las dos cuadran. Aquí la
+  liga de abajo es también real, así que no es una liga invitada sino una
+  liga con **ascendidos** (`SourceLeague.promoted`, fijos en `lnb.ts`,
+  `ELITE2_PROMOTED`): la ÉLITE 2 se valora **entera** con la escala de la Pro B
+  (los ascendidos llevan los mismos atributos que si se quedaran) y después
+  sus dos equipos se ponen en la Pro A, detrás de los 16, en ese orden (17.º
+  Roanne, 18.º Pau), como Verona en Italia. En la Pro B la reputación se
+  reparte entre los 18 que se quedan por su orden en la clasificación.
 
 Cómo entran:
 
@@ -198,7 +271,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa y la Serie A, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A y las ligas francesas, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -241,6 +314,19 @@ siguen inventados.
   `resources/real-data/manual/lba-entrenadores.json`, por id de entrenador de la
   LBA, con la fecha y el lugar escritos como en la FEB (`birth`: «dd/mm/aaaa
   Ciudad (País)») y la fuente de cada dato. Lo que da la LBA manda.
+- **Betclic ÉLITE** y **ÉLITE 2**: el cuerpo técnico de la LNB
+  (`getCoachingStaff`), el primer `HEAD_COACH` por fecha de alta (a igual
+  fecha, el de cargo más antiguo). Las actas de Sportradar no traen
+  entrenadores, y el cuerpo técnico no siempre cuadra: en Paris, Monaco y
+  Limoges no está el sustituto, en Roanne los dos tienen las mismas fechas y
+  en Challans falta el que empezó. Todo eso se contrastó con prensa y va en
+  `resources/real-data/manual/lnb-entrenadores.json`: `fallbacks` por id de
+  persona de la LNB (fecha y lugar de nacimiento, que la LNB no da nunca, y
+  `despues` con el sustituto para el aviso) e `inicio` por id de equipo
+  cuando el primero de la LNB no es el que empezó (en la 2025-26, Challans).
+  Sin fecha exacta va la edad (`age`) y se aplica la regla del 1 de julio.
+  La nacionalidad sale del lugar: «Ciudad (País)» o una ciudad francesa.
+  `real:lnb` avisa de cada cambio de entrenador.
 - **Serie A2** y **Segunda FEB**: sólo el del equipo invitado. La LNP no publica
   los técnicos de temporadas pasadas: el de la A2 es el del inicio de temporada
   y va a mano en `resources/real-data/manual/lnp-entrenadores.json` (por id de

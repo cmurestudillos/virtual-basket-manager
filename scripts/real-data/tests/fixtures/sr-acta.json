@@ -1,0 +1,9 @@
+{"data":{"statistics":{"data":{"base":{
+ "home":{"entity":{"entityId":"uuid-sur"},"persons":[{"label":"Joueurs","rows":[
+  {"entityId":"uuid-sur","personId":"p-1","personName":"Jugador Primero","participated":true,"starter":true,"statistics":{"minutes":"PT16M24S","points":10,"pointsTwoMade":1,"pointsTwoAttempted":4,"pointsThreeMade":2,"pointsThreeAttempted":4,"freeThrowsMade":2,"freeThrowsAttempted":4,"reboundsOffensive":2,"reboundsDefensive":1,"assists":0,"steals":1,"turnovers":1,"blocks":0,"blocksReceived":1,"foulsTotal":3,"efficiency":5}},
+  {"entityId":"uuid-sur","personId":"p-2","personName":"Suplente Sin Minutos","participated":false,"starter":false,"statistics":{}}
+ ]}]},
+ "away":{"entity":{"entityId":"uuid-norte"},"persons":[{"label":"Joueurs","rows":[
+  {"entityId":"uuid-norte","personId":"p-3","personName":"Visitante Uno","participated":true,"starter":false,"statistics":{"minutes":"PT1H2M3S","points":7,"pointsTwoMade":2,"pointsTwoAttempted":3,"pointsThreeMade":1,"pointsThreeAttempted":2,"freeThrowsMade":0,"freeThrowsAttempted":0,"reboundsOffensive":0,"reboundsDefensive":4,"assists":3,"steals":0,"turnovers":2,"blocks":1,"blocksReceived":0,"foulsTotal":2,"efficiency":9}}
+ ]}]}
+}}}}}

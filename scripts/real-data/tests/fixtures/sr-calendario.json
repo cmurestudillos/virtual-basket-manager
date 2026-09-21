@@ -1,0 +1,5 @@
+{"data":{"fixtures":[
+ {"fixtureId":"fx-1","name":"Villa Sur - Villa Norte","startTimeLocal":"2025-09-27T20:00:00","venue":"Palacio Inventado","status":{"value":"CONFIRMED"},"competitors":[{"entityId":"uuid-sur","isHome":true,"name":"Villa Sur","score":"80"},{"entityId":"uuid-norte","isHome":false,"name":"Villa Norte","score":"75"}]},
+ {"fixtureId":"fx-2","name":"Villa Norte - Villa Sur","startTimeLocal":"2025-11-11T20:00:00","venue":"Pabellón Norte","status":{"value":"CONFIRMED"},"competitors":[{"entityId":"uuid-norte","isHome":true,"name":"Villa Norte","score":"0"},{"entityId":"uuid-sur","isHome":false,"name":"Villa Sur","score":"0"}]},
+ {"fixtureId":null,"competitors":[]}
+]}}

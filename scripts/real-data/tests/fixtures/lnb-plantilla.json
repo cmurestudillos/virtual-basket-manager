@@ -1,0 +1,5 @@
+{"status":true,"message":"Roster fetched","data":[
+ {"s_points_average":9.7,"person":{"external_id":501,"first_name":"Jugador","family_name":"Primero","dob":"1999-04-12T00:00:00.000Z","height":204,"nationality_code_ioc":"USA"},"player_role":{"playing_position":"3/4 - Ailier/Ailier fort","shirt_number":"34"}},
+ {"person":{"external_id":502,"first_name":"Canterano","family_name":"Joven","dob":"2007-11-13T00:00:00.000Z","height":null,"nationality_code_ioc":"FRA"},"player_role":{"playing_position":"","shirt_number":null}},
+ {"person":{"external_id":503,"first_name":"Sin","family_name":""},"player_role":{}}
+]}

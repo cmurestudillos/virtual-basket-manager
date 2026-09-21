@@ -38,6 +38,9 @@ export interface RequestOptions {
   method?: 'GET' | 'POST';
   /** Campos de formulario: se envían como `application/x-www-form-urlencoded`. */
   form?: Record<string, string>;
+  /** Cuerpo JSON (`application/json`), para las API que lo piden así. */
+  json?: unknown;
+  /** No cuentan para la caché: un token que caduca no puede cambiar la clave. */
   headers?: Record<string, string>;
   /**
    * Clave de caché explícita. Hace falta cuando la respuesta no depende sólo de
@@ -59,7 +62,7 @@ export interface RequestOptions {
 
 export interface HttpClient {
   request(url: string, options?: RequestOptions): Promise<string>;
-  get(url: string, options?: Omit<RequestOptions, 'method' | 'form'>): Promise<string>;
+  get(url: string, options?: Omit<RequestOptions, 'method' | 'form' | 'json'>): Promise<string>;
   /** ¿Está ya en caché? Sirve para saltarse pasos previos que sólo preparan una petición. */
   isCached(url: string, options?: RequestOptions): boolean;
   /**
@@ -83,7 +86,9 @@ export function cacheFileFor(url: string, options: RequestOptions = {}): string 
   const method = options.method ?? 'GET';
   const identity = options.cacheKey
     ? `key:${options.cacheKey}`
-    : `${method} ${url}\n${options.form ? encodeForm(options.form) : ''}`;
+    : options.json !== undefined
+      ? `${method} ${url}\njson:${JSON.stringify(options.json)}`
+      : `${method} ${url}\n${options.form ? encodeForm(options.form) : ''}`;
   const hash = createHash('sha256').update(identity).digest('hex');
   return join(HTTP_CACHE_DIR, `${hash}.html`);
 }
@@ -127,6 +132,9 @@ export function createHttpClient(clientOptions: HttpClientOptions): HttpClient {
     if (options.form) {
       body = encodeForm(options.form);
       headers['Content-Type'] = 'application/x-www-form-urlencoded';
+    } else if (options.json !== undefined) {
+      body = JSON.stringify(options.json);
+      headers['Content-Type'] = 'application/json';
     }
 
     let response: Response;

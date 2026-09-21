@@ -351,3 +351,84 @@ describe('equipos invitados de una liga de otra categoría', () => {
     expect(() => mergeRealLeagues(fictitious, [lower()], known)).toThrow(/italia-1/);
   });
 });
+
+describe('ascendidos de una liga real a la de encima', () => {
+  /** Una primera división de cuatro equipos y una segunda de cinco de la que suben dos. */
+  function first(): SourceLeague {
+    return {
+      ...league(),
+      competitionId: 'francia-1',
+      name: 'Primera Francesa',
+      shortName: 'PF',
+      country: 'FRA'
+    };
+  }
+  function second(promoted: string[] = ['club-segunda-2', 'club-segunda-1']): SourceLeague {
+    const teams = Array.from({ length: 5 }, (_, index) =>
+      team(
+        `Club Segunda ${index + 1}`,
+        index + 1,
+        Array.from({ length: 10 }, (_, slot) => player(`s${index}-p${slot}`, 30 - slot * 2))
+      )
+    );
+    teams[1]!.coach = coach('del-ascendido');
+    return {
+      ...league(),
+      competitionId: 'francia-2',
+      name: 'Segunda Francesa',
+      shortName: 'SF',
+      country: 'FRA',
+      teams,
+      promoted: { into: 'francia-1', teamIds: promoted }
+    };
+  }
+  const { dataset, reports, rated } = mergeRealLeagues(fictitious, [second(), first()], known);
+  const inLeague = (id: string): typeof dataset.teams =>
+    dataset.teams.filter((entry) => entry.competitionId === id);
+  const top = inLeague('francia-1');
+  const bottom = inLeague('francia-2');
+
+  it('los que suben juegan en la de encima, al final y en el orden dado', () => {
+    expect(top.map((entry) => entry.name).slice(-2)).toEqual(['Club Segunda 2', 'Club Segunda 1']);
+    expect(top).toHaveLength(6);
+    expect(top.at(-1)!.reputation).toBe(Math.min(...top.map((entry) => entry.reputation)));
+    expect(top.at(-2)!.coach?.lastName).toBe('del-ascendido');
+    expect(dataset.realLeagues).toEqual(['francia-1', 'francia-2']);
+  });
+
+  it('en su liga se quedan los demás, con la reputación repartida entre ellos', () => {
+    expect(bottom.map((entry) => entry.name)).toEqual([
+      'Club Segunda 3',
+      'Club Segunda 4',
+      'Club Segunda 5'
+    ]);
+    const [best, worst] = [34, 12];
+    expect(bottom[0]!.reputation).toBe(best);
+    expect(bottom[2]!.reputation).toBe(worst);
+  });
+
+  it('se valoran con su liga entera: mismos atributos que si se quedaran', () => {
+    const alone = mergeRealLeagues(fictitious, [{ ...second(), promoted: undefined }], known);
+    const byName = (rows: typeof dataset.players, name: string): typeof dataset.players =>
+      rows.filter((entry) => entry.lastName === name);
+    const promotedPlayer = byName(dataset.players, 's1-p0')[0]!;
+    const stayed = byName(alone.dataset.players, 's1-p0')[0]!;
+    expect(promotedPlayer.id).toBe('francia-1-francia-2-ps1-p0');
+    expect(promotedPlayer.attributes).toEqual(stayed.attributes);
+    expect(rated.get('francia-2')).toHaveLength(30);
+    expect(rated.get('francia-2-ascendidos')).toHaveLength(20);
+    expect(reports.find((report) => report.competitionId === 'francia-2-ascendidos')?.guestOf).toBe(
+      'francia-1'
+    );
+  });
+
+  it('la copa de Francia toma su nombre real', () => {
+    expect(dataset.competitions.find((entry) => entry.id === 'francia-copa')?.name).toBe(
+      'Coupe de France'
+    );
+  });
+
+  it('subir equipos a una liga que no es real es un error', () => {
+    expect(() => mergeRealLeagues(fictitious, [second()], known)).toThrow(/francia-1/);
+  });
+});

@@ -1,0 +1,6 @@
+{"status":true,"message":"Coaching Staff fetched","data":[
+ {"external_id":8003,"person_external_id":403,"role_type":"HEAD_COACH","from_date":"2025-12-04","to_date":"2026-06-30","person":{"external_id":403,"first_name":"Segundo","family_name":"Técnico"}},
+ {"external_id":8002,"person_external_id":402,"role_type":"ASSISTANT_COACH","from_date":"2025-07-01","to_date":"2026-06-30","person":{"external_id":402,"first_name":"Ayudante","family_name":"Uno"}},
+ {"external_id":8004,"person_external_id":404,"role_type":"HEAD_COACH","from_date":"2025-07-01","to_date":"2026-06-30","person":{"external_id":404,"first_name":"Otro","family_name":"Mismo Día"}},
+ {"external_id":8001,"person_external_id":401,"role_type":"HEAD_COACH","from_date":"2025-07-01","to_date":"2025-11-20","person":{"external_id":401,"first_name":"Primer","family_name":"Técnico"}}
+]}

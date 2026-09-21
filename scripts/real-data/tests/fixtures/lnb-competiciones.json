@@ -1,0 +1,6 @@
+{"status":true,"message":"Competition fetched","data":[
+ {"id":1,"external_id":902,"division_external_id":1,"season_id":"aaaa-temporada-primera","competition_name":"Liga Inventada","competition_abbrev":"PROA","competition_filter_value":"GENERAL"},
+ {"id":2,"external_id":911,"division_external_id":1,"season_id":"aaaa-playoffs","competition_name":"Liga Inventada - Playoffs","competition_abbrev":"PROA PO","competition_filter_value":"FINAL"},
+ {"id":3,"external_id":903,"division_external_id":2,"season_id":"aaaa-temporada-segunda","competition_name":"Segunda Inventada","competition_abbrev":"PROB","competition_filter_value":"GENERAL"},
+ {"id":4,"external_id":908,"division_external_id":1,"season_id":"aaaa-copa","competition_name":"Copa Inventada","competition_abbrev":"LDCUP","competition_filter_value":"LEADERS CUP"}
+]}

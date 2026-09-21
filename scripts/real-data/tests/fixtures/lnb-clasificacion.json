@@ -1,0 +1,5 @@
+{"status":true,"message":"Standing get successfully","data":[{"title":"PROA","pool_number":1,"data":[
+ {"rank":2,"s_games":4,"s_wins":2,"s_losses":1,"penalty":1,"penalty_note":"Villa Norte: -1 Victoire","team":{"team_id":"uuid-norte","external_id":7002,"team_name":"Villa Norte","team_code":"VNO"}},
+ {"rank":1,"s_games":4,"s_wins":3,"s_losses":1,"penalty":0,"penalty_note":"","team":{"team_id":"uuid-sur","external_id":7001,"team_name":"Villa Sur","team_code":"VSU"}},
+ {"rank":3,"s_games":4,"s_wins":0,"s_losses":4,"penalty":0,"penalty_note":"","team":{}}
+]}]}
