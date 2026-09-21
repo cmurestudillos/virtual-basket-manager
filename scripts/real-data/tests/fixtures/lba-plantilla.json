@@ -1,0 +1,39 @@
+{
+  "team": { "id": 9001, "name": "Club Inventato Sponsor", "year": 2025, "club_id": 90, "club_code": "CIN" },
+  "ranking": [],
+  "rnk_sum": { "r_s": { "pos": 4, "points": 36, "mw": 18, "ml": 10 } },
+  "coach": {
+    "id": 501,
+    "name": "Allenatore",
+    "surname": "Di Prova",
+    "birth_date": null,
+    "place_of_birth": "Italia",
+    "coach_type_description": "Allenatore"
+  },
+  "players": [
+    {
+      "id": 7001,
+      "name": "Giocatore",
+      "surname": "Primo",
+      "birth_date": "1999-04-12",
+      "player_number": "7",
+      "country": "DNK",
+      "uefa_ratio": "C",
+      "height": 207,
+      "weight": 104,
+      "player_role": "Ala"
+    },
+    {
+      "id": 7002,
+      "name": "Ragazzo",
+      "surname": "Del Vivaio",
+      "birth_date": "2008-02-01",
+      "player_number": "20",
+      "country": "ITA",
+      "uefa_ratio": "I",
+      "height": null,
+      "weight": null,
+      "player_role": "-"
+    }
+  ]
+}

@@ -1,0 +1,15 @@
+{
+  "match": {
+    "id": 2,
+    "h_team_id": 9001,
+    "v_team_id": 9002,
+    "home_coach_id": 502,
+    "home_coach_fullname": "Aiutante Mario",
+    "visitor_coach_id": 601,
+    "visitor_coach_fullname": "Ospite Luca"
+  },
+  "coaches_extra": {
+    "home": { "id": 501, "name": "Allenatore", "surname": "Di Prova" },
+    "visitor": { "id": 601, "name": "Luca", "surname": "Ospite" }
+  }
+}

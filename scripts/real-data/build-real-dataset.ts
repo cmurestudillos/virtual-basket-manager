@@ -51,7 +51,11 @@ for (const report of reports) {
       .filter((team) => team.competitionId === report.competitionId)
       .map((team) => team.id)
   );
-  console.log(`\n${report.name} (${report.competitionId})`);
+  console.log(
+    report.guestOf
+      ? `\n${report.name} (${report.competitionId}): equipos invitados en ${report.guestOf}`
+      : `\n${report.name} (${report.competitionId})`
+  );
   console.log(
     `  ${report.teams} equipos, ${report.players} jugadores, ${report.estimated} con atributos estimados`
   );
@@ -59,7 +63,9 @@ for (const report of reports) {
     `  descartados: ${report.droppedDuplicates} repetidos, ${report.droppedOverRoster} por encima de la plantilla máxima`
   );
   console.log(`  media: p10 ${at(0.1)} · mediana ${at(0.5)} · p90 ${at(0.9)} · máx ${at(1)}`);
-  console.log(`  (en la liga ficticia había ${fictitiousTeams.size} equipos)`);
+  if (!report.guestOf) {
+    console.log(`  (en la liga ficticia había ${fictitiousTeams.size} equipos)`);
+  }
   if (report.unknownNationalities.length > 0) {
     console.log(
       `  nacionalidades que el juego no conoce (se ponen la del club): ${report.unknownNationalities.join(', ')}`

@@ -8,6 +8,7 @@ import {
   coachBirthDate,
   mergeRealLeagues,
   reputationFor,
+  scaleReference,
   selectRosters,
   slugify,
   teamStrength
@@ -265,5 +266,88 @@ describe('mezclar una liga real con el mundo ficticio', () => {
     expect(() =>
       mergeRealLeagues(fictitious, [{ ...league(), competitionId: 'no-existe' }], known)
     ).toThrow(/no-existe/);
+  });
+});
+
+describe('equipos invitados de una liga de otra categoría', () => {
+  /** Una primera división de cuatro equipos y una segunda de la que sube uno. */
+  function host(): SourceLeague {
+    return {
+      ...league(),
+      competitionId: 'italia-1',
+      name: 'Primera Real',
+      shortName: 'PR',
+      country: 'ITA'
+    };
+  }
+  function lower(): SourceLeague {
+    const teams = Array.from({ length: 3 }, (_, index) =>
+      team(
+        `Club Abajo ${index + 1}`,
+        index + 1,
+        Array.from({ length: 10 }, (_, slot) => player(`b${index}-p${slot}`, 30 - slot * 2))
+      )
+    );
+    // Uno que ya juega en la primera (misma persona, otro id en la otra web).
+    teams[0]!.players.push(
+      player('t0-p0-otra-web', 20, { firstName: 'Jugador', lastName: 't0-p0' })
+    );
+    teams[0]!.coach = coach('del-invitado');
+    return {
+      ...league(),
+      competitionId: 'segunda-real',
+      name: 'Segunda Real',
+      shortName: 'SR',
+      country: 'ITA',
+      teams,
+      guest: { into: 'italia-1', teamIds: [teams[0]!.sourceId], scale: { league: 'liga-plata' } }
+    };
+  }
+  const { dataset, reports } = mergeRealLeagues(fictitious, [lower(), host()], known);
+  const italy = dataset.teams.filter((entry) => entry.competitionId === 'italia-1');
+  const guestTeam = italy.find((entry) => entry.name === 'Club Abajo 1');
+
+  it('sólo entra el invitado, detrás de los de la liga y con la reputación más baja', () => {
+    expect(italy).toHaveLength(5);
+    expect(guestTeam).toBeDefined();
+    expect(dataset.teams.some((entry) => entry.name === 'Club Abajo 2')).toBe(false);
+    expect(Math.min(...italy.map((entry) => entry.reputation))).toBe(guestTeam!.reputation);
+    expect(guestTeam!.coach?.lastName).toBe('del-invitado');
+    // La liga invitada no es una liga del juego.
+    expect(dataset.realLeagues).toEqual(['italia-1']);
+    expect(reports.map((report) => report.guestOf ?? null)).toEqual([null, 'italia-1']);
+  });
+
+  it('la copa del país toma su nombre real', () => {
+    expect(dataset.competitions.find((entry) => entry.id === 'italia-copa')?.name).toBe(
+      'Coppa Italia'
+    );
+  });
+
+  it('sus jugadores llevan la escala de su categoría y no repiten a nadie de la liga', () => {
+    const own = dataset.players.filter((entry) => entry.teamId === guestTeam!.id);
+    expect(own.length).toBe(10);
+    expect(own.every((entry) => entry.id.startsWith('italia-1-segunda-real-p'))).toBe(true);
+    expect(reports[1]?.droppedDuplicates).toBe(1);
+    // El mejor del invitado, campeón de su liga, no llega al mejor de la primera.
+    const hostPlayers = dataset.players.filter(
+      (entry) => entry.teamId.startsWith('italia-1-') && entry.teamId !== guestTeam!.id
+    );
+    const best = (rows: typeof own): number =>
+      Math.max(...rows.map((entry) => entry.attributes.basketballIQ));
+    expect(best(own)).toBeLessThan(best(hostPlayers));
+  });
+
+  it('bajar la escala un escalón la deja por debajo de la de su liga', () => {
+    const base = scaleReference(fictitious, { league: 'liga-plata' });
+    const lowered = scaleReference(fictitious, { league: 'liga-plata', stepsDown: 0.5 });
+    const median = (values: number[]): number => values[Math.floor(values.length / 2)] ?? 0;
+    expect(median(lowered.attributes.basketballIQ)).toBeLessThan(
+      median(base.attributes.basketballIQ)
+    );
+  });
+
+  it('meter equipos en una liga que no es real es un error', () => {
+    expect(() => mergeRealLeagues(fictitious, [lower()], known)).toThrow(/italia-1/);
   });
 });
