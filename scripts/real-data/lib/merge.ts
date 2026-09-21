@@ -21,6 +21,7 @@ import type {
   SourceGuest,
   SourceLeague,
   SourcePlayer,
+  SourcePromotion,
   SourceTeam
 } from './source-types';
 
@@ -37,7 +38,8 @@ import type {
  * Las ligas invitadas (`SourceLeague.guest`) no sustituyen a ninguna: de ellas
  * sólo entran unos equipos, detrás de los de una liga real y con la escala de
  * su propia categoría, para completar una liga real que tiene menos equipos
- * que la del juego.
+ * que la del juego. Los ascendidos de una liga real (`SourceLeague.promoted`)
+ * entran igual en la de encima, pero valorados con su propia liga entera.
  *
  * Lo que la fuente no da se rellena aquí, siempre igual para el mismo jugador
  * (nada de azar: regenerar el dataset no puede cambiarle la ficha a nadie):
@@ -47,7 +49,8 @@ import type {
 /** Nombres reales de las copas de los países con liga real. */
 const REAL_CUPS: Record<string, { name: string; shortName: string }> = {
   ESP: { name: 'Copa del Rey', shortName: 'Copa' },
-  ITA: { name: 'Coppa Italia', shortName: 'Coppa' }
+  ITA: { name: 'Coppa Italia', shortName: 'Coppa' },
+  FRA: { name: 'Coupe de France', shortName: 'Coupe' }
 };
 
 /** Altura típica por puesto: para quien no la trae y para deducir el puesto. */
@@ -308,6 +311,17 @@ export function mergeRealLeagues(
     }
     guestSlots.set(guest.into, (guestSlots.get(guest.into) ?? 0) + guest.teamIds.length);
   }
+  // Los ascendidos de una liga real a la de encima ocupan plaza allí como invitados.
+  for (const source of hosts) {
+    const promoted = source.promoted;
+    if (!promoted) continue;
+    if (!replaced.has(promoted.into) || promoted.into === source.competitionId) {
+      throw new Error(
+        `${source.name} sube equipos a ${promoted.into}, que no es otra liga real: extrae antes esa liga.`
+      );
+    }
+    guestSlots.set(promoted.into, (guestSlots.get(promoted.into) ?? 0) + promoted.teamIds.length);
+  }
   const competitions = fictitious.competitions.map((competition) => ({ ...competition }));
   const keptTeams = fictitious.teams.filter((team) => !replaced.has(team.competitionId));
   const keptTeamIds = new Set(keptTeams.map((team) => team.id));
@@ -434,6 +448,12 @@ export function mergeRealLeagues(
     return { ...selection, rated };
   }
 
+  const pendingPromotions: {
+    source: SourceLeague;
+    rosters: Map<SourceTeam, SourcePlayer[]>;
+    ratedBySource: ReadonlyMap<SourcePlayer, RatedPlayer>;
+  }[] = [];
+
   for (const source of hosts) {
     const competition = competitions.find((entry) => entry.id === source.competitionId);
     if (!competition) {
@@ -452,22 +472,37 @@ export function mergeRealLeagues(
 
     const tier = tierOf(source.competitionId);
     const reference = referenceFrom(fictitiousPlayersOf(fictitious, source.competitionId));
+    // Toda la liga se valora junta, también los que suben a la de encima: el
+    // percentil de cada jugador es el de su liga entera.
     const { rosters, droppedDuplicates, droppedOverRoster, rated } = rateSource(source, reference);
-    ratedByLeague.set(source.competitionId, rated);
     const ratedBySource = new Map(rated.map((entry) => [entry.source, entry]));
+    const promotedIds = new Set(source.promoted?.teamIds ?? []);
+    const staying = source.teams.filter((team) => !promotedIds.has(team.sourceId));
+    const stayingPlayers = new Set(staying.flatMap((team) => rosters.get(team) ?? []));
+    const ratedHere =
+      promotedIds.size > 0 ? rated.filter((e) => stayingPlayers.has(e.source)) : rated;
+    ratedByLeague.set(source.competitionId, ratedHere);
+    if (source.promoted) pendingPromotions.push({ source, rosters, ratedBySource });
     const unknown = new Set<string>();
     const withoutCoach: string[] = [];
     // Los invitados van detrás, pero la reputación se reparte entre todos.
-    const total = source.teams.length + (guestSlots.get(source.competitionId) ?? 0);
+    const total = staying.length + (guestSlots.get(source.competitionId) ?? 0);
 
-    const ordered = [...source.teams].sort(
+    const ordered = [...staying].sort(
       (a, b) => (a.finalPosition ?? 99) - (b.finalPosition ?? 99) || a.name.localeCompare(b.name)
     );
     ordered.forEach((sourceTeam, index) => {
       addTeam(sourceTeam, rosters.get(sourceTeam) ?? [], {
         source,
         competitionId: source.competitionId,
-        reputation: reputationFor(sourceTeam.finalPosition, index, total, tier),
+        // Sin los que suben, el puesto de la fuente ya no es el de esta liga:
+        // cuenta el orden entre los que se quedan.
+        reputation: reputationFor(
+          promotedIds.size > 0 ? index + 1 : sourceTeam.finalPosition,
+          index,
+          total,
+          tier
+        ),
         playerIdPrefix: source.competitionId,
         ratedBySource,
         unknown,
@@ -479,11 +514,61 @@ export function mergeRealLeagues(
     reports.push({
       competitionId: source.competitionId,
       name: source.name,
-      teams: source.teams.length,
-      players: rated.length,
-      estimated: rated.filter((entry) => entry.estimated).length,
+      teams: staying.length,
+      players: ratedHere.length,
+      estimated: ratedHere.filter((entry) => entry.estimated).length,
       droppedDuplicates,
       droppedOverRoster,
+      unknownNationalities: [...unknown].sort(),
+      withoutCoach
+    });
+  }
+
+  // Los ascendidos, detrás de los de la liga de encima y en el orden en que
+  // se dan, con los atributos de su liga (ya valorada entera).
+  for (const { source, rosters, ratedBySource } of pendingPromotions) {
+    const promoted = source.promoted as SourcePromotion;
+    const into = promoted.into;
+    const tier = tierOf(into);
+    const total = (placed.get(into) ?? 0) + (guestSlots.get(into) ?? 0);
+    const unknown = new Set<string>();
+    const withoutCoach: string[] = [];
+    const kept: RatedPlayer[] = [];
+    let droppedDuplicates = 0;
+    const people = peopleIn.get(into) ?? new Set<string>();
+    for (const teamId of promoted.teamIds) {
+      const sourceTeam = source.teams.find((team) => team.sourceId === teamId);
+      if (!sourceTeam) throw new Error(`${source.name}: no está el equipo que sube ${teamId}.`);
+      // Quien ya juega en la liga de destino se queda allí.
+      const roster = (rosters.get(sourceTeam) ?? []).filter((sourcePlayer) => {
+        const duplicate = sourcePlayer.birthDate !== null && people.has(personKey(sourcePlayer));
+        if (duplicate) droppedDuplicates += 1;
+        return !duplicate;
+      });
+      const position = (placed.get(into) ?? 0) + 1;
+      placed.set(into, position);
+      addTeam({ ...sourceTeam, finalPosition: position }, roster, {
+        source,
+        competitionId: into,
+        reputation: reputationFor(position, position - 1, total, tier),
+        playerIdPrefix: `${into}-${slugify(source.competitionId)}`,
+        ratedBySource,
+        unknown,
+        withoutCoach
+      });
+      for (const sourcePlayer of roster) kept.push(ratedBySource.get(sourcePlayer) as RatedPlayer);
+    }
+    const reportId = `${source.competitionId}-ascendidos`;
+    ratedByLeague.set(reportId, kept);
+    reports.push({
+      competitionId: reportId,
+      name: `${source.name} (ascendidos)`,
+      guestOf: into,
+      teams: promoted.teamIds.length,
+      players: kept.length,
+      estimated: kept.filter((entry) => entry.estimated).length,
+      droppedDuplicates,
+      droppedOverRoster: 0,
       unknownNationalities: [...unknown].sort(),
       withoutCoach
     });

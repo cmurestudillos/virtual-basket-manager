@@ -53,6 +53,7 @@
     "real:feb2": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/feb2.ts",
     "real:lba": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/lba.ts",
     "real:lnp": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/lnp.ts",
+    "real:lnb": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/lnb.ts",
     "real:build": "tsx --tsconfig tsconfig.node.json scripts/real-data/build-real-dataset.ts"
   },
   "dependencies": {
