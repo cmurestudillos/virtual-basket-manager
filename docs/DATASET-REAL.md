@@ -74,7 +74,8 @@ lo detectan antes de empezar y dicen cómo recuperarlo.
 Se extraen de webs públicas con scripts propios y se convierten al mismo formato
 de `dataset.json` que el ficticio (estadísticas → los 21 atributos). Orden
 decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**,
-**Francia (Betclic ÉLITE y ÉLITE 2)** y así país a país.
+**Francia (Betclic ÉLITE y ÉLITE 2)**, **Grecia (GBL y Elite League)** y así
+país a país.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -84,6 +85,8 @@ pnpm real:lba     # Serie A italiana   → .real-data-cache/sources/lba-2025.jso
 pnpm real:lnp     # Serie A2 italiana  → .real-data-cache/sources/lnp-a2-2025.json
 pnpm real:lnb     # ÉLITE y ÉLITE 2    → .real-data-cache/sources/lnb-elite-2025.json
                   #                      y lnb-elite2-2025.json
+pnpm real:esake   # Stoiximan GBL      → .real-data-cache/sources/esake-gbl-2025.json
+pnpm real:hbf     # Elite League       → .real-data-cache/sources/hbf-elite-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -92,15 +95,17 @@ inventado.
 
 ### Fuentes
 
-| Liga (id en el juego)         | Web                       | Cómo se lee                                                                                                                                      |
-| ----------------------------- | ------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------ |
-| Liga Endesa (`liga-nacional`) | `acb.com`                 | Los datos que Next.js incrusta en el HTML (`self.__next_f`), con `editionId=90`. Clasificación, plantilla, estadísticas de liga regular y ficha. |
-| Primera FEB (`liga-plata`)    | `baloncestoenvivo.feb.es` | ASP.NET: calendario, clasificación de liga regular y estadísticas acumuladas por _postback_. Dos segundos entre peticiones.                      |
-| Segunda FEB, grupo Este       | `baloncestoenvivo.feb.es` | Igual que la Primera (`feb-extract.ts`), con la fase «Liga Regular "ESTE"». Sólo entra un equipo, en `liga-plata` (ver «Equipos invitados»).     |
-| Serie A (`italia-1`)          | `legabasket.it`           | La API JSON de su web (`/api`). Equipos del año, plantilla, club, estadísticas de liga regular, calendario y actas. Un segundo entre peticiones. |
-| Serie A2 italiana             | `legapallacanestro.com`   | JSON de `lnpstat.domino.it` (clasificación, calendario) y Drupal (estadísticas por Ajax, ficha). Sólo entra un equipo, en `italia-1`.            |
-| Betclic ÉLITE (`francia-1`)   | `lnb.fr` + Sportradar     | API JSON de la LNB (`api-prod.lnb.fr`, con token) y actas del widget de Sportradar del «match center». Ver «Francia».                            |
-| ÉLITE 2 (`francia-2`)         | `lnb.fr` + Sportradar     | Igual. Sus dos ascendidos juegan en `francia-1` (ver «Equipos invitados»).                                                                       |
+| Liga (id en el juego)         | Web                       | Cómo se lee                                                                                                                                         |
+| ----------------------------- | ------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Liga Endesa (`liga-nacional`) | `acb.com`                 | Los datos que Next.js incrusta en el HTML (`self.__next_f`), con `editionId=90`. Clasificación, plantilla, estadísticas de liga regular y ficha.    |
+| Primera FEB (`liga-plata`)    | `baloncestoenvivo.feb.es` | ASP.NET: calendario, clasificación de liga regular y estadísticas acumuladas por _postback_. Dos segundos entre peticiones.                         |
+| Segunda FEB, grupo Este       | `baloncestoenvivo.feb.es` | Igual que la Primera (`feb-extract.ts`), con la fase «Liga Regular "ESTE"». Sólo entra un equipo, en `liga-plata` (ver «Equipos invitados»).        |
+| Serie A (`italia-1`)          | `legabasket.it`           | La API JSON de su web (`/api`). Equipos del año, plantilla, club, estadísticas de liga regular, calendario y actas. Un segundo entre peticiones.    |
+| Serie A2 italiana             | `legapallacanestro.com`   | JSON de `lnpstat.domino.it` (clasificación, calendario) y Drupal (estadísticas por Ajax, ficha). Sólo entra un equipo, en `italia-1`.               |
+| Betclic ÉLITE (`francia-1`)   | `lnb.fr` + Sportradar     | API JSON de la LNB (`api-prod.lnb.fr`, con token) y actas del widget de Sportradar del «match center». Ver «Francia».                               |
+| ÉLITE 2 (`francia-2`)         | `lnb.fr` + Sportradar     | Igual. Sus dos ascendidos juegan en `francia-1` (ver «Equipos invitados»).                                                                          |
+| Stoiximan GBL (`grecia-1`)    | `esake.gr` + b-reference  | HTML de esake: clasificación, plantillas y las actas de las 26 jornadas. Los nombres en latino, de basketball-reference (una página). Ver «Grecia». |
+| Elite League (`grecia-2`)     | `stats.basket.gr`         | HTML de la federación (sportstats): plantillas y actas de liga regular sin el Trikala. Su campeón juega en `grecia-1` (ver «Equipos invitados»).    |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -196,6 +201,68 @@ inventado.
   club y fuente de cada uno). Sin aforo, el montaje lo estima y se avisa.
 - La copa del país toma su nombre real: **Coupe de France**.
 
+#### Grecia (esake.gr, basketball-reference y la federación)
+
+`pnpm real:esake` extrae la Stoiximan GBL (`grecia-1`) y `pnpm real:hbf` la
+Elite League (`grecia-2`); dejan `esake-gbl-2025.json` y `hbf-elite-2025.json`.
+
+- **esake.gr** (la web de la GBL) es HTML de servidor sin API, con ids de
+  ocho cifras hexadecimales. La temporada es `idchampionship=44B80BEB` y la liga
+  regular, `idseason=00000001`. Un segundo entre peticiones; la primera vez, unas
+  doscientas peticiones y seis o siete minutos.
+  - **Equipos**: la clasificación tras la última jornada
+    (`EsakeRanking?…&day=26-1`): **13** equipos, 24 partidos cada uno.
+  - **Plantilla**: `EsakePlayers?idchampionship=…&idteam=…`, con fecha, altura,
+    puesto (PG…C) y país **en griego** («ΗΠΑ»), que se traduce con la tabla de
+    `lib/greek.ts`. El «equipo» de cada ficha es el de hoy, no se usa. Quien
+    jugó y ya no está en esa lista (se fue a mitad) sale de su página de jugador.
+  - **Estadísticas**: la suma de las **actas** de las 26 jornadas
+    (`EsakeResults?…&series=<jornada>` y `EsakegameView?idgame=…&mode=3`), con
+    los minutos al segundo, tapones recibidos y faltas recibidas. esake no marca
+    titulares ni mates. En el acta, «FOULS F» son las faltas **recibidas** y
+    «FOULS M» las cometidas; el equipo es el de la cabecera de cada tabla (el de
+    los enlaces de los jugadores está mal).
+  - **Nombres**: esake escribe muchos en griego, también los de los extranjeros
+    («ΣΜΙΘΕΡΣΟΝ»), y esa transcripción no se puede deshacer. Además mete letras
+    latinas en palabras griegas («ΜAΡΛΟΟΥ», con la A latina), que se pasan a
+    griegas antes de transliterar. Los **extranjeros** toman el nombre de la tabla
+    de totales de basketball-reference
+    (`/international/greek-basket-league/2026_totals.html`, una sola petición;
+    esa web corta a quien pasa de unas veinte por minuto), emparejados dentro de
+    cada equipo por estadísticas (partidos, puntos, rebotes, asistencias…). Los
+    **griegos** se transliteran con **ELOT 743** (la del pasaporte: «mp», «nt»,
+    «gk»). Los nacionalizados con nombre de fuera y los extranjeros que no casan
+    van a mano en `resources/real-data/manual/esake-nombres.json`.
+  - **Club**: nombre sin patrocinador, ciudad y pabellón con aforo de la
+    Wikipedia inglesa de la temporada, en `TEAMS` (`esake.ts`).
+- **stats.basket.gr** (la federación; proveedor sportstats.gr) es ASP.NET con
+  ids GUID. La Elite League 2025-26 tuvo 16 inscritos, pero el **Trikala** se
+  retiró y sus partidos se anularon: **15** equipos a doble vuelta, 28 partidos.
+  - **Estadísticas**: la suma de las actas de liga regular: los partidos de
+    todos los equipos (`teamdetails`) menos los de la fase final
+    (`games-playoffs-playouts`) y los del Trikala. Los totales de la ficha del
+    equipo no valen: cuentan los partidos anulados. El acta va dentro de un
+    `loadDoc("<table…>", "statistics1")` de JavaScript y trae titulares, minutos
+    al segundo, faltas recibidas y el entrenador de cada equipo; no trae tapones
+    recibidos ni mates.
+  - **Plantilla** (en la ficha del equipo): nombre legal con el apellido
+    delante, patronímico, puesto en griego («Σεντερ», «Φοργουορντ»), altura
+    (muchas vacías) y fecha. **No hay nacionalidad**: los que vienen en latino son
+    los extranjeros y la suya va a mano en `hbf-jugadores.json` (`jugadores`, por
+    id de la federación, con el nombre de uso bien partido); los que vienen en
+    griego son griegos, y su nombre legal se cambia por el de uso («Ioannis» →
+    «Giannis») con la lista `habituales` del mismo fichero.
+  - **Pabellón**: el de más partidos en casa según las actas, transliterado, o el
+    de `hbf-entrenadores.json` (`pabellones`) si está; sin aforo publicado, lo
+    estima el montaje.
+- **Puestos**: esake da PG/SG/SF/PF/C. La federación, el nombre inglés con
+  letras griegas: «Πλειμακερ» y «Ποιντ Γκαρντ» son base, «Γκαρντ» escolta y
+  «Φοργουορντ» (forward) se separa por altura como el «Ala» de la LBA: desde
+  `POWER_FORWARD_CM`, ala-pívot.
+- Una fecha de nacimiento imposible (la del alta de algunos canteranos) se
+  descarta y se avisa (`plausibleBirthDate`).
+- La copa del país toma su nombre real: **Kýpello Elládos**.
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -220,6 +287,12 @@ categoría de abajo, extraído aparte como **liga invitada**
   sus dos equipos se ponen en la Pro A, detrás de los 16, en ese orden (17.º
   Roanne, 18.º Pau), como Verona en Italia. En la Pro B la reputación se
   reparte entre los 18 que se quedan por su orden en la clasificación.
+- **Grecia**: la GBL 2025-26 tuvo **13** equipos y la A1 del juego tiene 14; la
+  Elite League jugó con **15** y la A2 tiene 14. Sube a `grecia-1` el campeón,
+  **Doxa Lefkadas** (primero de la liga regular, ascenso directo), como
+  ascendido (`SourceLeague.promoted`, fijo en `hbf.ts`, `PROMOTED_TEAM_IDS`), y
+  las dos cuadran. El segundo ascenso real (Vikos Falcons, por la fase final) se
+  queda en la A2.
 
 Cómo entran:
 
@@ -271,7 +344,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, la Serie A y las ligas francesas, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A, las ligas francesas y las griegas, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -327,6 +400,20 @@ siguen inventados.
   Sin fecha exacta va la edad (`age`) y se aplica la regla del 1 de julio.
   La nacionalidad sale del lugar: «Ciudad (País)» o una ciudad francesa.
   `real:lnb` avisa de cada cambio de entrenador.
+- **Stoiximan GBL**: todos a mano, en
+  `resources/real-data/manual/esake-entrenadores.json` (`inicio`, por id de
+  equipo de esake, con nombre de uso, nacimiento como la FEB, nacionalidad,
+  fuente y `despues` con quién le sustituyó): esake sólo da el cuerpo técnico
+  de hoy y sus actas no traen entrenador. Se sacaron de la prensa griega y la
+  Wikipedia, contrastados con las copias antiguas de esake en archive.org.
+  `real:esake` avisa de cada cambio de entrenador.
+- **Elite League**: el del **acta del primer partido de liga regular** del
+  club (la federación sí lo pone en el acta), por fecha; `real:hbf` avisa de
+  cada cambio que ve en las actas. El nombre legal se cambia por el de uso y
+  la fecha y el país van a mano en `hbf-entrenadores.json` (`inicio`, por id
+  de equipo; sin fecha exacta, `age`). Sin fecha ni edad, el club se queda
+  sin entrenador real y el juego le inventa uno (por eso `edition.test.ts` no
+  exige entrenador en `grecia-2`).
 - **Serie A2** y **Segunda FEB**: sólo el del equipo invitado. La LNP no publica
   los técnicos de temporadas pasadas: el de la A2 es el del inicio de temporada
   y va a mano en `resources/real-data/manual/lnp-entrenadores.json` (por id de

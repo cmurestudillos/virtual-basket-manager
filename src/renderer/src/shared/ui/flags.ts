@@ -40,6 +40,7 @@ const FIBA_TO_ISO: Record<string, string> = {
   CPV: 'cv',
   CRO: 'hr',
   CUB: 'cu',
+  CYP: 'cy',
   CZE: 'cz',
   DEN: 'dk',
   DMA: 'dm',
@@ -50,6 +51,7 @@ const FIBA_TO_ISO: Record<string, string> = {
   EST: 'ee',
   FIN: 'fi',
   FRA: 'fr',
+  GAB: 'ga',
   GAM: 'gm',
   GBR: 'gb',
   GEO: 'ge',
@@ -117,7 +119,7 @@ const FIBA_TO_ISO: Record<string, string> = {
 };
 
 const FILES = import.meta.glob(
-  '../../../../../node_modules/flag-icons/flags/4x3/{ad,ao,ar,am,au,at,az,bs,bb,be,ba,br,bg,cf,ca,cg,td,cl,cn,ci,cm,cd,co,cv,hr,cu,cz,dk,do,eg,es,ee,fi,fr,gb,ge,de,gh,gr,gn,ht,hu,ir,ie,is,il,it,jm,jo,jp,kr,lv,lb,lt,lu,mx,mk,ml,me,nl,ng,no,nz,ph,pl,pt,pr,ro,ru,sn,kn,sl,si,rs,ss,ch,sk,se,tn,tr,ug,ua,uy,us,ve,dz,by,bf,dm,er,gm,gd,ke,xk,lc,mg,ma,mt,ne,ws,sc,sr,tt}.svg',
+  '../../../../../node_modules/flag-icons/flags/4x3/{ad,ao,ar,am,au,at,az,bs,bb,be,ba,br,bg,cf,ca,cg,td,cl,cn,ci,cm,cd,co,cv,hr,cu,cz,dk,do,eg,es,ee,fi,fr,gb,ge,de,gh,gr,gn,ht,hu,ir,ie,is,il,it,jm,jo,jp,kr,lv,lb,lt,lu,mx,mk,ml,me,nl,ng,no,nz,ph,pl,pt,pr,ro,ru,sn,kn,sl,si,rs,ss,ch,sk,se,tn,tr,ug,ua,uy,us,ve,dz,by,bf,dm,er,gm,gd,ke,xk,lc,mg,ma,mt,ne,ws,sc,sr,tt,cy,ga}.svg',
   { eager: true, query: '?url', import: 'default' }
 ) as Record<string, string>;
 

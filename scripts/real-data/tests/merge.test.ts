@@ -432,3 +432,21 @@ describe('ascendidos de una liga real a la de encima', () => {
     expect(() => mergeRealLeagues(fictitious, [second()], known)).toThrow(/francia-1/);
   });
 });
+
+describe('la copa de Grecia', () => {
+  it('toma su nombre real cuando su primera división es real', () => {
+    const greek: SourceLeague = {
+      ...league(),
+      competitionId: 'grecia-1',
+      name: 'Primera Griega',
+      shortName: 'PG',
+      country: 'GRE'
+    };
+    const { dataset } = mergeRealLeagues(fictitious, [greek], known);
+    // El ficticio ya se llama así; lo que cambia es la abreviatura.
+    expect(dataset.competitions.find((entry) => entry.id === 'grecia-copa')).toMatchObject({
+      name: 'Kýpello Elládos',
+      shortName: 'Kýpello'
+    });
+  });
+});
