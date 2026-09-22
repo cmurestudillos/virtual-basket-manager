@@ -313,3 +313,17 @@ export function toTitleCase(raw: string): string {
     })
     .join(' ');
 }
+
+/**
+ * Una fecha de nacimiento que puede ser la de un jugador de esa temporada: con
+ * al menos catorce años al empezar y nacido después de 1960. Las fuentes
+ * ponen a veces la del alta («2025-10-02») en los canteranos; eso es `null`.
+ */
+export function plausibleBirthDate(
+  date: string | null | undefined,
+  seasonStartYear: number
+): string | null {
+  if (!date) return null;
+  const year = Number(date.slice(0, 4));
+  return year >= 1960 && year <= seasonStartYear - 14 ? date : null;
+}
