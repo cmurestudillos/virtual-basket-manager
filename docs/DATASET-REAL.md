@@ -75,7 +75,7 @@ Se extraen de webs públicas con scripts propios y se convierten al mismo format
 de `dataset.json` que el ficticio (estadísticas → los 21 atributos). Orden
 decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**,
 **Francia (Betclic ÉLITE y ÉLITE 2)**, **Grecia (GBL y Elite League)**,
-**Turquía (Basketbol Süper Ligi)** y así país a país.
+**Turquía (Basketbol Süper Ligi)**, **Alemania (BBL y ProA)** y así país a país.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -88,6 +88,8 @@ pnpm real:lnb     # ÉLITE y ÉLITE 2    → .real-data-cache/sources/lnb-elite-
 pnpm real:esake   # Stoiximan GBL      → .real-data-cache/sources/esake-gbl-2025.json
 pnpm real:hbf     # Elite League       → .real-data-cache/sources/hbf-elite-2025.json
 pnpm real:tblstat # Süper Ligi turca   → .real-data-cache/sources/tblstat-bsl-2025.json
+pnpm real:bbl     # BBL y ProA         → .real-data-cache/sources/bbl-2025.json
+                  #                      y proa-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -96,18 +98,20 @@ inventado.
 
 ### Fuentes
 
-| Liga (id en el juego)         | Web                       | Cómo se lee                                                                                                                                          |
-| ----------------------------- | ------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Liga Endesa (`liga-nacional`) | `acb.com`                 | Los datos que Next.js incrusta en el HTML (`self.__next_f`), con `editionId=90`. Clasificación, plantilla, estadísticas de liga regular y ficha.     |
-| Primera FEB (`liga-plata`)    | `baloncestoenvivo.feb.es` | ASP.NET: calendario, clasificación de liga regular y estadísticas acumuladas por _postback_. Dos segundos entre peticiones.                          |
-| Segunda FEB, grupo Este       | `baloncestoenvivo.feb.es` | Igual que la Primera (`feb-extract.ts`), con la fase «Liga Regular "ESTE"». Sólo entra un equipo, en `liga-plata` (ver «Equipos invitados»).         |
-| Serie A (`italia-1`)          | `legabasket.it`           | La API JSON de su web (`/api`). Equipos del año, plantilla, club, estadísticas de liga regular, calendario y actas. Un segundo entre peticiones.     |
-| Serie A2 italiana             | `legapallacanestro.com`   | JSON de `lnpstat.domino.it` (clasificación, calendario) y Drupal (estadísticas por Ajax, ficha). Sólo entra un equipo, en `italia-1`.                |
-| Betclic ÉLITE (`francia-1`)   | `lnb.fr` + Sportradar     | API JSON de la LNB (`api-prod.lnb.fr`, con token) y actas del widget de Sportradar del «match center». Ver «Francia».                                |
-| ÉLITE 2 (`francia-2`)         | `lnb.fr` + Sportradar     | Igual. Sus dos ascendidos juegan en `francia-1` (ver «Equipos invitados»).                                                                           |
-| Stoiximan GBL (`grecia-1`)    | `esake.gr` + b-reference  | HTML de esake: clasificación, plantillas y las actas de las 26 jornadas. Los nombres en latino, de basketball-reference (una página). Ver «Grecia».  |
-| Elite League (`grecia-2`)     | `stats.basket.gr`         | HTML de la federación (sportstats): plantillas y actas de liga regular sin el Trikala. Su campeón juega en `grecia-1` (ver «Equipos invitados»).     |
-| Süper Ligi (`turquia-1`)      | `tblstat.net` + b-ref     | HTML de una web de aficionado: plantillas y las actas de las 30 jornadas; rebotes, tapones, faltas y puestos de basketball-reference. Ver «Turquía». |
+| Liga (id en el juego)         | Web                        | Cómo se lee                                                                                                                                          |
+| ----------------------------- | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| Liga Endesa (`liga-nacional`) | `acb.com`                  | Los datos que Next.js incrusta en el HTML (`self.__next_f`), con `editionId=90`. Clasificación, plantilla, estadísticas de liga regular y ficha.     |
+| Primera FEB (`liga-plata`)    | `baloncestoenvivo.feb.es`  | ASP.NET: calendario, clasificación de liga regular y estadísticas acumuladas por _postback_. Dos segundos entre peticiones.                          |
+| Segunda FEB, grupo Este       | `baloncestoenvivo.feb.es`  | Igual que la Primera (`feb-extract.ts`), con la fase «Liga Regular "ESTE"». Sólo entra un equipo, en `liga-plata` (ver «Equipos invitados»).         |
+| Serie A (`italia-1`)          | `legabasket.it`            | La API JSON de su web (`/api`). Equipos del año, plantilla, club, estadísticas de liga regular, calendario y actas. Un segundo entre peticiones.     |
+| Serie A2 italiana             | `legapallacanestro.com`    | JSON de `lnpstat.domino.it` (clasificación, calendario) y Drupal (estadísticas por Ajax, ficha). Sólo entra un equipo, en `italia-1`.                |
+| Betclic ÉLITE (`francia-1`)   | `lnb.fr` + Sportradar      | API JSON de la LNB (`api-prod.lnb.fr`, con token) y actas del widget de Sportradar del «match center». Ver «Francia».                                |
+| ÉLITE 2 (`francia-2`)         | `lnb.fr` + Sportradar      | Igual. Sus dos ascendidos juegan en `francia-1` (ver «Equipos invitados»).                                                                           |
+| Stoiximan GBL (`grecia-1`)    | `esake.gr` + b-reference   | HTML de esake: clasificación, plantillas y las actas de las 26 jornadas. Los nombres en latino, de basketball-reference (una página). Ver «Grecia».  |
+| Elite League (`grecia-2`)     | `stats.basket.gr`          | HTML de la federación (sportstats): plantillas y actas de liga regular sin el Trikala. Su campeón juega en `grecia-1` (ver «Equipos invitados»).     |
+| Süper Ligi (`turquia-1`)      | `tblstat.net` + b-ref      | HTML de una web de aficionado: plantillas y las actas de las 30 jornadas; rebotes, tapones, faltas y puestos de basketball-reference. Ver «Turquía». |
+| easyCredit BBL (`alemania-1`) | `easycredit-bbl.de`        | El JSON que Next.js incrusta en el HTML (`__NEXT_DATA__`): plantilla del equipo en la temporada y las 306 actas de liga regular. Ver «Alemania».     |
+| ProA (`alemania-2`)           | `2basketballbundesliga.de` | WordPress con formulario de temporada: plantilla, cuerpo técnico y estadísticas de liga regular de cada equipo. Entran 16 de 18. Ver «Alemania».     |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -316,6 +320,66 @@ del juego: no hace falta ningún ascendido.
   (`tblstat.ts`).
 - La copa del país toma su nombre real: **Türkiye Kupası**.
 
+#### Alemania (easycredit-bbl.de y 2basketballbundesliga.de)
+
+`pnpm real:bbl` extrae las dos ligas y deja `bbl-2025.json` (`alemania-1`) y
+`proa-2025.json` (`alemania-2`). Tres segundos entre peticiones en las dos webs;
+la primera vez, unas 350 peticiones y veinte minutos (las páginas de la BBL
+pesan casi un mega).
+
+- **easyCredit BBL**: **18** equipos, como la liga del juego. La web es Next.js
+  pintado en el servidor: cada página lleva sus datos en
+  `<script id="__NEXT_DATA__">` (JSON), así que se lee sin su API (que pide
+  clave y un secreto diario; no se usa). La temporada 2025-26 es `2025`.
+  - **Equipo**: `/teams/<id>/2025` (sin el año da la temporada en curso), con la
+    plantilla (fecha, altura en metros, peso, puesto `POINT_GUARD`…`CENTER`,
+    nacionalidades en ISO de dos letras: la primera reconocida es la que
+    cuenta), el pabellón principal con su **aforo oficial de esa temporada**
+    (`seasonVenues`, `isMain`), la clasificación (`mainRoundStanding`) y el
+    cuerpo técnico con fechas de nacimiento. Los totales de jugador de esa
+    página **incluyen los playoffs**: no se usan.
+  - **Estadísticas**: la suma de las **actas** de liga regular, los partidos
+    `/spiele/2003986` a `/spiele/2004291` (306 seguidos; se comprueba que cada
+    uno sea `MAIN_ROUND` de 2025, que cada club tenga 34 y que las victorias
+    cuadren con la clasificación). Minutos al segundo, tiros, rebotes de ataque
+    y defensa, asistencias, robos, pérdidas, tapones, faltas cometidas y
+    recibidas, valoración y **titulares**. No hay tapones recibidos ni mates.
+  - **Nombres**: los de uso («Nombre Apellido» ya partidos). La web quita las
+    tildes a balcánicos, polacos y checos: van a mano, comprobadas en Wikidata,
+    en `resources/real-data/manual/bbl-nombres.json` (por id de jugador de la
+    BBL; también sirve para una nacionalidad, fecha o altura).
+  - **Club**: nombre sin patrocinador puro, ciudad y nombre del pabellón en
+    `BBL_TEAMS` (`bbl.ts`); se quedan las marcas que son del club («Telekom
+    Baskets Bonn», «ratiopharm Ulm», «Science City Jena»), como «Anadolu Efes».
+- **ProA**: la 2025-26 tuvo **18** equipos y la del juego tiene **16**. Se
+  extrae entera (los atributos salen del percentil en su liga) y los dos que
+  bajaron a la ProB, **Leverkusen y Münster**, no entran
+  (`SourceLeague.excluded`): se valoran con los demás y el montaje los deja
+  fuera, con la reputación repartida entre los 16.
+  - **Plantilla** (`/teams/kader/<id>`, por POST con `season=2025/2026`; sin él
+    da la temporada en curso): cuerpo técnico (`#trainer`: nombre, fecha,
+    función y bandera), jugadores (`#kader`: dorsal, nombre, fecha, altura,
+    peso, puesto PG…C y bandera ISO; el «*» de los formados en Alemania se
+    quita, y el personal médico se descarta por el puesto), las
+    **estadísticas de liga regular** (`#stats`, «Hauptrunde»: minutos al
+    segundo, tiros, rebotes de ataque y defensa, asistencias, robos, pérdidas,
+    tapones, faltas y valoración; **sin titulares ni faltas recibidas**) y el
+    calendario, con el que se comprueban las victorias de cada club. Quien jugó
+    y ya no está en la plantilla sale de su ficha
+    (`/teams/kader/spieler/<id>`, con el país en alemán).
+  - **Nombres**: la ProA da el nombre de pila **legal** entero («Nombre Segundo
+    Apellido»): se queda el primero y las excepciones van en
+    `resources/real-data/manual/proa-nombres.json` (por id de persona).
+  - **Clasificación**: la web sólo publica la de la temporada en curso; el
+    orden, con sus desempates, es el de la Wikipedia alemana («ProA 2025/26»)
+    y va fijo en `PROA_TEAMS` (`bbl.ts`) con las victorias de cada uno, que se
+    comparan con el calendario. Ahí van también el nombre sin patrocinador,
+    la ciudad y el pabellón con su aforo (de esa misma Wikipedia; la web de la
+    ProA no los da).
+  - La tabla «topperformer» de la ProA pone a cada jugador en su equipo
+    **actual**, no en el de la temporada: no se usa.
+- La copa del país toma su nombre real: **BBL-Pokal**.
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -368,6 +432,9 @@ Cómo entran:
 - Sus jugadores llevan ids propios (`<liga>-<liga invitada>-p<id>`) y no se
   mete a nadie que ya juegue en la liga de destino (mismo nombre y fecha).
 - Con 16 y 18 equipos las dos ligas vuelven a ser pares: sin descansos.
+- **Alemania**: al revés. La BBL cuadra (18) y la ProA real tiene **dos de
+  más** (18 para 16): no sube ni se invita a nadie; los dos que bajaron a la
+  ProB se quedan fuera (`SourceLeague.excluded`, ver «Alemania»).
 
 ### Conversión (`real:build`)
 
@@ -397,7 +464,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, la Serie A, las ligas francesas, las griegas y la turca, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca y las alemanas, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -468,6 +535,23 @@ siguen inventados.
   FEB, fuente y `despues`), sacadas de la Wikipedia inglesa y turca, FIBA y
   prensa. `real:tblstat` avisa de cada cambio de entrenador que ve en las
   actas y de cuando el nombre a mano no es el del acta.
+- **easyCredit BBL**: el del **acta del primer partido de liga regular** del
+  club (`headCoachName`), por fecha; `real:bbl` avisa de cada cambio que ve en
+  las actas. La fecha sale del cuerpo técnico de la web si el primero sigue en
+  él; si no (los que se fueron a mitad de temporada), a mano. La BBL no da la
+  nacionalidad: va a mano en `bbl-entrenadores.json` (`inicio`, por id de
+  equipo de la BBL, con nombre de uso con sus tildes, `nationality`, `birth`
+  cuando la web no la da, fuente y `despues`), sacada de Wikidata, las
+  Wikipedias y los clubes. El cuerpo técnico de la web no sirve para saber
+  quién empezó: es el de ahora y a veces marca como principal a otro.
+- **ProA**: no hay actas legibles (van por socket.io) y la plantilla lista a
+  todos los que pasaron por el banquillo, a veces con el de la temporada
+  siguiente, sin decir quién empezó. El del inicio va a mano en
+  `proa-entrenadores.json` (`inicio`, por id de equipo de la ProA, con nombre
+  de uso, fuente y `despues`), comprobado con la plantilla de la 2024-25 para
+  los que siguieron y con prensa para los nuevos y los que cambiaron; la fecha
+  y la nacionalidad (bandera) salen de la web si el nombre casa. Sin fichero,
+  se toma el único «Trainer» de la web y se avisa.
 - **Elite League**: el del **acta del primer partido de liga regular** del
   club (la federación sí lo pone en el acta), por fecha; `real:hbf` avisa de
   cada cambio que ve en las actas. El nombre legal se cambia por el de uso y

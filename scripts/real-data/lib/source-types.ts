@@ -155,6 +155,12 @@ export interface SourceLeague {
    * liga dos veces.
    */
   promoted?: SourcePromotion;
+  /**
+   * `sourceId` de los equipos que no entran en el juego: la liga real tiene
+   * más que la del juego (la ProA 2025-26, 18 para 16 plazas). Se valoran con
+   * los demás, porque el percentil es el de la liga entera, pero no se meten.
+   */
+  excluded?: string[];
 }
 
 export interface SourcePromotion {
