@@ -53,7 +53,8 @@ const REAL_CUPS: Record<string, { name: string; shortName: string }> = {
   FRA: { name: 'Coupe de France', shortName: 'Coupe' },
   GRE: { name: 'Kýpello Elládos', shortName: 'Kýpello' },
   TUR: { name: 'Türkiye Kupası', shortName: 'Kupa' },
-  GER: { name: 'BBL-Pokal', shortName: 'Pokal' }
+  GER: { name: 'BBL-Pokal', shortName: 'Pokal' },
+  ISR: { name: 'Gvia HaMedina', shortName: 'Gvia' }
 };
 
 /** Altura típica por puesto: para quien no la trae y para deducir el puesto. */
