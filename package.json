@@ -58,6 +58,7 @@
     "real:hbf": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/hbf.ts",
     "real:tblstat": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/tblstat.ts",
     "real:bbl": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/bbl.ts",
+    "real:winner": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/winner.ts",
     "real:build": "tsx --tsconfig tsconfig.node.json scripts/real-data/build-real-dataset.ts"
   },
   "dependencies": {

@@ -466,6 +466,21 @@ describe('la copa de Turquía', () => {
       shortName: 'Kupa'
     });
   });
+
+  it('la de Israel conserva su nombre, con la abreviatura real', () => {
+    const israeli: SourceLeague = {
+      ...league(),
+      competitionId: 'israel-1',
+      name: 'Primera Israelí',
+      shortName: 'PI',
+      country: 'ISR'
+    };
+    const { dataset } = mergeRealLeagues(fictitious, [israeli], known);
+    expect(dataset.competitions.find((entry) => entry.id === 'israel-copa')).toMatchObject({
+      name: 'Gvia HaMedina',
+      shortName: 'Gvia'
+    });
+  });
 });
 
 describe('equipos de una liga real que no entran en el juego', () => {

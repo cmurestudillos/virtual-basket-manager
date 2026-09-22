@@ -138,9 +138,10 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
 
   // Los entrenadores reales: los clubes de la ACB, la Primera FEB, la Serie A
   // (con el que sube de la A2), las dos ligas francesas, la A1 griega (con el
-  // que sube de la Elite League), la liga turca y las dos alemanas llevan el
-  // suyo. La Elite League no: de algunos de sus entrenadores no se ha
-  // encontrado la fecha de nacimiento y el juego se los inventa.
+  // que sube de la Elite League), la liga turca, las dos alemanas y la
+  // israelí llevan el suyo. La Elite League no: de algunos de sus
+  // entrenadores no se ha encontrado la fecha de nacimiento y el juego se los
+  // inventa.
   const coachLeagues = [
     'liga-nacional',
     'liga-plata',
@@ -150,8 +151,13 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
     'grecia-1',
     'turquia-1',
     'alemania-1',
-    'alemania-2'
+    'alemania-2',
+    'israel-1'
   ].filter((id) => realLeagues.has(id));
+  // Las excepciones, liga a liga y contadas: clubes cuyo primer entrenador no
+  // tiene fecha de nacimiento en ninguna fuente fiable, así que el juego se lo
+  // inventa. Israel: uno (ver docs/DATASET-REAL.md).
+  const INVENTED_COACHES: Record<string, number> = { 'israel-1': 1 };
   const coachedTeams = realTeams.filter((team) => coachLeagues.includes(team.competitionId));
   const coachName = (coach: { firstName: string; lastName: string }): string =>
     `${coach.firstName} ${coach.lastName}`.trim().toLowerCase();
@@ -164,8 +170,16 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
     const missing = coachedTeams.filter(
       (team) => !team.coach?.firstName.trim() || !team.coach.lastName.trim()
     );
-    expect(missing.map((team) => team.name)).toEqual([]);
-    for (const team of coachedTeams) {
+    const missingByLeague = new Map<string, number>();
+    for (const team of missing) {
+      missingByLeague.set(team.competitionId, (missingByLeague.get(team.competitionId) ?? 0) + 1);
+    }
+    // Sin entrenador sólo los contados como excepción, y en su liga.
+    const beyond = [...missingByLeague].filter(
+      ([league, count]) => count > (INVENTED_COACHES[league] ?? 0)
+    );
+    expect(beyond).toEqual([]);
+    for (const team of coachedTeams.filter((entry) => !missing.includes(entry))) {
       expect(team.coach?.birthDate, team.name).toMatch(/^\d{4}-\d{2}-\d{2}$/);
       expect(team.coach?.nationality, team.name).toMatch(/^[A-Z]{3}$/);
     }

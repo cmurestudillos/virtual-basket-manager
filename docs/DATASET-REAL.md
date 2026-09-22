@@ -75,7 +75,8 @@ Se extraen de webs públicas con scripts propios y se convierten al mismo format
 de `dataset.json` que el ficticio (estadísticas → los 21 atributos). Orden
 decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**,
 **Francia (Betclic ÉLITE y ÉLITE 2)**, **Grecia (GBL y Elite League)**,
-**Turquía (Basketbol Süper Ligi)**, **Alemania (BBL y ProA)** y así país a país.
+**Turquía (Basketbol Süper Ligi)**, **Alemania (BBL y ProA)**, **Israel (Ligat
+Winner)** y así país a país.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -90,6 +91,7 @@ pnpm real:hbf     # Elite League       → .real-data-cache/sources/hbf-elite-20
 pnpm real:tblstat # Süper Ligi turca   → .real-data-cache/sources/tblstat-bsl-2025.json
 pnpm real:bbl     # BBL y ProA         → .real-data-cache/sources/bbl-2025.json
                   #                      y proa-2025.json
+pnpm real:winner  # Ligat Winner       → .real-data-cache/sources/winner-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -112,6 +114,7 @@ inventado.
 | Süper Ligi (`turquia-1`)      | `tblstat.net` + b-ref      | HTML de una web de aficionado: plantillas y las actas de las 30 jornadas; rebotes, tapones, faltas y puestos de basketball-reference. Ver «Turquía». |
 | easyCredit BBL (`alemania-1`) | `easycredit-bbl.de`        | El JSON que Next.js incrusta en el HTML (`__NEXT_DATA__`): plantilla del equipo en la temporada y las 306 actas de liga regular. Ver «Alemania».     |
 | ProA (`alemania-2`)           | `2basketballbundesliga.de` | WordPress con formulario de temporada: plantilla, cuerpo técnico y estadísticas de liga regular de cada equipo. Entran 16 de 18. Ver «Alemania».     |
+| Ligat Winner (`israel-1`)     | `basket.co.il`             | ASP clásico en inglés: clasificación, plantillas, las 182 actas de liga regular (sin el playout) y la ficha de cada jugador. Entran 12 de 14.        |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -380,6 +383,63 @@ pesan casi un mega).
     **actual**, no en el de la temporada: no se usa.
 - La copa del país toma su nombre real: **BBL-Pokal**.
 
+#### Israel (basket.co.il)
+
+`pnpm real:winner` deja `winner-2025.json` (`israel-1`). Tres segundos entre
+peticiones; la primera vez, unas 520 peticiones y media hora. La web oficial
+de la liga tiene la versión inglesa entera (`&lang=en`); es HTML de servidor
+sin API, detrás de Cloudflare pero sin desafío. La temporada 2025-26 es
+`cYear=2026`.
+
+- **Formato real**: **14** equipos, 26 jornadas (182 partidos). La liga se
+  paró en marzo por la guerra y volvió en abril, con partidos en sedes neutrales
+  y jornadas desordenadas. Después, playoffs a 8 (sin el play-in, suprimido) y
+  un **playout** de los cuatro últimos (seis partidos más cada uno) que la web
+  suma a su «liga regular». La del juego tiene **12**: los dos que bajaron a la
+  Liga Leumit, **Elitzur Netanya y Maccabi Ra'anana** (también los dos últimos
+  de la liga regular), se valoran con los demás y no entran
+  (`SourceLeague.excluded`, como la ProA).
+- **Clasificación**: `table.asp?cYear=2026&lang=en`, con el `TeamId` de cada club
+  **en esa temporada** (cambian cada año). Del 11.º al 14.º el balance ya lleva
+  el playout; el orden es el mismo que al acabar la jornada 26.
+- **Estadísticas**: la suma de las **actas** de liga regular,
+  `game-zone.asp?GameId=26389` a `26570` (182 seguidas, siete por jornada; el
+  playout va de 26610 a 26621 y no cuenta, para que todos tengan las mismas 26
+  jornadas). Se comprueba que cada una sea de las jornadas 1-26, que cada club
+  tenga 26 y que los puntos cuadren con el tanteo (que la web escribe
+  «visitante:local») y, para los que no jugaron playout, las victorias con la
+  clasificación. Minutos (redondeados al minuto), tiros, rebotes de ataque y
+  defensa, asistencias, robos, pérdidas, tapones puestos y **recibidos**, faltas
+  cometidas y recibidas, valoración y **titulares**. Sin mates. Los totales de
+  la página del equipo y de la ficha incluyen el playout: no se usan.
+- **Plantilla**: `team.asp?TeamId=<id>&lang=en`: dorsal, nombre y apellido,
+  puesto, altura y fecha de nacimiento, en tres bloques (plantilla, inactivos y
+  bajas; de los dos últimos entran sólo los que jugaron). También el pabellón y,
+  a veces, su aforo («Places»). El «Head Coach» de esa página es el del final
+  de temporada: no sirve.
+- **Ficha** (`player.asp?PlayerId=<id>&lang=en`, una por jugador): la
+  nacionalidad, o las dos, con su código **ISO** de tres letras (`DNK`, `USA`):
+  cuenta la primera, pasada al código COI. Quien jugó y no está en ninguna
+  lista del equipo sale de su ficha.
+- **El `PlayerId` es del jugador en un equipo**, no de la persona: quien cambió
+  de club tiene uno en cada uno. El extractor les da a todos el menor
+  (`unifyTransferred`, por nombre y fecha) y el montaje le deja donde más
+  minutos jugó.
+- **Puestos**: la web sólo distingue `PG`, `G`, `G-F`, `F`, `F-C` y `C`: `G` es
+  escolta, `G-F` alero, `F-C` ala-pívot y `F`, como en la LBA, alero o ala-pívot
+  por altura (`POWER_FORWARD_CM`).
+- **Nombres**: la transliteración oficial de la liga al inglés, que usa los
+  nombres de uso. El apodo entre comillas se quita del nombre y una inicial en
+  minúscula se corrige sola. Lo demás que la web da mal (erratas, canteranos sin
+  nombre en inglés) va a mano en `resources/real-data/manual/winner-jugadores.json`
+  (`jugadores`, por `PlayerId`; también sirve para fecha, nacionalidad, altura o
+  puesto).
+- **Club**: nombre sin patrocinador, abreviatura, ciudad y el **pabellón de
+  casa** (no las sedes neutrales de la guerra) en `TEAMS` (`winner.ts`), según
+  la Wikipedia inglesa de la temporada. El aforo es el oficial de la web cuando
+  lo da y, si no, el de la Wikipedia.
+- La copa del país se queda con su nombre, **Gvia HaMedina**.
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -435,6 +495,9 @@ Cómo entran:
 - **Alemania**: al revés. La BBL cuadra (18) y la ProA real tiene **dos de
   más** (18 para 16): no sube ni se invita a nadie; los dos que bajaron a la
   ProB se quedan fuera (`SourceLeague.excluded`, ver «Alemania»).
+- **Israel**: igual que la ProA. La Ligat Winner real tuvo **14** para 12
+  plazas: los dos que bajaron a la Liga Leumit se quedan fuera
+  (`SourceLeague.excluded`, ver «Israel»).
 
 ### Conversión (`real:build`)
 
@@ -464,7 +527,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca y las alemanas, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas y la israelí, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -552,6 +615,17 @@ siguen inventados.
   los que siguieron y con prensa para los nuevos y los que cambiaron; la fecha
   y la nacionalidad (bandera) salen de la web si el nombre casa. Sin fichero,
   se toma el único «Trainer» de la web y se avisa.
+- **Ligat Winner**: el del **acta del primer partido de liga regular** del
+  club, por fecha (hubo jornadas aplazadas); `real:winner` avisa de cada cambio
+  que ve en las actas. La web no da ni la fecha ni la nacionalidad de los
+  entrenadores: van a mano en `winner-entrenadores.json` (`inicio`, por
+  `TeamId`, con nombre de uso, nacimiento como la FEB, nacionalidad, fuente,
+  `despues` y `coachId`, el id de entrenador de la web, con el que se comprueba
+  que es el del acta aunque la web lo translitere de otra forma), sacados de
+  las Wikipedias inglesa y hebrea. Del de **Kiryat Ata** no se ha encontrado la
+  fecha en ninguna fuente fiable (la prensa sólo da su edad un año antes): el
+  club se queda sin entrenador real y el juego le inventa uno. Es la única
+  excepción, contada, que admite `edition.test.ts` en `israel-1`.
 - **Elite League**: el del **acta del primer partido de liga regular** del
   club (la federación sí lo pone en el acta), por fecha; `real:hbf` avisa de
   cada cambio que ve en las actas. El nombre legal se cambia por el de uso y
