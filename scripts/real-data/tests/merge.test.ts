@@ -450,3 +450,20 @@ describe('la copa de Grecia', () => {
     });
   });
 });
+
+describe('la copa de Turquía', () => {
+  it('toma su nombre real cuando su primera división es real', () => {
+    const turkish: SourceLeague = {
+      ...league(),
+      competitionId: 'turquia-1',
+      name: 'Primera Turca',
+      shortName: 'PT',
+      country: 'TUR'
+    };
+    const { dataset } = mergeRealLeagues(fictitious, [turkish], known);
+    expect(dataset.competitions.find((entry) => entry.id === 'turquia-copa')).toMatchObject({
+      name: 'Türkiye Kupası',
+      shortName: 'Kupa'
+    });
+  });
+});

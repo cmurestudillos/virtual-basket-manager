@@ -137,17 +137,18 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
   });
 
   // Los entrenadores reales: los clubes de la ACB, la Primera FEB, la Serie A
-  // (con el que sube de la A2), las dos ligas francesas y la A1 griega (con el
-  // que sube de la Elite League) llevan el suyo. La Elite League no: de algunos
-  // de sus entrenadores no se ha encontrado la fecha de nacimiento y el juego
-  // se los inventa.
+  // (con el que sube de la A2), las dos ligas francesas, la A1 griega (con el
+  // que sube de la Elite League) y la liga turca llevan el suyo. La Elite
+  // League no: de algunos de sus entrenadores no se ha encontrado la fecha de
+  // nacimiento y el juego se los inventa.
   const coachLeagues = [
     'liga-nacional',
     'liga-plata',
     'italia-1',
     'francia-1',
     'francia-2',
-    'grecia-1'
+    'grecia-1',
+    'turquia-1'
   ].filter((id) => realLeagues.has(id));
   const coachedTeams = realTeams.filter((team) => coachLeagues.includes(team.competitionId));
   const coachName = (coach: { firstName: string; lastName: string }): string =>

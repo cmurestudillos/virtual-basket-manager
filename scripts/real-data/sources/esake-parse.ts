@@ -354,11 +354,19 @@ export interface BbrefRow {
   freeThrowMade: number;
   rebounds: number;
   assists: number;
+  /**
+   * Rebotes de ataque y defensa, tapones y faltas: sólo si la tabla trae esas
+   * columnas (la de la liga turca sí; Turquía los toma de aquí).
+   */
+  offensiveRebounds?: number;
+  defensiveRebounds?: number;
+  blocks?: number;
+  fouls?: number;
 }
 
 /**
- * `/international/greek-basket-league/<año>_totals.html`: la tabla de
- * totales de la liga regular, una fila por jugador y equipo.
+ * `/international/<liga>/<año>_totals.html`: la tabla de totales de la liga
+ * regular, una fila por jugador y equipo.
  */
 export function parseBbrefTotals(html: string): BbrefRow[] {
   return tableRows(html).flatMap((row) => {
@@ -372,6 +380,8 @@ export function parseBbrefTotals(html: string): BbrefRow[] {
     const teamSlug = /\/international\/teams\/([^/]+)\//.exec(team ?? '')?.[1];
     if (!player || !playerPath || !teamSlug) return [];
     const int = (stat: string): number => toInt(textOf(cell(stat) ?? '')) ?? 0;
+    const optional = (stat: string, key: keyof BbrefRow): Partial<BbrefRow> =>
+      cell(stat) === null ? {} : { [key]: int(stat) };
     return [
       {
         name: textOf(player),
@@ -383,7 +393,11 @@ export function parseBbrefTotals(html: string): BbrefRow[] {
         threePointMade: int('fg3'),
         freeThrowMade: int('ft'),
         rebounds: int('trb'),
-        assists: int('ast')
+        assists: int('ast'),
+        ...optional('orb', 'offensiveRebounds'),
+        ...optional('drb', 'defensiveRebounds'),
+        ...optional('blk', 'blocks'),
+        ...optional('pf', 'fouls')
       }
     ];
   });
