@@ -467,3 +467,61 @@ describe('la copa de Turquía', () => {
     });
   });
 });
+
+describe('equipos de una liga real que no entran en el juego', () => {
+  /** Una segunda división de cinco equipos de la que los dos últimos se quedan fuera. */
+  function second(excluded: string[] = ['club-segunda-4', 'club-segunda-5']): SourceLeague {
+    const teams = Array.from({ length: 5 }, (_, index) =>
+      team(
+        `Club Segunda ${index + 1}`,
+        index + 1,
+        Array.from({ length: 10 }, (_, slot) => player(`x${index}-p${slot}`, 30 - slot * 2))
+      )
+    );
+    return {
+      ...league(),
+      competitionId: 'alemania-2',
+      name: 'Segunda Alemana',
+      shortName: 'SA',
+      country: 'GER',
+      teams,
+      excluded
+    };
+  }
+  const { dataset, reports, rated } = mergeRealLeagues(fictitious, [second()], known);
+  const inLeague = dataset.teams.filter((entry) => entry.competitionId === 'alemania-2');
+
+  it('sólo entran los demás, con la reputación repartida entre ellos', () => {
+    expect(inLeague.map((entry) => entry.name)).toEqual([
+      'Club Segunda 1',
+      'Club Segunda 2',
+      'Club Segunda 3'
+    ]);
+    const [best, worst] = [33, 12];
+    expect(inLeague[0]!.reputation).toBe(best);
+    expect(inLeague[2]!.reputation).toBe(worst);
+    expect(reports.find((report) => report.competitionId === 'alemania-2')?.teams).toBe(3);
+    expect(rated.get('alemania-2')).toHaveLength(30);
+  });
+
+  it('se valoran con su liga entera: mismos atributos que si entraran todos', () => {
+    const all = mergeRealLeagues(fictitious, [{ ...second(), excluded: undefined }], known);
+    const byName = (rows: typeof dataset.players, name: string): typeof dataset.players =>
+      rows.filter((entry) => entry.lastName === name);
+    expect(byName(dataset.players, 'x0-p0')[0]!.attributes).toEqual(
+      byName(all.dataset.players, 'x0-p0')[0]!.attributes
+    );
+    expect(byName(dataset.players, 'x4-p0')).toEqual([]);
+  });
+
+  it('dejar fuera un equipo que no está es un error', () => {
+    expect(() => mergeRealLeagues(fictitious, [second(['no-existe'])], known)).toThrow(/no-existe/);
+  });
+
+  it('la copa de Alemania toma su nombre real', () => {
+    expect(dataset.competitions.find((entry) => entry.id === 'alemania-copa')).toMatchObject({
+      name: 'BBL-Pokal',
+      shortName: 'Pokal'
+    });
+  });
+});

@@ -57,6 +57,7 @@
     "real:esake": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/esake.ts",
     "real:hbf": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/hbf.ts",
     "real:tblstat": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/tblstat.ts",
+    "real:bbl": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/bbl.ts",
     "real:build": "tsx --tsconfig tsconfig.node.json scripts/real-data/build-real-dataset.ts"
   },
   "dependencies": {

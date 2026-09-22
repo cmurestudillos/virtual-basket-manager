@@ -52,7 +52,8 @@ const REAL_CUPS: Record<string, { name: string; shortName: string }> = {
   ITA: { name: 'Coppa Italia', shortName: 'Coppa' },
   FRA: { name: 'Coupe de France', shortName: 'Coupe' },
   GRE: { name: 'Kýpello Elládos', shortName: 'Kýpello' },
-  TUR: { name: 'Türkiye Kupası', shortName: 'Kupa' }
+  TUR: { name: 'Türkiye Kupası', shortName: 'Kupa' },
+  GER: { name: 'BBL-Pokal', shortName: 'Pokal' }
 };
 
 /** Altura típica por puesto: para quien no la trae y para deducir el puesto. */
@@ -479,10 +480,16 @@ export function mergeRealLeagues(
     const { rosters, droppedDuplicates, droppedOverRoster, rated } = rateSource(source, reference);
     const ratedBySource = new Map(rated.map((entry) => [entry.source, entry]));
     const promotedIds = new Set(source.promoted?.teamIds ?? []);
-    const staying = source.teams.filter((team) => !promotedIds.has(team.sourceId));
+    // Los que no entran en el juego se han valorado con su liga, pero ahí se quedan.
+    const leaving = new Set([...promotedIds, ...(source.excluded ?? [])]);
+    for (const teamId of source.excluded ?? []) {
+      if (!source.teams.some((team) => team.sourceId === teamId)) {
+        throw new Error(`${source.name}: no está el equipo que se deja fuera ${teamId}.`);
+      }
+    }
+    const staying = source.teams.filter((team) => !leaving.has(team.sourceId));
     const stayingPlayers = new Set(staying.flatMap((team) => rosters.get(team) ?? []));
-    const ratedHere =
-      promotedIds.size > 0 ? rated.filter((e) => stayingPlayers.has(e.source)) : rated;
+    const ratedHere = leaving.size > 0 ? rated.filter((e) => stayingPlayers.has(e.source)) : rated;
     ratedByLeague.set(source.competitionId, ratedHere);
     if (source.promoted) pendingPromotions.push({ source, rosters, ratedBySource });
     const unknown = new Set<string>();
@@ -497,10 +504,10 @@ export function mergeRealLeagues(
       addTeam(sourceTeam, rosters.get(sourceTeam) ?? [], {
         source,
         competitionId: source.competitionId,
-        // Sin los que suben, el puesto de la fuente ya no es el de esta liga:
-        // cuenta el orden entre los que se quedan.
+        // Sin los que suben o se quedan fuera, el puesto de la fuente ya no es
+        // el de esta liga: cuenta el orden entre los que se quedan.
         reputation: reputationFor(
-          promotedIds.size > 0 ? index + 1 : sourceTeam.finalPosition,
+          leaving.size > 0 ? index + 1 : sourceTeam.finalPosition,
           index,
           total,
           tier
