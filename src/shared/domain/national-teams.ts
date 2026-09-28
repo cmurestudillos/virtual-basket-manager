@@ -123,6 +123,7 @@ export const NATION_NAMES: Record<string, string> = {
   MLT: 'Malta',
   NIG: 'Níger',
   NOR: 'Noruega',
+  PAN: 'Panamá',
   ROU: 'Rumanía',
   RUS: 'Rusia',
   SAM: 'Samoa',
@@ -134,6 +135,7 @@ export const NATION_NAMES: Record<string, string> = {
   SVK: 'Eslovaquia',
   SWE: 'Suecia',
   TTO: 'Trinidad y Tobago',
+  UAE: 'Emiratos Árabes Unidos',
   UGA: 'Uganda'
 };
 

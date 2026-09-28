@@ -55,7 +55,8 @@ const REAL_CUPS: Record<string, { name: string; shortName: string }> = {
   TUR: { name: 'Türkiye Kupası', shortName: 'Kupa' },
   GER: { name: 'BBL-Pokal', shortName: 'Pokal' },
   ISR: { name: 'Gvia HaMedina', shortName: 'Gvia' },
-  LTU: { name: 'Karaliaus Mindaugo taurė', shortName: 'KMT' }
+  LTU: { name: 'Karaliaus Mindaugo taurė', shortName: 'KMT' },
+  ABA: { name: 'ABA Super Cup', shortName: 'Supercup' }
 };
 
 /** Altura típica por puesto: para quien no la trae y para deducir el puesto. */
@@ -396,7 +397,13 @@ export function mergeRealLeagues(
     const capacityBase = tier?.capacity ?? 5000;
     const teamId = `${competitionId}-${slugify(sourceTeam.name)}`;
     const city = sourceTeam.city ?? sourceTeam.name;
-    const coach = datasetCoachFor(sourceTeam.coach, source, knownNationalities);
+    // En una liga de varios países (la Adriática) cada club lleva el suyo.
+    const country = sourceTeam.country ?? source.country;
+    const coach = datasetCoachFor(
+      sourceTeam.coach,
+      { country, extractedAt: source.extractedAt },
+      knownNationalities
+    );
     const coachNationality = sourceTeam.coach?.nationality ?? null;
     if (!coach) withoutCoach.push(sourceTeam.name);
     else if (!coachNationality || !knownNationalities.has(coachNationality)) {
@@ -412,7 +419,7 @@ export function mergeRealLeagues(
           .slice(0, 3)
           .toUpperCase(),
       city,
-      country: source.country,
+      country,
       competitionId,
       pavilionName: sourceTeam.pavilionName ?? `Pabellón de ${city}`,
       pavilionCapacity:
@@ -431,7 +438,7 @@ export function mergeRealLeagues(
       const nationality =
         sourcePlayer.nationality && knownNationalities.has(sourcePlayer.nationality)
           ? sourcePlayer.nationality
-          : source.country;
+          : country;
       if (!sourcePlayer.nationality || !knownNationalities.has(sourcePlayer.nationality)) {
         unknown.add(sourcePlayer.nationality ?? sourcePlayer.nationalityRaw ?? '(vacía)');
       }

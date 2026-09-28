@@ -625,3 +625,54 @@ describe('una persona, un solo equipo en todo el juego', () => {
     });
   });
 });
+
+describe('una liga de varios países (la Adriática)', () => {
+  const adriatic = (): SourceLeague => {
+    const base = league();
+    base.teams[0]!.country = 'SRB';
+    base.teams[1]!.country = 'UAE';
+    // Sin país propio: el de la liga.
+    base.teams[3]!.country = undefined;
+    return {
+      ...base,
+      competitionId: 'adriatica-1',
+      name: 'ABA League',
+      shortName: 'ABA',
+      country: 'ABA'
+    };
+  };
+  const { dataset } = mergeRealLeagues(fictitious, [adriatic()], known);
+  const clubs = dataset.teams.filter((entry) => entry.competitionId === 'adriatica-1');
+  const byName = (name: string): (typeof clubs)[number] =>
+    clubs.find((entry) => entry.name === name) as (typeof clubs)[number];
+
+  it('cada club lleva su país', () => {
+    expect(byName('Club Real 1').country).toBe('SRB');
+    expect(byName('Club Real 2').country).toBe('UAE');
+    expect(byName('Club Real 4').country).toBe('ABA');
+  });
+
+  it('la nacionalidad que el juego no conoce se cambia por la del club, también la del entrenador', () => {
+    const odd = dataset.players.find((entry) => entry.lastName === 'raro');
+    expect(odd?.nationality).toBe('ABA');
+    const withUnknownCoach = mergeRealLeagues(
+      fictitious,
+      [
+        (() => {
+          const source = adriatic();
+          source.teams[2]!.country = 'MNE';
+          return source;
+        })()
+      ],
+      known
+    ).dataset.teams.find((entry) => entry.name === 'Club Real 3');
+    expect(withUnknownCoach?.coach?.nationality).toBe('MNE');
+  });
+
+  it('la copa toma su nombre real', () => {
+    expect(dataset.competitions.find((entry) => entry.id === 'adriatica-copa')).toMatchObject({
+      name: 'ABA Super Cup',
+      shortName: 'Supercup'
+    });
+  });
+});

@@ -2081,6 +2081,46 @@ export const NAMES_BY_FLAG: Record<string, NamePool> = {
       'Daou',
       'Karam'
     ]
+  },
+  // Emiratos: sólo para la cantera y el cuerpo técnico del club de Dubái de la
+  // Liga Adriática real (sin lista, saldrían con nombres españoles).
+  UAE: {
+    first: [
+      'Ahmed',
+      'Mohammed',
+      'Khalid',
+      'Saeed',
+      'Rashid',
+      'Hamdan',
+      'Sultan',
+      'Majid',
+      'Omar',
+      'Abdulla',
+      'Faisal',
+      'Humaid',
+      'Mansoor',
+      'Obaid',
+      'Hamad',
+      'Yousef'
+    ],
+    last: [
+      'Al Mansoori',
+      'Al Shamsi',
+      'Al Ketbi',
+      'Al Mazrouei',
+      'Al Nuaimi',
+      'Al Hammadi',
+      'Al Suwaidi',
+      'Al Falasi',
+      'Al Marri',
+      'Al Zaabi',
+      'Al Dhaheri',
+      'Al Kaabi',
+      'Al Blooshi',
+      'Al Hosani',
+      'Al Mheiri',
+      'Al Qubaisi'
+    ]
   }
 };
 

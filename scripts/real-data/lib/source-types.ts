@@ -102,6 +102,13 @@ export interface SourceTeam {
   players: SourcePlayer[];
   /** Primer entrenador; `null` si la fuente no lo da y ausente en extracciones de antes. */
   coach?: SourceCoach | null;
+  /**
+   * País del club (código COI) cuando no es el de la liga: en una liga de
+   * varios países, como la Adriática (`country: 'ABA'`), cada club lleva el
+   * suyo. Es también la nacionalidad de reserva de sus jugadores y de su
+   * entrenador. Sin él, la de la liga.
+   */
+  country?: string;
 }
 
 /**

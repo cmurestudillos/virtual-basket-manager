@@ -32,7 +32,21 @@ const NAMED_ENTITIES: Record<string, string> = {
   ordf: 'ª',
   ordm: 'º',
   middot: '·',
-  copy: '©'
+  copy: '©',
+  // Las de aba-liga.com (declaraciones en serbio y croata).
+  scaron: 'š',
+  Scaron: 'Š',
+  eth: 'ð',
+  ndash: '–',
+  mdash: '—',
+  lsquo: '‘',
+  rsquo: '’',
+  ldquo: '“',
+  rdquo: '”',
+  bdquo: '„',
+  hellip: '…',
+  laquo: '«',
+  raquo: '»'
 };
 
 export function decodeEntities(text: string): string {

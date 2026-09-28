@@ -76,7 +76,8 @@ de `dataset.json` que el ficticio (estadísticas → los 21 atributos). Orden
 decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**,
 **Francia (Betclic ÉLITE y ÉLITE 2)**, **Grecia (GBL y Elite League)**,
 **Turquía (Basketbol Süper Ligi)**, **Alemania (BBL y ProA)**, **Israel (Ligat
-Winner)**, **Lituania (LKL y NKL)** y así país a país.
+Winner)**, **Lituania (LKL y NKL)**, la **Liga Adriática (ABA y ABA2)** y así
+país a país.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -94,6 +95,8 @@ pnpm real:bbl     # BBL y ProA         → .real-data-cache/sources/bbl-2025.jso
 pnpm real:winner  # Ligat Winner       → .real-data-cache/sources/winner-2025.json
 pnpm real:lkl     # LKL y NKL          → .real-data-cache/sources/lkl-2025.json
                   #                      y nkl-2025.json
+pnpm real:aba     # ABA y ABA2         → .real-data-cache/sources/aba-2025.json
+                  #                      y aba2-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -119,6 +122,8 @@ inventado.
 | Ligat Winner (`israel-1`)     | `basket.co.il`             | ASP clásico en inglés: clasificación, plantillas, las 182 actas de liga regular (sin el playout) y la ficha de cada jugador. Entran 12 de 14.        |
 | LKL (`lituania-1`)            | `lkl.lt`                   | Laravel: clasificación, las 144 actas de liga regular en JSON, plantillas por Livewire, ficha e historial de cada jugador. 9 + 3 de la NKL.          |
 | NKL (`lituania-2`)            | `nkl.lt` + basketnews.lt   | Calendario de nkl.lt y actas y fichas de basketnews.lt (mismos ids). Sólo la primera fase. Suben 3 a la LKL y 2 no entran: 12 de 17.                 |
+| ABA League (`adriatica-1`)    | `aba-liga.com`             | HTML: clasificación por fases, las 144 actas de la fase de grupos y la plantilla de cada club. Entran 16 de 18 (fuera Cluj y Vienna).                |
+| ABA League 2 (`adriatica-2`)  | `druga.aba-liga.com`       | La misma aplicación: las 64 actas de liga (8 por club) y las plantillas. Entran 14 de 16 (fuera los dos macedonios).                                 |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -530,6 +535,69 @@ vez, unas 1.000 peticiones y media hora larga.
   Arena, pero su pabellón es el Arena Vilnius (10.000).
 - La copa del país toma su nombre real: **Karaliaus Mindaugo taurė** (KMT).
 
+#### Liga Adriática (aba-liga.com)
+
+`pnpm real:aba` extrae las dos ligas, una detrás de otra, y deja
+`aba-2025.json` (`adriatica-1`) y `aba2-2025.json` (`adriatica-2`). Las dos webs
+(`www.aba-liga.com` y `druga.aba-liga.com`) son la misma aplicación PHP, con
+HTML de servidor, sin anti-robots; la temporada 2025-26 es `25` y la
+competición, `1` (ABA) o `2` (ABA2). Un segundo y medio entre peticiones; la
+primera vez, unas 250 peticiones y siete minutos.
+
+- **Una liga, varios países**: en el juego la Adriática es un «país» propio
+  (`ABA`) con clubes de Serbia, Croacia, Eslovenia, Montenegro y Bosnia, que no
+  tienen liga nacional. La liga real es `country: 'ABA'` y cada club lleva el
+  suyo en `SourceTeam.country` (SRB, CRO…), que es también la nacionalidad de
+  reserva de sus jugadores y su entrenador (ver «Conversión»).
+- **ABA, formato real**: **18** equipos en dos grupos de 9 a doble vuelta (16
+  partidos, actas 1 a 144), después un **Top 8** y un **Play-out** que cruzan
+  los grupos arrastrando el balance (24 y 26 partidos), play-in y playoffs.
+  Campeón, Dubai Basketball; baja el Split. La del juego tiene **16**: las dos
+  invitaciones de fuera de la región, **U-BT Cluj-Napoca** (Rumanía) y **BC
+  Vienna** (Austria), se valoran con los demás y no entran
+  (`SourceLeague.excluded`). **Dubai** (Emiratos, `UAE`) sí.
+  - **Liga regular**: sólo la **fase de grupos** (actas 1-144), la misma para
+    todos; el Top 8 y el Play-out no cuentan. El **puesto final** es el oficial
+    tras la segunda fase: Top 8 del 1 al 8 y Play-out del 9 al 18.
+- **ABA2**: **16** equipos, sin croatas; cada uno juega **sólo 8 partidos**
+  (actas 1 a 64), contra rivales sorteados por bombos, y después playoffs, que
+  no cuentan. La del juego tiene **14**: los dos de Macedonia del Norte (**MZT**
+  y **TFT Skopje**), que no es de la liga del juego, no entran. Con 8 partidos
+  las medias son ruidosas.
+- **Clasificación** (`/standings/25/<comp>/`): una tabla por fase, con su
+  título («Top 8…», «Play-out…», «Group A», «Regular Season…») y el id de cada
+  club (el de la web, que no cambia entre temporadas ni entre las dos ligas).
+  Las victorias de las actas se comparan con las de los grupos (ABA) o la
+  tabla única (ABA2).
+- **Estadísticas**: la suma de las **actas** (`/match/<id>/25/<comp>/Boxscore/`):
+  minutos al segundo, tiros, rebotes de ataque y defensa, asistencias, robos,
+  pérdidas, tapones puestos y **recibidos**, faltas cometidas y **recibidas**,
+  valoración y **titulares** (un `*` detrás del nombre). Sin mates. Se
+  comprueba que los puntos cuadren con el tanteo y que haya cinco titulares.
+- **Plantilla** (`/team/<id>/25/<comp>/0/<slug>/`): la de **toda la
+  temporada**, también los que se fueron: nombre completo, puesto, altura, fecha
+  y nacionalidad en **ISO de tres letras** (`nationFromIso3`). Sin peso; el
+  dorsal, del acta. El id de jugador es el de la persona en las dos ligas.
+- **Puestos**: `Guard` base, `Shooting Guard` escolta, `Forward` alero,
+  `Power Forward` ala-pívot y `Center` pívot.
+- **Nombres**: los balcánicos, con sus diacríticos. Los estadounidenses vienen
+  con el **nombre legal completo** («Khalil Umar Mubaarak Brantley»): el acta
+  da el apellido con la inicial («Mubaarak Brantley K.»), que dice dónde
+  empieza, y del nombre de pila se queda el primero (`usualFirstName`); sin
+  acta, el apellido es la última palabra. Los sufijos se escriben igual («JR»
+  → «Jr.»). Las excepciones (nombre de uso, dos apellidos, diacríticos que la
+  web se come, una nacionalidad vacía) van a mano en `aba-jugadores.json`
+  (`jugadores`, por id de la web, para las dos ligas).
+- **Club**: nombre sin patrocinador, conservando las marcas que son del club
+  (Cedevita Olimpija, U-BT Cluj-Napoca, Dubai Basketball), abreviatura del
+  calendario, país, ciudad y pabellón con su aforo de la Wikipedia inglesa en
+  `ABA_TEAMS` (`aba.ts`); en la ABA2, el pabellón de sus actas y sin aforo (lo
+  estima el montaje), en `ABA2_TEAMS`.
+- **Doble ficha**: Student Igokea es el filial del Igokea y hay fichajes entre
+  las dos ligas; el montaje deja a cada persona donde más minutos jugó (ver
+  «Conversión»).
+- La copa toma su nombre real: **ABA Super Cup** («Supercup»).
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -592,6 +660,9 @@ Cómo entran:
   **17**: suben de la NKL los tres primeros que no son filiales
   (`SourceLeague.promoted`) y de los 14 que quedan, los dos últimos se quedan
   fuera (`SourceLeague.excluded`, ver «Lituania»).
+- **Liga Adriática**: las dos tienen **dos de más** (18 para 16 y 16 para 14):
+  no entran las invitaciones de Rumanía y Austria en la ABA ni los dos
+  macedonios en la ABA2 (`SourceLeague.excluded`, ver «Liga Adriática»).
 
 ### Conversión (`real:build`)
 
@@ -619,6 +690,10 @@ Cómo entran:
   altura.
 - **Lo que la fuente no da** (peso, envergadura, potencial, sueldo, contrato,
   valor) se calcula sin azar: regenerar el dataset no cambia ninguna ficha.
+- **País del club**: el de la liga (`SourceLeague.country`) o, en una liga de
+  varios países como la Adriática, el suyo (`SourceTeam.country`). Con él se
+  generan en la partida la cantera y el cuerpo técnico (`randomNameFor`); por
+  eso el Dubai tiene lista de nombres emiratíes (`NAMES_BY_FLAG.UAE`).
 - **Nacionalidades** que el juego no conoce se cambian por la del club y se
   avisan en el informe; lo normal es añadir el país a `NATION_NAMES` y su
   bandera a `flags.ts`. Eso no crea selecciones: hacen falta
@@ -629,7 +704,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí y las lituanas, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas y las adriáticas, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -750,6 +825,20 @@ siguen inventados.
   entrenador en `lituania-2` y cuenta las excepciones de `lituania-1`). En la
   2025-26 tienen fecha 5 de los 12 de la NKL y ninguno de los tres que suben:
   en `lituania-1` son tres excepciones.
+- **ABA** y **ABA2**: la web no publica entrenadores; sólo lo que dijeron
+  después de cada partido («Nombre, trener Club:», pestaña de comentarios),
+  que no dice de qué club es: un nombre es de un club si ese club jugó todos
+  los partidos en los que habló, o del rival del otro que habló ese día
+  (`speakersByTeam`). Con eso `real:aba` avisa de cada cambio y de cuando el
+  primero que habla no es el de la mano. El del inicio va a mano en
+  `aba-entrenadores.json` y `aba2-entrenadores.json` (`inicio`, por id de
+  club, con nombre de uso, nacimiento como la FEB, nacionalidad, fuente,
+  `despues` y `enActa`, la grafía de las declaraciones: «Janis Sferopulos»),
+  de la Wikipedia inglesa y Wikidata. En la ABA, los 16. El del Split es Dino
+  Repeša (el partido de la primera jornada lo dirigió un ayudante porque él no
+  tenía el pasaporte en regla). En la ABA2 sólo 9 de 14 tienen fecha: los
+  demás se inventan (por eso `edition.test.ts` no exige entrenador en
+  `adriatica-2`).
 - **Serie A2** y **Segunda FEB**: sólo el del equipo invitado. La LNP no publica
   los técnicos de temporadas pasadas: el de la A2 es el del inicio de temporada
   y va a mano en `resources/real-data/manual/lnp-entrenadores.json` (por id de
