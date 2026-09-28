@@ -77,7 +77,7 @@ decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**
 **Francia (Betclic ÉLITE y ÉLITE 2)**, **Grecia (GBL y Elite League)**,
 **Turquía (Basketbol Süper Ligi)**, **Alemania (BBL y ProA)**, **Israel (Ligat
 Winner)**, **Lituania (LKL y NKL)**, la **Liga Adriática (ABA y ABA2)**, la
-**BNXT (Bélgica y Países Bajos)** y así país a país.
+**BNXT (Bélgica y Países Bajos)**, la **Liga Nacional argentina** y así país a país.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -98,6 +98,8 @@ pnpm real:lkl     # LKL y NKL          → .real-data-cache/sources/lkl-2025.jso
 pnpm real:aba     # ABA y ABA2         → .real-data-cache/sources/aba-2025.json
                   #                      y aba2-2025.json
 pnpm real:bnxt    # BNXT League        → .real-data-cache/sources/bnxt-2025.json
+pnpm real:adc     # Liga Nacional (ARG) → .real-data-cache/sources/adc-lnb-2025.json
+                  # y la Conferencia Sur de La Liga Argentina → adc-lla-sur-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -126,6 +128,8 @@ inventado.
 | ABA League (`adriatica-1`)    | `aba-liga.com`             | HTML: clasificación por fases, las 144 actas de la fase de grupos y la plantilla de cada club. Entran 16 de 18 (fuera Cluj y Vienna).                |
 | ABA League 2 (`adriatica-2`)  | `druga.aba-liga.com`       | La misma aplicación: las 64 actas de liga (8 por club) y las plantillas. Entran 14 de 16 (fuera los dos macedonios).                                 |
 | BNXT League (`bnxt-1`)        | `bnxtleague.com`           | La API JSON de su web (sportpress): clasificación, calendarios, las 306 actas de liga regular y las plantillas. Entran los 18.                       |
+| Liga Nacional (`argentina-1`) | `laliganacional.com.ar`    | HTML de la AdC: calendarios de cada club, las 342 actas de la fase regular y la ficha de cada jugador (sólo la fecha). Entran los 19 y Lanús.        |
+| La Liga Argentina (Sur)       | `laliganacional.com.ar`    | La misma web: la Conferencia Sur entera (272 actas). Sólo entra Lanús, en `argentina-1` (ver «Equipos invitados»).                                   |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -674,6 +678,84 @@ peticiones; la primera vez, unas 345 peticiones y nueve minutos.
   supercopa entre los dos campeones); la del juego enfrenta a clubes de los
   dos países y se llama **BNXT Cup** («Cup»).
 
+#### Argentina (laliganacional.com.ar)
+
+`pnpm real:adc` deja `adc-lnb-2025.json` (`argentina-1`) y
+`adc-lla-sur-2025.json` (la Conferencia Sur de La Liga Argentina, de la que
+sale el invitado). Tres segundos entre peticiones; la primera vez, unas 1.300
+peticiones y cerca de hora y media.
+
+- **La web**: laliganacional.com.ar, de la Asociación de Clubes (AdC), con la
+  Liga Nacional (`/laliga/`) y La Liga Argentina (`/laligaargentina/`). ASP.NET
+  que pinta el HTML en el servidor, detrás de Cloudflare pero sin desafío. **Se
+  cae a ratos** (una vez, unos cuarenta minutos): el cliente reintenta nueve
+  veces con esperas crecientes, hasta unos veinte minutos.
+- **Ya está en la temporada siguiente**: la clasificación, el calendario y las
+  estadísticas de la portada son de la 2026-27. Lo de la 2025-26 se llega por
+  el **id de equipo de esa temporada** (cambia cada año; el del club no),
+  que va fijo en `adc.ts` con el del club, el puesto y las victorias.
+  - **Calendario** de cada club
+    (`/laliga/equipo/<club>/<equipo>/<slug>/inicio?handler=CargarSubPagina&aux=calendario`,
+    con `X-Requested-With`): todos sus partidos de la temporada, **de todas
+    las competiciones mezcladas y sin decir cuál**. La fase regular son los
+    partidos entre equipos de la liga hasta su último día (21-04-2026; en La
+    Liga Argentina, 31-03-2026), menos los cuatro de copa que caen entre medias
+    (`CUP_GAMES`: la Supercopa Boca–Instituto y los tres de la Copa Islas
+    Malvinas). Salen **342 partidos, 36 por club** (272 y 32 en la
+    conferencia).
+  - **Acta** (`/laliga/partido/<id>/<slug>`): el id va **cifrado y cambia en
+    cada visita**, así que en la caché se guarda por local, visitante y día.
+    Cada fila lleva sus números en un JSON (`EstadisticasComponente({…})`):
+    minutos con segundos, titular, tiros, rebotes de ataque y defensa,
+    asistencias, robos, pérdidas, tapones puestos y **recibidos**, faltas
+    cometidas y **recibidas** y valoración. Sin mates. También el **primer
+    entrenador** de cada equipo. Los puntos cuadran con el tanteo y hay cinco
+    titulares en todas menos una del Lanús (suma 91 y el tanteo es 92).
+  - **Ficha** del jugador: nombre legal y fecha de nacimiento, **nada más**.
+- **Clasificación**: la web ya no la da. El orden es el de la Wikipedia (con
+  sus desempates: cuatro equipos empatados a 13-23) y se comprueba con las
+  victorias que salen de las actas.
+- **Lo que la web no da** (altura, puesto, nacionalidad) sale de las fichas
+  de los clubes en la **Wikipedia en español**, en cinco versiones repartidas
+  por la temporada (octubre, diciembre, febrero, abril y junio: cada club la
+  actualiza cuando quiere), por nombre de pila y apellido. Si no está en la de
+  su club (un fichaje que la ficha no recogió), se busca en las de los demás
+  clubes: sólo si es uno y no tiene otra fecha. En la 2025-26 casan 160 de los
+  314 jugadores, el 63 % de los minutos. Para el resto:
+  - **Puesto por las estadísticas** (`positionFromStats`), por 36 minutos:
+    pívot si casi no tira triples (menos del 10 % de sus tiros) y coge 8
+    rebotes o más, o 3,5 ofensivos; ala-pívot con 6,5 rebotes o más y menos
+    de 3 asistencias; base con 3 asistencias o más; escolta con 2,3 o más; y
+    alero, el resto. Con menos de 60 minutos no se decide. Calibrado con los
+    113 jugadores de la Wikipedia con 150 minutos o más: acierta el 58 % y el
+    91 % queda como mucho a un puesto. Si la Wikipedia sólo dice «G» o «F»,
+    las estadísticas eligen entre base y escolta o entre alero y ala-pívot.
+    La **altura** la pone el montaje por el puesto.
+  - **Nacionalidad**: la argentina, salvo la de los extranjeros, que va a
+    mano en `adc-jugadores.json` (por id de jugador; de la prensa y de la
+    lista de extranjeros de la AdC). El extractor avisa de quien sigue como
+    argentino con un sufijo anglosajón o un nombre de pila que no es de los
+    corrientes allí (`looksForeign`). Los argentinos con pasaporte italiano o
+    español son argentinos; Xavier Carreras, dominicano nacionalizado de niño,
+    también.
+- **Id de jugador por club**: quien cambió de club a mitad de temporada sale
+  con **otro id** en el segundo (seis en la 2025-26). El extractor le deja en
+  el que más minutos jugó (mismo nombre legal y fecha).
+- **Nombres**: la web da el legal en mayúsculas y casi sin tildes, con los
+  dos apellidos («GUERRERO MARGARIT, JUAN MARTIN»), pero el acta trae además
+  el **apellido de uso** («GUERRERO, J.»). Se queda ese apellido y el primer
+  nombre de pila (salvo compuestos: Juan Martín, José Ignacio), con las tildes
+  de la Wikipedia si casa y, si no, las de un diccionario de nombres y
+  apellidos (Nicolás, Martín, Pérez, Fernández…) sólo a los de países de
+  habla hispana. Los sufijos siempre igual («JR» → «Jr.»), también si el corto
+  los pierde.
+- **Club**: nombre de uso, con la ciudad cuando hace falta distinguirlo
+  (Gimnasia Comodoro, San Martín de Corrientes, Unión de Santa Fe…),
+  abreviatura propia (la web no las tiene), ciudad, pabellón y aforo de la
+  Wikipedia, en `LNB` (`adc.ts`).
+- La copa: la Súper 20 ya no se juega; la de la 2025-26 fue la **Copa Islas
+  Malvinas** («Malvinas»), la que toma la del juego.
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -737,6 +819,13 @@ Cómo entran:
   (`SourceLeague.promoted`) y de los 14 que quedan, los dos últimos se quedan
   fuera (`SourceLeague.excluded`, ver «Lituania»).
 - **BNXT**: la real tuvo **18**, como la del juego: entran todos.
+- **Argentina**: la Liga Nacional 2025-26 tuvo **19** (Riachuelo se retiró
+  antes de empezar) y la del juego tiene 20. La plaza es para **Lanús**,
+  campeón de La Liga Argentina 2025-26 y el que subió de verdad, como equipo
+  invitado (`guest`). Se extrae su conferencia, la Sur, entera (17 equipos) y
+  se traduce con la escala de la **Liga Plata** ficticia: el juego no tiene
+  segunda división argentina, así que es la primera vez que un invitado usa la
+  escala de una liga de otro país.
 - **Liga Adriática**: las dos tienen **dos de más** (18 para 16 y 16 para 14):
   no entran las invitaciones de Rumanía y Austria en la ABA ni los dos
   macedonios en la ABA2 (`SourceLeague.excluded`, ver «Liga Adriática»).
@@ -781,7 +870,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas, las adriáticas y la BNXT, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas, las adriáticas, la BNXT y la argentina, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -928,6 +1017,21 @@ siguen inventados.
   van Sliedregt (LWD) y Arns (Rotterdam) no se ha encontrado la fecha: el
   juego se los inventa, las dos excepciones que admite `edition.test.ts` en
   `bnxt-1`.
+- **Liga Nacional argentina**: el del **acta del primer partido de liga
+  regular** del club, por fecha; `real:adc` avisa de cada cambio que ve en
+  las actas. La web no da ni fecha ni nacionalidad: van a mano en
+  `adc-entrenadores.json` (`inicio`, por id de club, con nombre de uso,
+  `birth` o, sin fecha exacta, `age` sacada de la edad que da la prensa en una
+  fecha conocida, `nationality`, fuente, `despues` y `enActa`, cómo le
+  escribe el acta). En Racing de Chivilcoy el acta pone a Carlos Beguerie
+  hasta marzo, pero el entrenador de toda la temporada fue **Diego
+  D'Ambrosio** (el del acta tendrá la licencia): manda la mano. De cinco
+  (Obras, Racing, Unión, Platense y Argentino) no se ha encontrado ni fecha
+  ni edad: el juego se los inventa, las cinco excepciones que admite
+  `edition.test.ts` en `argentina-1`. El del invitado, Lanús, igual.
+  El de Peñarol va como «Leo Costa», su nombre de uso: «Leonardo Costa» es
+  también un jugador inventado del dataset público y `edition.test.ts` no
+  deja que un nombre real se cuele en él.
 - **Serie A2** y **Segunda FEB**: sólo el del equipo invitado. La LNP no publica
   los técnicos de temporadas pasadas: el de la A2 es el del inicio de temporada
   y va a mano en `resources/real-data/manual/lnp-entrenadores.json` (por id de

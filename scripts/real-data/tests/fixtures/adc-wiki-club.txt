@@ -1,0 +1,9 @@
+== Plantel actual ==
+{| class="sortable"
+{{player2 | pos = C | num = 0 | nac = USA | nombre= [[Wayne Langston]] | edad={{edad|26|10|1993}} | ft= 6 | in= 7 | lbs= 220 | procedencia= {{bandera|MEX}} [[Fuerza Regia de Monterrey]]}}
+{{player2 | pos = G | num = 6 | nat = ARG | nombre = [[Santiago Scala]] | edad={{edad|06|02|1991}} | ft= 6 | in= 2 | lbs= 175| from= {{bandera|MEX}} [[Diablos Rojos del México (baloncesto)|Diablos Rojos del México]]}}
+{{player2 | pos = PF | num = 17 | nac = ARG | nombre= [[Sebastián Vega]] {{capitán}}| dab=baloncestista | edad={{edad|09|07|1988}} | ft= 6 | in= 7 | lbs= | procedencia= {{bandera|BRA}} Unifacisa }}
+{{Equipo de baloncesto jugador|num=0|nac=BHS|pos=AP|nombre=[[Tavario Miller]] <small>'''(E)'''</small>|altura=2,03 m |edad={{edad|26|02|1994}}|procedencia={{bandera|IDN}} Dewa United}}
+{{Equipo de baloncesto jugador|num=22|nac=ARG|pos=P|nombre=[[Francisco Cáffaro]]|edad={{edad|19|05|2000}}|altura=2,16 m|procedencia={{bandera|ESP}} [[Básquet Girona|Girona]]}}
+{{Equipo de baloncesto jugador|num=9|nac=Cabo Verde|pos=-|nombre=[[Víctor Andrade Toyo]]|altura=|edad=}}
+|}

@@ -707,3 +707,50 @@ describe('la BNXT: Bélgica y los Países Bajos en una liga', () => {
     });
   });
 });
+
+describe('Argentina: 19 de la Liga Nacional y el campeón de la segunda', () => {
+  const host = (): SourceLeague => ({
+    ...league(),
+    competitionId: 'argentina-1',
+    name: 'Liga Nacional de Básquet',
+    shortName: 'LNB',
+    country: 'ARG'
+  });
+  // La segunda argentina no existe en el juego: su escala es la de otro país.
+  const second = (): SourceLeague => {
+    const teams = Array.from({ length: 3 }, (_, index) =>
+      team(
+        `Club Ascenso ${index + 1}`,
+        index + 1,
+        Array.from({ length: 10 }, (_, slot) => player(`a${index}-p${slot}`, 30 - slot * 2))
+      )
+    );
+    return {
+      ...league(),
+      competitionId: 'argentina-lla',
+      name: 'La Liga Argentina (Conferencia Sur)',
+      shortName: 'LLA',
+      country: 'ARG',
+      teams,
+      guest: { into: 'argentina-1', teamIds: [teams[2]!.sourceId], scale: { league: 'liga-plata' } }
+    };
+  };
+  const { dataset, reports } = mergeRealLeagues(fictitious, [second(), host()], known);
+  const clubs = dataset.teams.filter((entry) => entry.competitionId === 'argentina-1');
+
+  it('el invitado entra el último, con la escala de la Liga Plata', () => {
+    expect(clubs).toHaveLength(5);
+    const guest = clubs.find((entry) => entry.name === 'Club Ascenso 3');
+    expect(guest?.country).toBe('ARG');
+    expect(Math.min(...clubs.map((entry) => entry.reputation))).toBe(guest?.reputation);
+    expect(reports.map((report) => report.guestOf ?? null)).toEqual([null, 'argentina-1']);
+    expect(dataset.realLeagues).toEqual(['argentina-1']);
+  });
+
+  it('la copa es la Copa Islas Malvinas', () => {
+    expect(dataset.competitions.find((entry) => entry.id === 'argentina-copa')).toMatchObject({
+      name: 'Copa Islas Malvinas',
+      shortName: 'Malvinas'
+    });
+  });
+});
