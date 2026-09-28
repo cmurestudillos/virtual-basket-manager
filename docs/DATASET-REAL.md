@@ -516,10 +516,9 @@ vez, unas 1.000 peticiones y media hora larga.
   - Sólo entran los que jugaron en la primera fase (la NKL no tiene plantillas
     legibles de la temporada pasada).
 - **Filiales y doble ficha**: Žalgiris-2, Rytas-2 y Neptūnas-2 juegan con
-  canteranos que están también en la plantilla de su primer equipo. La NKL lo
-  declara (`SourceLeague.sharesPlayersWith: ['lituania-1']`) y el montaje deja
-  a cada uno **donde más minutos jugó** y le quita de la otra liga (ver
-  «Conversión»).
+  canteranos que están también en la plantilla de su primer equipo. El
+  montaje deja a cada uno **donde más minutos jugó** y le quita de la otra
+  liga (ver «Conversión»).
 - **Nombres**: los lituanos, tal cual, con sus diacríticos. Lo que falte
   (diacríticos de algún extranjero, nombres de uso) va a mano en
   `lkl-jugadores.json` y `nkl-jugadores.json` (`jugadores`, por `slug` en la
@@ -601,13 +600,14 @@ Cómo entran:
   toma su nombre real (Copa del Rey, Coppa Italia).
 - **Plantillas**: cada jugador en un solo equipo (donde más minutos jugó) y como
   mucho `MAX_ROSTER`, quitando a los que menos jugaron.
-- **Doble ficha**: dos ligas reales que comparten jugadores (una lo declara en
-  `SourceLeague.sharesPlayersWith`, como la NKL con la LKL por los filiales)
-  se miran juntas: quien sale en las dos (mismo nombre y fecha) juega donde
-  más minutos jugó y se quita de la otra (`sharedPlayerDrops`). Se valora
-  igual con su liga entera, como los que suben o se quedan fuera. Las ligas
-  que no lo declaran no se tocan (en otros países hay fichajes de mitad de
-  temporada que salen en dos ligas; eso no se ha cambiado).
+- **Una persona, un equipo**: quien sale en dos equipos reales (mismo nombre
+  y fecha), sea por doble ficha en un filial, por un fichaje de mitad de
+  temporada entre países o porque la fuente le da otro id en cada club de la
+  misma liga, juega sólo donde más minutos jugó (`sharedPlayerDrops`); a
+  igualdad, en la liga que va antes. Se valora igual con su liga entera, como
+  los que suben o se quedan fuera. Los que suben de categoría y los equipos
+  invitados ceden siempre: si la persona ya juega en otro equipo del juego,
+  se queda allí.
 - **Atributos**: cada jugador se coloca en un percentil de su liga y recibe el
   valor de ese percentil en la liga ficticia equivalente, así el motor sigue
   calibrado. Cada atributo mezcla el **nivel** con la estadística de su **estilo**

@@ -75,7 +75,7 @@ export interface MergeReport {
   estimated: number;
   droppedDuplicates: number;
   droppedOverRoster: number;
-  /** Jugadores con doble ficha que se quedan en la otra liga (`sharesPlayersWith`). */
+  /** Jugadores que salen en otro equipo del juego y se quedan allí (`sharedPlayerDrops`). */
   droppedShared: number;
   unknownNationalities: string[];
   /** Equipos sin entrenador real: se les inventa uno al crear la partida. */
@@ -301,33 +301,32 @@ function personKey(player: Pick<SourcePlayer, 'firstName' | 'lastName' | 'birthD
 /** Los jugadores que una liga real mete en el juego, para {@link sharedPlayerDrops}. */
 export interface SharedLeague {
   competitionId: string;
-  sharesPlayersWith?: readonly string[];
   players: readonly SourcePlayer[];
 }
 
 /**
- * Doble ficha: los jugadores que salen en dos ligas reales que comparten
- * jugadores (una declara a la otra en `sharesPlayersWith`, como el filial de
- * la segunda división lituana con su primer equipo) se quedan donde más
- * minutos jugaron; de la otra, fuera. A igualdad, en la liga declarada (la del
- * primer equipo). Se reconoce a la persona por nombre y fecha de nacimiento;
- * sin fecha no se toca. Las ligas que no se declaran no se tocan nunca.
+ * Cada persona, en un solo equipo de todo el juego. Las plantillas de una
+ * temporada terminada traen a quien pasó por dos clubes: fichajes de mitad de
+ * temporada entre países o dentro de una liga con otro id en la fuente, y
+ * canteranos con doble ficha en el filial. Se queda donde más minutos jugó; a
+ * igualdad, en la liga que va antes. Se reconoce a la persona por nombre y
+ * fecha de nacimiento; sin fecha no se toca.
  */
 export function sharedPlayerDrops(leagues: readonly SharedLeague[]): Set<SourcePlayer> {
   const drops = new Set<SourcePlayer>();
   const seconds = (player: SourcePlayer): number => player.stats?.seconds ?? 0;
+  const kept = new Map<string, SourcePlayer>();
   for (const league of leagues) {
-    for (const otherId of league.sharesPlayersWith ?? []) {
-      const other = leagues.find((entry) => entry.competitionId === otherId);
-      if (!other || other === league) continue;
-      const there = new Map<string, SourcePlayer>();
-      for (const player of other.players) {
-        if (player.birthDate) there.set(personKey(player), player);
-      }
-      for (const player of league.players) {
-        const twin = player.birthDate ? there.get(personKey(player)) : undefined;
-        if (!twin || drops.has(twin) || drops.has(player)) continue;
-        drops.add(seconds(player) > seconds(twin) ? twin : player);
+    for (const player of league.players) {
+      if (!player.birthDate) continue;
+      const key = personKey(player);
+      const twin = kept.get(key);
+      if (!twin) {
+        kept.set(key, player);
+      } else if (twin !== player) {
+        const stays = seconds(player) > seconds(twin) ? player : twin;
+        drops.add(stays === player ? twin : player);
+        kept.set(key, stays);
       }
     }
   }
@@ -374,9 +373,9 @@ export function mergeRealLeagues(
   );
   const reports: MergeReport[] = [];
   const ratedByLeague = new Map<string, RatedPlayer[]>();
-  /** Equipos ya puestos en cada liga real y quién juega en ella. */
+  /** Equipos ya puestos en cada liga real, y quién juega ya en el juego. */
   const placed = new Map<string, number>();
-  const peopleIn = new Map<string, Set<string>>();
+  const peopleInGame = new Set<string>();
 
   interface Placement {
     source: SourceLeague;
@@ -425,10 +424,8 @@ export function mergeRealLeagues(
       ...(coach ? { coach } : {})
     });
 
-    const people = peopleIn.get(competitionId) ?? new Set<string>();
-    peopleIn.set(competitionId, people);
     for (const sourcePlayer of roster) {
-      people.add(personKey(sourcePlayer));
+      peopleInGame.add(personKey(sourcePlayer));
       const entry = at.ratedBySource.get(sourcePlayer) as RatedPlayer;
       const seed = `${source.competitionId}:${sourcePlayer.sourceId}`;
       const nationality =
@@ -547,12 +544,11 @@ export function mergeRealLeagues(
     });
   }
 
-  // Doble ficha entre ligas que lo declaran: cada jugador, en una sola. Se ha
-  // valorado igual con su liga entera; sólo cambia dónde juega.
+  // Cada persona, en un solo equipo de todo el juego. Se ha valorado igual
+  // con su liga entera; sólo cambia dónde juega.
   const shared = sharedPlayerDrops(
     prepared.map(({ source, rosters, staying }) => ({
       competitionId: source.competitionId,
-      sharesPlayersWith: source.sharesPlayersWith,
       players: staying.flatMap((team) => rosters.get(team) ?? [])
     }))
   );
@@ -624,13 +620,13 @@ export function mergeRealLeagues(
     const withoutCoach: string[] = [];
     const kept: RatedPlayer[] = [];
     let droppedDuplicates = 0;
-    const people = peopleIn.get(into) ?? new Set<string>();
     for (const teamId of promoted.teamIds) {
       const sourceTeam = source.teams.find((team) => team.sourceId === teamId);
       if (!sourceTeam) throw new Error(`${source.name}: no está el equipo que sube ${teamId}.`);
-      // Quien ya juega en la liga de destino se queda allí.
+      // Quien ya juega en otro equipo del juego se queda allí.
       const roster = (rosters.get(sourceTeam) ?? []).filter((sourcePlayer) => {
-        const duplicate = sourcePlayer.birthDate !== null && people.has(personKey(sourcePlayer));
+        const duplicate =
+          sourcePlayer.birthDate !== null && peopleInGame.has(personKey(sourcePlayer));
         if (duplicate) droppedDuplicates += 1;
         return !duplicate;
       });
@@ -683,14 +679,14 @@ export function mergeRealLeagues(
       throw new Error(`${source.name}: faltan equipos invitados (${guest.teamIds.join(', ')}).`);
     }
     for (const sourceTeam of invited) {
-      // Quien ya juega en la liga de destino (fichado a mitad de temporada,
-      // cedido) se queda allí: sus números en esa liga dicen más.
+      // Quien ya juega en otro equipo del juego (fichado a mitad de
+      // temporada, cedido) se queda allí: sus números en esa liga dicen más.
       const selected = rosters.get(sourceTeam) ?? [];
       droppedOverRoster +=
         new Set(sourceTeam.players.map((entry) => entry.sourceId)).size - selected.length;
-      const people = peopleIn.get(into) ?? new Set<string>();
       const roster = (rosters.get(sourceTeam) ?? []).filter((sourcePlayer) => {
-        const duplicate = sourcePlayer.birthDate !== null && people.has(personKey(sourcePlayer));
+        const duplicate =
+          sourcePlayer.birthDate !== null && peopleInGame.has(personKey(sourcePlayer));
         if (duplicate) droppedDuplicates += 1;
         return !duplicate;
       });

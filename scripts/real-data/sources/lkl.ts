@@ -71,8 +71,8 @@ import {
  *   fecha y la nacionalidad a mano (`nkl-entrenadores.json`); sin ellas, el
  *   juego se lo inventa.
  * - Los filiales (Žalgiris-2, Rytas-2, Neptūnas-2) comparten jugadores con su
- *   primer equipo (`sharesPlayersWith`): el montaje deja a cada uno donde más
- *   minutos jugó.
+ *   primer equipo: el montaje deja a cada uno donde más minutos jugó
+ *   (`sharedPlayerDrops`).
  */
 
 const SEASON_START_YEAR = 2025;
@@ -772,8 +772,7 @@ async function extractNkl(
     teams,
     warnings,
     promoted: { into: 'lituania-1', teamIds: NKL_PROMOTED },
-    excluded: NKL_EXCLUDED,
-    sharesPlayersWith: ['lituania-1']
+    excluded: NKL_EXCLUDED
   };
 }
 

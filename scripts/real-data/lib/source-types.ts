@@ -161,14 +161,6 @@ export interface SourceLeague {
    * los demás, porque el percentil es el de la liga entera, pero no se meten.
    */
   excluded?: string[];
-  /**
-   * Ligas reales (`competitionId`) con las que comparte jugadores con doble
-   * ficha: los filiales de una segunda división lituana juegan con canteranos
-   * que también están en la plantilla de su primer equipo. Quien sale en las
-   * dos se queda donde más minutos jugó y se quita de la otra; entre ligas que
-   * no lo declaran no se toca a nadie.
-   */
-  sharesPlayersWith?: string[];
 }
 
 export interface SourcePromotion {

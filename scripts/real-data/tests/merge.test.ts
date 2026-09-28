@@ -542,7 +542,7 @@ describe('equipos de una liga real que no entran en el juego', () => {
   });
 });
 
-describe('doble ficha entre dos ligas reales (filial y primer equipo)', () => {
+describe('una persona, un solo equipo en todo el juego', () => {
   /** Una primera lituana de cuatro equipos. */
   function first(): SourceLeague {
     const base = league();
@@ -558,7 +558,7 @@ describe('doble ficha entre dos ligas reales (filial y primer equipo)', () => {
     };
   }
   /** Una segunda con su filial, que comparte jugadores con la primera. */
-  function second(sharesPlayersWith: string[] = ['lituania-1']): SourceLeague {
+  function second(): SourceLeague {
     const teams = Array.from({ length: 4 }, (_, index) =>
       team(
         `Club Segunda ${index + 1}`,
@@ -577,8 +577,7 @@ describe('doble ficha entre dos ligas reales (filial y primer equipo)', () => {
       name: 'Segunda Lituana',
       shortName: 'SL',
       country: 'LTU',
-      teams,
-      sharesPlayersWith
+      teams
     };
   }
   const { dataset, reports } = mergeRealLeagues(fictitious, [first(), second()], known);
@@ -597,20 +596,24 @@ describe('doble ficha entre dos ligas reales (filial y primer equipo)', () => {
     expect(reports.find((report) => report.competitionId === 'lituania-2')?.droppedShared).toBe(1);
   });
 
-  it('sin declararlo no se toca a nadie', () => {
-    const apart = mergeRealLeagues(fictitious, [first(), second([])], known);
-    const names = apart.dataset.players.filter((entry) => entry.lastName === 'canterano-a');
-    expect(names).toHaveLength(3);
-    expect(apart.reports.every((report) => report.droppedShared === 0)).toBe(true);
+  it('también entre ligas de países distintos y dentro de una misma liga', () => {
+    const traded = (minutes: number): SourcePlayer => player('fichado', minutes);
+    const [inA, mostMinutes, otherTeamInB, inC] = [traded(8), traded(20), traded(5), traded(12)];
+    const drops = sharedPlayerDrops([
+      { competitionId: 'a', players: [inA] },
+      { competitionId: 'b', players: [mostMinutes, otherTeamInB] },
+      { competitionId: 'c', players: [inC] }
+    ]);
+    expect(drops).toEqual(new Set([inA, otherTeamInB, inC]));
   });
 
-  it('a igualdad de minutos se queda en la liga declarada, y sin fecha no se toca', () => {
+  it('a igualdad de minutos se queda en la liga que va antes, y sin fecha no se toca', () => {
     const twin = player('gemelo', 10);
     const copy = player('gemelo', 10);
     const undated = player('sin-fecha', 10, { birthDate: null });
     const drops = sharedPlayerDrops([
       { competitionId: 'a', players: [twin, player('sin-fecha', 30, { birthDate: null })] },
-      { competitionId: 'b', sharesPlayersWith: ['a'], players: [copy, undated] }
+      { competitionId: 'b', players: [copy, undated] }
     ]);
     expect([...drops]).toEqual([copy]);
   });
