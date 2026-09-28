@@ -60,7 +60,10 @@ for (const report of reports) {
     `  ${report.teams} equipos, ${report.players} jugadores, ${report.estimated} con atributos estimados`
   );
   console.log(
-    `  descartados: ${report.droppedDuplicates} repetidos, ${report.droppedOverRoster} por encima de la plantilla máxima`
+    `  descartados: ${report.droppedDuplicates} repetidos, ${report.droppedOverRoster} por encima de la plantilla máxima` +
+      (report.droppedShared > 0
+        ? `, ${report.droppedShared} con doble ficha que juegan en la otra liga`
+        : '')
   );
   console.log(`  media: p10 ${at(0.1)} · mediana ${at(0.5)} · p90 ${at(0.9)} · máx ${at(1)}`);
   if (!report.guestOf) {

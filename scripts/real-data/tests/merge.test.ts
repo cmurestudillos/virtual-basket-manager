@@ -10,6 +10,7 @@ import {
   reputationFor,
   scaleReference,
   selectRosters,
+  sharedPlayerDrops,
   slugify,
   teamStrength
 } from '../lib/merge';
@@ -537,6 +538,87 @@ describe('equipos de una liga real que no entran en el juego', () => {
     expect(dataset.competitions.find((entry) => entry.id === 'alemania-copa')).toMatchObject({
       name: 'BBL-Pokal',
       shortName: 'Pokal'
+    });
+  });
+});
+
+describe('doble ficha entre dos ligas reales (filial y primer equipo)', () => {
+  /** Una primera lituana de cuatro equipos. */
+  function first(): SourceLeague {
+    const base = league();
+    // Dos canteranos del primer equipo que juegan también en el filial.
+    // (En el sitio de los dos últimos de la plantilla, para no pasar del máximo.)
+    base.teams[0]!.players.splice(10, 2, player('canterano-a', 3), player('canterano-b', 25));
+    return {
+      ...base,
+      competitionId: 'lituania-1',
+      name: 'Primera Lituana',
+      shortName: 'PL',
+      country: 'LTU'
+    };
+  }
+  /** Una segunda con su filial, que comparte jugadores con la primera. */
+  function second(sharesPlayersWith: string[] = ['lituania-1']): SourceLeague {
+    const teams = Array.from({ length: 4 }, (_, index) =>
+      team(
+        `Club Segunda ${index + 1}`,
+        index + 1,
+        Array.from({ length: 10 }, (_, slot) => player(`l${index}-p${slot}`, 30 - slot * 2))
+      )
+    );
+    teams[0]!.players.push(player('canterano-a', 20), player('canterano-b', 10));
+    // Mismo nombre y otra fecha: es otra persona.
+    teams[1]!.players.push(
+      player('otro-a', 12, { lastName: 'canterano-a', birthDate: '2007-01-01' })
+    );
+    return {
+      ...league(),
+      competitionId: 'lituania-2',
+      name: 'Segunda Lituana',
+      shortName: 'SL',
+      country: 'LTU',
+      teams,
+      sharesPlayersWith
+    };
+  }
+  const { dataset, reports } = mergeRealLeagues(fictitious, [first(), second()], known);
+  const leagueOf = (lastName: string): string[] => {
+    const teams = new Map(dataset.teams.map((entry) => [entry.id, entry.competitionId]));
+    return dataset.players
+      .filter((entry) => entry.lastName === lastName)
+      .map((entry) => `${teams.get(entry.teamId)} ${entry.birthDate}`)
+      .sort();
+  };
+
+  it('cada uno juega sólo donde más minutos jugó', () => {
+    expect(leagueOf('canterano-a')).toEqual(['lituania-2 1996-03-03', 'lituania-2 2007-01-01']);
+    expect(leagueOf('canterano-b')).toEqual(['lituania-1 1996-03-03']);
+    expect(reports.find((report) => report.competitionId === 'lituania-1')?.droppedShared).toBe(1);
+    expect(reports.find((report) => report.competitionId === 'lituania-2')?.droppedShared).toBe(1);
+  });
+
+  it('sin declararlo no se toca a nadie', () => {
+    const apart = mergeRealLeagues(fictitious, [first(), second([])], known);
+    const names = apart.dataset.players.filter((entry) => entry.lastName === 'canterano-a');
+    expect(names).toHaveLength(3);
+    expect(apart.reports.every((report) => report.droppedShared === 0)).toBe(true);
+  });
+
+  it('a igualdad de minutos se queda en la liga declarada, y sin fecha no se toca', () => {
+    const twin = player('gemelo', 10);
+    const copy = player('gemelo', 10);
+    const undated = player('sin-fecha', 10, { birthDate: null });
+    const drops = sharedPlayerDrops([
+      { competitionId: 'a', players: [twin, player('sin-fecha', 30, { birthDate: null })] },
+      { competitionId: 'b', sharesPlayersWith: ['a'], players: [copy, undated] }
+    ]);
+    expect([...drops]).toEqual([copy]);
+  });
+
+  it('la copa de Lituania toma su nombre real', () => {
+    expect(dataset.competitions.find((entry) => entry.id === 'lituania-copa')).toMatchObject({
+      name: 'Karaliaus Mindaugo taurė',
+      shortName: 'KMT'
     });
   });
 });

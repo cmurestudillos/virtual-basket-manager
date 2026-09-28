@@ -76,7 +76,7 @@ de `dataset.json` que el ficticio (estadísticas → los 21 atributos). Orden
 decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**,
 **Francia (Betclic ÉLITE y ÉLITE 2)**, **Grecia (GBL y Elite League)**,
 **Turquía (Basketbol Süper Ligi)**, **Alemania (BBL y ProA)**, **Israel (Ligat
-Winner)** y así país a país.
+Winner)**, **Lituania (LKL y NKL)** y así país a país.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -92,6 +92,8 @@ pnpm real:tblstat # Süper Ligi turca   → .real-data-cache/sources/tblstat-bsl
 pnpm real:bbl     # BBL y ProA         → .real-data-cache/sources/bbl-2025.json
                   #                      y proa-2025.json
 pnpm real:winner  # Ligat Winner       → .real-data-cache/sources/winner-2025.json
+pnpm real:lkl     # LKL y NKL          → .real-data-cache/sources/lkl-2025.json
+                  #                      y nkl-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -115,6 +117,8 @@ inventado.
 | easyCredit BBL (`alemania-1`) | `easycredit-bbl.de`        | El JSON que Next.js incrusta en el HTML (`__NEXT_DATA__`): plantilla del equipo en la temporada y las 306 actas de liga regular. Ver «Alemania».     |
 | ProA (`alemania-2`)           | `2basketballbundesliga.de` | WordPress con formulario de temporada: plantilla, cuerpo técnico y estadísticas de liga regular de cada equipo. Entran 16 de 18. Ver «Alemania».     |
 | Ligat Winner (`israel-1`)     | `basket.co.il`             | ASP clásico en inglés: clasificación, plantillas, las 182 actas de liga regular (sin el playout) y la ficha de cada jugador. Entran 12 de 14.        |
+| LKL (`lituania-1`)            | `lkl.lt`                   | Laravel: clasificación, las 144 actas de liga regular en JSON, plantillas por Livewire, ficha e historial de cada jugador. 9 + 3 de la NKL.          |
+| NKL (`lituania-2`)            | `nkl.lt` + basketnews.lt   | Calendario de nkl.lt y actas y fichas de basketnews.lt (mismos ids). Sólo la primera fase. Suben 3 a la LKL y 2 no entran: 12 de 17.                 |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -440,6 +444,93 @@ sin API, detrás de Cloudflare pero sin desafío. La temporada 2025-26 es
   lo da y, si no, el de la Wikipedia.
 - La copa del país se queda con su nombre, **Gvia HaMedina**.
 
+#### Lituania (lkl.lt, nkl.lt y basketnews.lt)
+
+`pnpm real:lkl` extrae las dos ligas a la vez, cada web con su pausa, y deja
+`lkl-2025.json` (`lituania-1`) y `nkl-2025.json` (`lituania-2`). La primera
+vez, unas 1.000 peticiones y media hora larga.
+
+- **Formato real**: la LKL 2025-26 tuvo **9** equipos (se fueron Wolves y M
+  Basket, entró Gargždai y no bajó nadie), cuatro vueltas, 32 jornadas y 144
+  partidos; después, playoffs a 8. La del juego tiene **12**: suben los tres
+  primeros de la NKL que no son filiales (**Sūduva, Vytis y Perlas**; también
+  los tres mejores no filiales de sus playoffs) como ascendidos
+  (`SourceLeague.promoted`, fijos en `lkl.ts`, `NKL_PROMOTED`), valorados con
+  la NKL entera y su escala. La NKL tuvo **17**: de los 14 que quedan, los dos
+  últimos (**Alytus**, que además desaparece, y **Stekas**) se quedan fuera
+  (`SourceLeague.excluded`, `NKL_EXCLUDED`).
+- **LKL (lkl.lt)**: Laravel con trozos de HTML y componentes Livewire, detrás
+  de Cloudflare sin desafío. La 2025-26 es `season_id` 41936 (34 en la
+  clasificación). Dos segundos entre peticiones.
+  - **Clasificación**: `/loadStandings/34`, la primera tabla del trozo, con
+    el `slug` de cada club. El id del club (que no cambia entre temporadas)
+    va en `LKL_TEAMS`.
+  - **Estadísticas**: la suma de las **actas en JSON**
+    (`/api/livestream/boxscore/<id>`, de 11370 a 11513, seguidas). El lado de
+    casa se reconoce por los puntos. Minutos con segundos, tiros, rebotes de
+    ataque y defensa, asistencias, robos, pérdidas, tapones puestos y
+    **recibidos**, faltas cometidas y **recibidas** y valoración. Sin mates.
+    Las actas de las primeras semanas no marcan titulares: los partidos de
+    titular salen del **historial** de cada jugador
+    (`/zaidejai/get-player-history?player_id=<n>&cup_type=lkl-regular`, sólo
+    liga regular), que además se compara con los partidos de las actas.
+  - **Plantilla**: el componente Livewire `team-squad` de la página del club.
+    Se carga perezoso: la página (para la sesión y el token CSRF), una
+    llamada a `/livewire/update` que lo carga y otra que le cambia la
+    temporada a la 2025-26; sólo se guarda la última. Dorsal, nombre, puesto,
+    altura, peso, fecha y nacionalidad (código COI). No trae a los que se
+    fueron a mitad: salen de su **ficha** (`/zaidejai/<slug>`), que también
+    da el id numérico del historial y la nacionalidad como bandera (ISO de dos
+    letras). El `slug` es el id del jugador.
+  - **Puestos**: la web sólo da exterior (`Gynėjas`), alero o ala-pívot
+    (`Puolėjas`) y pívot (`Centras`). El alero se separa por altura como el
+    «Ala» de la LBA (`POWER_FORWARD_CM`) y el exterior también: por debajo de
+    191 cm (`POINT_GUARD_BELOW_CM`, el mismo corte que usa el montaje para
+    quien no trae puesto) es base; si no, la LKL entera se quedaría sin bases.
+  - La **clasificación general** de la temporada y la tabla de estadísticas de
+    la web suman los playoffs: no se usan. El entrenador que dan las actas es
+    el **actual** del club, no el de ese partido: tampoco.
+- **NKL**: nkl.lt (WordPress; su `robots.txt` pide **diez segundos** entre
+  peticiones) da el **calendario** (`/matches/?type=results&season=2025`, un
+  JSON por partido con su fase, `stage_id`) y la **clasificación** de la
+  primera fase (`/turnyro-lentele/?fseason=2025&fstage=2639`). Sus actas no
+  traen intentos de tiro ni faltas, así que las actas y las fichas son de
+  **basketnews.lt** (tres segundos), con los mismos ids de partido, club y
+  jugador.
+  - **Liga regular**: sólo la **primera fase** (`stage_id` 2639: 17 equipos,
+    todos contra todos dos veces, 272 partidos), la misma para todos. La
+    segunda fase (por grupos desiguales), el minitorneo de los cuatro primeros
+    y los playoffs no cuentan.
+  - **Acta** (`/rungtynes/ziureti/<id>-x.html`): las columnas se leen por la
+    cabecera, también el rebote, que va en una sola columna «REB D-O»
+    (defensa-ataque) y cuyo orden se toma de ella. Titulares (el dorsal
+    marcado), tapones y faltas recibidos y el **primer entrenador** de cada
+    equipo en ese partido. Se comprueban equipos y puntos con el calendario.
+  - **Ficha** (`/zaidejai/<id>-x.html`): puesto («SG, SF»: cuenta el
+    primero), altura, peso, fecha y la nacionalidad por la **bandera** (ISO de
+    dos letras) o, si no hay, por el nombre en lituano («Lietuvos», «JAV»;
+    `nationFromLithuanian`). El nombre de pila y el apellido van separados
+    por un espacio doble. Los extranjeros vienen con el **nombre legal
+    completo**: se queda el primer nombre de pila (`usualFirstName`, como la
+    ProA) y las excepciones van a mano.
+  - Sólo entran los que jugaron en la primera fase (la NKL no tiene plantillas
+    legibles de la temporada pasada).
+- **Filiales y doble ficha**: Žalgiris-2, Rytas-2 y Neptūnas-2 juegan con
+  canteranos que están también en la plantilla de su primer equipo. La NKL lo
+  declara (`SourceLeague.sharesPlayersWith: ['lituania-1']`) y el montaje deja
+  a cada uno **donde más minutos jugó** y le quita de la otra liga (ver
+  «Conversión»).
+- **Nombres**: los lituanos, tal cual, con sus diacríticos. Lo que falte
+  (diacríticos de algún extranjero, nombres de uso) va a mano en
+  `lkl-jugadores.json` y `nkl-jugadores.json` (`jugadores`, por `slug` en la
+  LKL y por id en la NKL; también fecha, nacionalidad, altura o puesto).
+- **Club**: nombre sin patrocinador (Jonava, Nevėžis, Sūduva, Vytis, Perlas…;
+  Lietkabelis se queda: es la empresa dueña; los filiales con «-2»),
+  abreviatura, ciudad, pabellón y aforo de la Wikipedia inglesa en
+  `LKL_TEAMS` y `NKL_TEAMS`. El Rytas juega también en el Active Vilnius
+  Arena, pero su pabellón es el Arena Vilnius (10.000).
+- La copa del país toma su nombre real: **Karaliaus Mindaugo taurė** (KMT).
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -498,6 +589,10 @@ Cómo entran:
 - **Israel**: igual que la ProA. La Ligat Winner real tuvo **14** para 12
   plazas: los dos que bajaron a la Liga Leumit se quedan fuera
   (`SourceLeague.excluded`, ver «Israel»).
+- **Lituania**: las dos cosas. La LKL real tuvo **9** para 12 plazas y la NKL
+  **17**: suben de la NKL los tres primeros que no son filiales
+  (`SourceLeague.promoted`) y de los 14 que quedan, los dos últimos se quedan
+  fuera (`SourceLeague.excluded`, ver «Lituania»).
 
 ### Conversión (`real:build`)
 
@@ -506,6 +601,13 @@ Cómo entran:
   toma su nombre real (Copa del Rey, Coppa Italia).
 - **Plantillas**: cada jugador en un solo equipo (donde más minutos jugó) y como
   mucho `MAX_ROSTER`, quitando a los que menos jugaron.
+- **Doble ficha**: dos ligas reales que comparten jugadores (una lo declara en
+  `SourceLeague.sharesPlayersWith`, como la NKL con la LKL por los filiales)
+  se miran juntas: quien sale en las dos (mismo nombre y fecha) juega donde
+  más minutos jugó y se quita de la otra (`sharedPlayerDrops`). Se valora
+  igual con su liga entera, como los que suben o se quedan fuera. Las ligas
+  que no lo declaran no se tocan (en otros países hay fichajes de mitad de
+  temporada que salen en dos ligas; eso no se ha cambiado).
 - **Atributos**: cada jugador se coloca en un percentil de su liga y recibe el
   valor de ese percentil en la liga ficticia equivalente, así el motor sigue
   calibrado. Cada atributo mezcla el **nivel** con la estadística de su **estilo**
@@ -527,7 +629,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas y la israelí, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí y las lituanas, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -625,7 +727,8 @@ siguen inventados.
   las Wikipedias inglesa y hebrea. Del de **Kiryat Ata** no se ha encontrado la
   fecha en ninguna fuente fiable (la prensa sólo da su edad un año antes): el
   club se queda sin entrenador real y el juego le inventa uno. Es la única
-  excepción, contada, que admite `edition.test.ts` en `israel-1`.
+  excepción, contada, que admite `edition.test.ts` en `israel-1` (en
+  `lituania-1` admite tres, ver «NKL»).
 - **Elite League**: el del **acta del primer partido de liga regular** del
   club (la federación sí lo pone en el acta), por fecha; `real:hbf` avisa de
   cada cambio que ve en las actas. El nombre legal se cambia por el de uso y
@@ -633,6 +736,20 @@ siguen inventados.
   de equipo; sin fecha exacta, `age`). Sin fecha ni edad, el club se queda
   sin entrenador real y el juego le inventa uno (por eso `edition.test.ts` no
   exige entrenador en `grecia-2`).
+- **LKL**: todos a mano, en `lkl-entrenadores.json` (`inicio`, por id de club
+  de lkl.lt, con nombre, nacimiento como la FEB, nacionalidad, fuente y
+  `despues`), según la Wikipedia inglesa de la temporada (tabla de cambios) y
+  la ficha de cada uno en la inglesa o la lituana: las actas de lkl.lt dan el
+  entrenador **actual** del club, no el de ese partido.
+- **NKL** (y los tres que suben a la LKL): el del **acta del primer partido de
+  liga regular** del club en basketnews, por fecha; `real:lkl` avisa de cada
+  cambio que ve en las actas. La fecha y la nacionalidad van a mano en
+  `nkl-entrenadores.json` (`inicio`, por id de club), sólo para los que la
+  tienen en la Wikipedia lituana; los demás clubes se quedan sin entrenador
+  real y el juego les inventa uno (por eso `edition.test.ts` no exige
+  entrenador en `lituania-2` y cuenta las excepciones de `lituania-1`). En la
+  2025-26 tienen fecha 5 de los 12 de la NKL y ninguno de los tres que suben:
+  en `lituania-1` son tres excepciones.
 - **Serie A2** y **Segunda FEB**: sólo el del equipo invitado. La LNP no publica
   los técnicos de temporadas pasadas: el de la A2 es el del inicio de temporada
   y va a mano en `resources/real-data/manual/lnp-entrenadores.json` (por id de
