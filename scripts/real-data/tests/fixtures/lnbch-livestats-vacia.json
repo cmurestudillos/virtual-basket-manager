@@ -1,0 +1,154 @@
+{
+ "clock": "10:00",
+ "period": 1,
+ "tm": {
+  "1": {
+   "name": "CD ESPANOL OSORNO",
+   "code": "ESP",
+   "coach": null,
+   "score": 0,
+   "pl": {
+    "9": {
+     "shirtNumber": "1",
+     "firstName": "Jahsean Hakim",
+     "familyName": "Corbett",
+     "starter": 0
+    },
+    "2": {
+     "shirtNumber": "4",
+     "firstName": "Milenko",
+     "familyName": "Sepulveda Fredes",
+     "starter": 0
+    },
+    "4": {
+     "shirtNumber": "7",
+     "firstName": "Agustin",
+     "familyName": "Moraga Cuevas",
+     "starter": 0
+    },
+    "8": {
+     "shirtNumber": "8",
+     "firstName": "Maximo",
+     "familyName": "Gonzalez Barros",
+     "starter": 0
+    },
+    "10": {
+     "shirtNumber": "10",
+     "firstName": "Ja´heim",
+     "familyName": "Hudson",
+     "starter": 0
+    },
+    "5": {
+     "shirtNumber": "11",
+     "firstName": "Barham",
+     "familyName": "Amor Alvear",
+     "starter": 0
+    },
+    "3": {
+     "shirtNumber": "12",
+     "firstName": "Alexander",
+     "familyName": "Buchholz Magnere",
+     "starter": 0
+    },
+    "6": {
+     "shirtNumber": "24",
+     "firstName": "Cristobal",
+     "familyName": "Martinez Burgos",
+     "starter": 0
+    },
+    "7": {
+     "shirtNumber": "29",
+     "firstName": "Harold",
+     "familyName": "Angulo Bellaizac",
+     "starter": 0
+    },
+    "1": {
+     "shirtNumber": "31",
+     "firstName": "Felipe",
+     "familyName": "Acuna Vergara",
+     "starter": 0
+    }
+   }
+  },
+  "2": {
+   "name": "CD LAS ANIMAS",
+   "code": "ANI",
+   "coach": null,
+   "score": 0,
+   "pl": {
+    "8": {
+     "shirtNumber": "1",
+     "firstName": "Vicente",
+     "familyName": "Correa Alvarez",
+     "starter": 0
+    },
+    "10": {
+     "shirtNumber": "9",
+     "firstName": "Cristobal",
+     "familyName": "Stuardo Saez",
+     "starter": 0
+    },
+    "4": {
+     "shirtNumber": "10",
+     "firstName": "Mohunir",
+     "familyName": "Zerene Sarabia",
+     "starter": 0
+    },
+    "1": {
+     "shirtNumber": "11",
+     "firstName": "Josip",
+     "familyName": "Restovic Franco",
+     "starter": 0
+    },
+    "3": {
+     "shirtNumber": "14",
+     "firstName": "Francisco",
+     "familyName": "Figueroa Benner",
+     "starter": 0
+    },
+    "9": {
+     "shirtNumber": "16",
+     "firstName": "Vicente",
+     "familyName": "Almonacid Santander",
+     "starter": 0
+    },
+    "11": {
+     "shirtNumber": "25",
+     "firstName": "Ahmir",
+     "familyName": "Langlais",
+     "starter": 0
+    },
+    "6": {
+     "shirtNumber": "31",
+     "firstName": "Fabian",
+     "familyName": "Martinez Oyarzun",
+     "starter": 0
+    },
+    "5": {
+     "shirtNumber": "44",
+     "firstName": "Gabriel",
+     "familyName": "Diaz Gazzo",
+     "starter": 0
+    },
+    "7": {
+     "shirtNumber": "73",
+     "firstName": "Enzo",
+     "familyName": "Amado Ivankovic",
+     "starter": 0
+    },
+    "12": {
+     "shirtNumber": "77",
+     "firstName": "Raekwon",
+     "familyName": "Horton",
+     "starter": 0
+    },
+    "2": {
+     "shirtNumber": "91",
+     "firstName": "Sebastian",
+     "familyName": "Suarez Garcia",
+     "starter": 0
+    }
+   }
+  }
+ }
+}

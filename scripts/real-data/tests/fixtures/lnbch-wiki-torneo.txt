@@ -1,0 +1,28 @@
+=== Extranjeros ===
+Todos los equipos pueden registrar 1 jugadores extranjeros, con la posibilidad de contar 1 extranjeros más. Durante el transcurso de la competición pueden realizar hasta 2 cambios de jugador. En '''negrita''' los jugadores extranjeros que continúan en planilla en sus respectivos clubes.<ref>{{cita web|autor=Genius Sports|sitioweb=clnb.web.geniussports.com|título=Nómina Equipos Transición 2025|url=https://clnb.web.geniussports.com/competitions/?WHurl=%2Fcompetition%2F42131%2Fteams|fechaacceso=10 de septiembre de 2025|fecha=21 de septiembre de 2025|idioma=español}}</ref>
+{| class="wikitable" style="width:70%; font-size:80%"
+!Equipo
+!Jugador 1
+!Jugador 2
+!Cambio 1
+!Cambio 2
+|-
+|[[Asociación de Básquetbol Ancud|ABA Ancud]]
+|{{bandera|USA}} '''Troy Cracknell'''
+|{{bandera|USA}} '''Marquez Letcher-Ellis'''
+|{{bandera|USA}} Darryl Owens II
+|{{bandera|USA}} [[Jeremy Mclaughlin]]
+|-
+|[[Club Deportivo Colegio Los Leones de Quilpué|Colegio Los Leones]]
+|{{Bandera|USA}} '''Kiandre Gaddy'''
+|{{Bandera|Holanda}} '''[[Terrence Bieshaar]]'''
+|
+|
+|-
+|[[Club de Deportes Las Ánimas|CD Las Ánimas]]
+|{{bandera|USA}} '''[[:en:Rashad Hassan|Rashad Hassan]]'''
+|{{bandera|USA}} '''[[Roquez Johnson]]'''
+|{{bandera|ARG}} Francisco Ruiz
+|{{bandera|CAN}} Emanual Shepherd
+
+|}

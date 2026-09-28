@@ -754,3 +754,22 @@ describe('Argentina: 19 de la Liga Nacional y el campeón de la segunda', () => 
     });
   });
 });
+
+describe('Chile: la liga entera, sin invitados', () => {
+  const host = (): SourceLeague => ({
+    ...league(),
+    competitionId: 'chile-1',
+    name: 'Liga Nacional de Básquetbol',
+    shortName: 'LNB',
+    country: 'CHI'
+  });
+  const { dataset } = mergeRealLeagues(fictitious, [host()], known);
+
+  it('la copa es la Copa Chile', () => {
+    expect(dataset.realLeagues).toEqual(['chile-1']);
+    expect(dataset.competitions.find((entry) => entry.id === 'chile-copa')).toMatchObject({
+      name: 'Copa Chile',
+      shortName: 'Copa'
+    });
+  });
+});

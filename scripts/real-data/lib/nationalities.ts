@@ -22,7 +22,8 @@ const COUNTRIES: readonly (readonly string[])[] = [
   ['FRA', 'FRA', 'FR', 'Francia', 'France'],
   ['ITA', 'ITA', 'IT', 'Italia', 'Italy'],
   ['GER', 'DEU', 'DE', 'Alemania', 'Germany', 'Deutschland'],
-  ['NED', 'NLD', 'NL', 'Países Bajos', 'Holanda', 'Netherlands', 'Holland'],
+  // «HOL»: el código de la plantilla {{bandera}} de la Wikipedia en español.
+  ['NED', 'NLD', 'NL', 'Países Bajos', 'Holanda', 'Netherlands', 'Holland', 'HOL'],
   ['BEL', 'BEL', 'BE', 'Bélgica', 'Belgium'],
   ['LUX', 'LUX', 'LU', 'Luxemburgo', 'Luxembourg'],
   ['SUI', 'CHE', 'CH', 'Suiza', 'Switzerland'],
@@ -232,6 +233,7 @@ const COUNTRIES: readonly (readonly string[])[] = [
     'VI',
     'Islas Vírgenes de los Estados Unidos',
     'Islas Vírgenes EEUU',
+    'Islas Vírgenes de EE. UU.',
     'US Virgin Islands'
   ],
   ['IVB', 'VGB', 'VG', 'Islas Vírgenes Británicas', 'British Virgin Islands'],

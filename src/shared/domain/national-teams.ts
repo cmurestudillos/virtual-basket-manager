@@ -114,6 +114,7 @@ export const NATION_NAMES: Record<string, string> = {
   HAI: 'Haití',
   IRL: 'Irlanda',
   ISL: 'Islandia',
+  ISV: 'Islas Vírgenes de EE. UU.',
   JAM: 'Jamaica',
   KEN: 'Kenia',
   KOS: 'Kosovo',

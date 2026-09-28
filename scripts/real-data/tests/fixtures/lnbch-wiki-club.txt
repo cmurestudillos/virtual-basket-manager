@@ -1,0 +1,41 @@
+=== Plantilla 2026 ===
+{| class="sortable"
+! # !! Nac. !! Pos. !! Nombre !! Altura !! Edad!! Procedencia
+|-
+|4||{{bandera|CHI}}||[[Alero (baloncesto)|A]]||Darrol Jones Navarrete {{cap|15px}}||{{altura|m=1.95}}||{{edad|24|01|1994}}||{{bandera|?}}
+|-
+|8||{{bandera|CHI}}|| ||Luis Rosario Narváez [[Archivo:CivilDefence.svg|12px]]||{{altura|m=}}||{{edad|18|05|2007}}||Inferiores
+|-
+|12||{{bandera|VEN}}{{bandera|CHI}}||[[Base (baloncesto)|B]]||Sergio Mijares Machado||{{altura|m=1.90}}||{{edad|05|02|1997}}||{{bandera|CHI}} Municipal Chillán
+|-
+|4||{{bandera|CHI}}||[[Alero (baloncesto)|A]]||Darrol Jones Navarrete||{{altura|m=1.95}}||32 años||{{bandera|?}}
+|-
+|12||{{bandera|VEN}}{{bandera|CHI}}||[[Base (baloncesto)|B]]||Sergio Mijares Machado||{{altura|m=1.90}}||29 años||{{bandera|CHI}} Municipal Chillán
+|-
+| ||{{bandera|CHI}}|| ||Luis Rosario Narváez [[Archivo:CivilDefence.svg|12px]]||{{altura|m=}}||19 años||Inferiores
+|-
+|4||{{bandera|CHI}}||[[Alero (baloncesto)|A]]||Darrol Jones Navarrete||{{altura|m=1.95}}||31 años||{{bandera|?}}
+|-
+|7||{{bandera|VEN}}{{bandera|CHI}}||[[Base (baloncesto)|B]]||Sergio Mijares Machado||{{altura|m=1.90}}||28 años||{{bandera|CHI}} Municipal Chillán
+|}
+=== Plantillas 2026 ===
+! # !! Pos. !! Nac. !! Nombre !! Altura !! Edad !! Procedencia
+|-
+|1||[[Alero (baloncesto)|A]]||{{bandera|VIR}}||Jahsean Corbett||{{altura|m=1.98}}||{{edad|01|07|2002}}||{{bandera|USA}} [[:en:Duquesne Dukes men's basketball|Duquesne Dukes]]
+|-
+|8||[[Pívot (baloncesto)|P]]||{{bandera|CHI}}||Máximo González Barros||{{altura|m=2}}||{{edad|06|11|2003}}||Inferiores
+|-
+|11||[[Base (baloncesto)|B]]||{{bandera|CHI}}||[[Barham Amor|Barham Amor Alvear]] {{cap|15px}} {{lesionado|15px}}||{{altura|m=1.87}}|| {{edad|06|01|1996}}||{{bandera|CHI}} [[Club Deportivo Universidad de Concepción (baloncesto)|Universidad de Concepción]]
+|-
+|1||[[Alero (baloncesto)|A]]||{{bandera|VIR}}||Jahsean Corbett||{{altura|m=1.98}}||{{edad|01|07|2002}}||{{bandera|USA}} [[:en:Duquesne Dukes men's basketball|Duquesne Dukes]]
+|-
+|8||[[Pívot (baloncesto)|P]]||{{bandera|CHI}}||Máximo González Barros||{{altura|m=2}}||{{edad|06|11|2003}}||Inferiores
+|-
+|11||[[Base (baloncesto)|B]]||{{bandera|CHI}}||[[Barham Amor|Barham Amor Alvear]] {{cap|15px}}||{{altura|m=1.87}}|| {{edad|06|01|1996}}||{{bandera|CHI}} [[Club Deportivo Universidad de Concepción (baloncesto)|Universidad de Concepción]]
+|-
+|[[Pívot (baloncesto)|P]] ||8|| {{bandera|Chile}} ||  Máximo González Barros '''(J)''' || {{altura|m=2}} ||22 años
+|-
+|[[Base (baloncesto)|B]] ||11|| {{bandera|Chile}} || [[Barham Amor|Barham Amor Alvear]] {{cap|15px}} || {{altura|m=1.87}}||29 años
+|-
+|[[Base (baloncesto)|B]] ||11|| {{bandera|Chile}} || Barham Amor {{cap|15px}} || {{altura|m=1.87}}|| {{edad|06|01|1996}}
+|}

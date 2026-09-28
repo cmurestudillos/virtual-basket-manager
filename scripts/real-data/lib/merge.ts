@@ -61,7 +61,10 @@ const REAL_CUPS: Record<string, { name: string; shortName: string }> = {
   // enfrenta a clubes de los dos, así que lleva el nombre de la liga.
   BNL: { name: 'BNXT Cup', shortName: 'Cup' },
   // La Súper 20 ya no se juega: la copa de la 2025-26 fue la Islas Malvinas.
-  ARG: { name: 'Copa Islas Malvinas', shortName: 'Malvinas' }
+  ARG: { name: 'Copa Islas Malvinas', shortName: 'Malvinas' },
+  // La de la 2025-26 se jugó dos veces (noviembre de 2025 y mayo de 2026),
+  // siempre como Copa Chile.
+  CHI: { name: 'Copa Chile', shortName: 'Copa' }
 };
 
 /** Altura típica por puesto: para quien no la trae y para deducir el puesto. */

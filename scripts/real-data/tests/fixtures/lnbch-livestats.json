@@ -1,0 +1,238 @@
+{
+ "clock": "00:00",
+ "period": 4,
+ "tm": {
+  "1": {
+   "name": "MUN. PUENTE ALTO",
+   "code": "PUE",
+   "coach": "Alvaro Chacon Escobar",
+   "score": 65,
+   "pl": {
+    "13": {
+     "shirtNumber": "2",
+     "firstName": "Cristhian",
+     "familyName": "Poleo Madera",
+     "starter": 0,
+     "sMinutes": "0:00",
+     "sPoints": 0,
+     "sFoulsOn": 0
+    },
+    "6": {
+     "shirtNumber": "3",
+     "firstName": "Oscar",
+     "familyName": "Barria Roa",
+     "starter": 0,
+     "sMinutes": "23:16",
+     "sPoints": 10,
+     "sFoulsOn": 0
+    },
+    "17": {
+     "shirtNumber": "4",
+     "firstName": "Mateo",
+     "familyName": "Castro Sepulveda",
+     "starter": 0,
+     "sMinutes": "0:00",
+     "sPoints": 0,
+     "sFoulsOn": 0
+    },
+    "20": {
+     "shirtNumber": "5",
+     "firstName": "Jonnivius Kevonne",
+     "familyName": "Smith",
+     "starter": 1,
+     "sMinutes": "25:47",
+     "sPoints": 7,
+     "sFoulsOn": 3
+    },
+    "7": {
+     "shirtNumber": "7",
+     "firstName": "Renato",
+     "familyName": "Munoz Fuentes",
+     "starter": 1,
+     "sMinutes": "23:12",
+     "sPoints": 10,
+     "sFoulsOn": 3
+    },
+    "9": {
+     "shirtNumber": "9",
+     "firstName": "Victor",
+     "familyName": "Carmona Cifuentes",
+     "starter": 0,
+     "sMinutes": "10:45",
+     "sPoints": 0,
+     "sFoulsOn": 0
+    },
+    "11": {
+     "shirtNumber": "12",
+     "firstName": "Benjamin I.",
+     "familyName": "Araya Ulloa",
+     "starter": 0,
+     "sMinutes": "0:00",
+     "sPoints": 0,
+     "sFoulsOn": 0
+    },
+    "2": {
+     "shirtNumber": "13",
+     "firstName": "Felix",
+     "familyName": "Ibarra Gilabert",
+     "starter": 0,
+     "sMinutes": "15:37",
+     "sPoints": 6,
+     "sFoulsOn": 1
+    },
+    "1": {
+     "shirtNumber": "14",
+     "firstName": "Joaquin",
+     "familyName": "Pino Hernandez",
+     "starter": 1,
+     "sMinutes": "33:05",
+     "sPoints": 8,
+     "sFoulsOn": 2
+    },
+    "12": {
+     "shirtNumber": "15",
+     "firstName": "Ignacio",
+     "familyName": "Ansaldo Toloza",
+     "starter": 0,
+     "sMinutes": "10:38",
+     "sPoints": 4,
+     "sFoulsOn": 0
+    },
+    "4": {
+     "shirtNumber": "25",
+     "firstName": "Ricardo",
+     "familyName": "Armijo Lagos",
+     "starter": 1,
+     "sMinutes": "24:50",
+     "sPoints": 5,
+     "sFoulsOn": 1
+    },
+    "5": {
+     "shirtNumber": "40",
+     "firstName": "Rakim Dominic",
+     "familyName": "Brown",
+     "starter": 1,
+     "sMinutes": "32:50",
+     "sPoints": 15,
+     "sFoulsOn": 5
+    }
+   }
+  },
+  "2": {
+   "name": "CD ESPANOL TALCA",
+   "code": "EST",
+   "coach": "Hector Vera Alfaro",
+   "score": 60,
+   "pl": {
+    "6": {
+     "shirtNumber": "5",
+     "firstName": "Sebastian",
+     "familyName": "Rojas Rojas",
+     "starter": 0,
+     "sMinutes": "0:00",
+     "sPoints": 0,
+     "sFoulsOn": 0
+    },
+    "9": {
+     "shirtNumber": "6",
+     "firstName": "Ignacio E.",
+     "familyName": "Caceres Cerda",
+     "starter": 0,
+     "sMinutes": "0:00",
+     "sPoints": 0,
+     "sFoulsOn": 0
+    },
+    "2": {
+     "shirtNumber": "7",
+     "firstName": "Mohunir",
+     "familyName": "Zerene Sarabia",
+     "starter": 0,
+     "sMinutes": "20:10",
+     "sPoints": 10,
+     "sFoulsOn": 1
+    },
+    "10": {
+     "shirtNumber": "8",
+     "firstName": "Tomas A.",
+     "familyName": "Lueiza Espinoza",
+     "starter": 0,
+     "sMinutes": "0:00",
+     "sPoints": 0,
+     "sFoulsOn": 0
+    },
+    "4": {
+     "shirtNumber": "9",
+     "firstName": "Pablo",
+     "familyName": "Barraza Gomez",
+     "starter": 1,
+     "sMinutes": "36:32",
+     "sPoints": 12,
+     "sFoulsOn": 4
+    },
+    "12": {
+     "shirtNumber": "11",
+     "firstName": "Cristian",
+     "familyName": "Zenclussen",
+     "starter": 1,
+     "sMinutes": "32:50",
+     "sPoints": 10,
+     "sFoulsOn": 4
+    },
+    "1": {
+     "shirtNumber": "13",
+     "firstName": "Sergio",
+     "familyName": "Chialva Balut",
+     "starter": 0,
+     "sMinutes": "11:04",
+     "sPoints": 0,
+     "sFoulsOn": 2
+    },
+    "11": {
+     "shirtNumber": "14",
+     "firstName": "Manolo",
+     "familyName": "Valdes Rojas",
+     "starter": 0,
+     "sMinutes": "0:40",
+     "sPoints": 0,
+     "sFoulsOn": 0
+    },
+    "15": {
+     "shirtNumber": "21",
+     "firstName": "Ramiro",
+     "familyName": "Rattero",
+     "starter": 1,
+     "sMinutes": "35:05",
+     "sPoints": 12,
+     "sFoulsOn": 5
+    },
+    "5": {
+     "shirtNumber": "22",
+     "firstName": "Luciano",
+     "familyName": "Tognon Garay",
+     "starter": 1,
+     "sMinutes": "29:41",
+     "sPoints": 12,
+     "sFoulsOn": 3
+    },
+    "3": {
+     "shirtNumber": "23",
+     "firstName": "Giann C.",
+     "familyName": "Caraboni Contreras",
+     "starter": 1,
+     "sMinutes": "29:48",
+     "sPoints": 4,
+     "sFoulsOn": 2
+    },
+    "8": {
+     "shirtNumber": "24",
+     "firstName": "Claudio",
+     "familyName": "Cabrera Guzman",
+     "starter": 0,
+     "sMinutes": "4:10",
+     "sPoints": 0,
+     "sFoulsOn": 1
+    }
+   }
+  }
+ }
+}

@@ -77,7 +77,8 @@ decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**
 **Francia (Betclic ÉLITE y ÉLITE 2)**, **Grecia (GBL y Elite League)**,
 **Turquía (Basketbol Süper Ligi)**, **Alemania (BBL y ProA)**, **Israel (Ligat
 Winner)**, **Lituania (LKL y NKL)**, la **Liga Adriática (ABA y ABA2)**, la
-**BNXT (Bélgica y Países Bajos)**, la **Liga Nacional argentina** y así país a país.
+**BNXT (Bélgica y Países Bajos)**, la **Liga Nacional argentina**, la **LNB chilena** y
+así país a país.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -100,6 +101,7 @@ pnpm real:aba     # ABA y ABA2         → .real-data-cache/sources/aba-2025.jso
 pnpm real:bnxt    # BNXT League        → .real-data-cache/sources/bnxt-2025.json
 pnpm real:adc     # Liga Nacional (ARG) → .real-data-cache/sources/adc-lnb-2025.json
                   # y la Conferencia Sur de La Liga Argentina → adc-lla-sur-2025.json
+pnpm real:lnbch   # LNB chilena       → .real-data-cache/sources/lnbch-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -130,6 +132,7 @@ inventado.
 | BNXT League (`bnxt-1`)        | `bnxtleague.com`           | La API JSON de su web (sportpress): clasificación, calendarios, las 306 actas de liga regular y las plantillas. Entran los 18.                       |
 | Liga Nacional (`argentina-1`) | `laliganacional.com.ar`    | HTML de la AdC: calendarios de cada club, las 342 actas de la fase regular y la ficha de cada jugador (sólo la fecha). Entran los 19 y Lanús.        |
 | La Liga Argentina (Sur)       | `laliganacional.com.ar`    | La misma web: la Conferencia Sur entera (272 actas). Sólo entra Lanús, en `argentina-1` (ver «Equipos invitados»).                                   |
+| LNB chilena (`chile-1`)       | Genius Sports + LiveStats  | La web «hosted» de FEBACHILE (plantillas y las 144 actas de la Transición 2025 y el Apertura 2026) y el `data.json` de cada partido. Ver «Chile».    |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -756,6 +759,67 @@ peticiones y cerca de hora y media.
 - La copa: la Súper 20 ya no se juega; la de la 2025-26 fue la **Copa Islas
   Malvinas** («Malvinas»), la que toma la del juego.
 
+#### Chile (Genius Sports)
+
+`pnpm real:lnbch` deja `lnbch-2025.json` (`chile-1`). Dos segundos y medio
+entre peticiones; la primera vez, unas 420 peticiones y veinte minutos.
+
+- **La temporada son dos torneos.** La LNB chilena (la «Liga UNO», Liga Chery
+  by Cecinas Llanquihue) dejó de jugarse por años en 2025: la **Transición
+  2025** (25-09 al 20-12-2025, 12 equipos en dos conferencias de 6, 10
+  partidos por club) y el **Apertura 2026** (25-03 al 13-06-2026, 14 en dos
+  de 7, 12 por club) son juntos la 2025-26 del juego. Se suman sus fases
+  regulares: **22 partidos por club**. La Liga 2025 (enero-junio de 2025) era
+  la 2024-25 y el Clausura 2026, la 2026-27.
+- **Los 12**: los de la Transición, que son los del juego (Boston College
+  compró la plaza de Sportiva Italiana, que se retiró). En el Apertura
+  entraron Puerto Montt (campeón de la Liga DOS) y Castro: no se extraen como
+  equipos, pero sus partidos contra los 12 cuentan para las estadísticas.
+- **Clasificación**: la suma de las dos fases regulares, con el desempate de
+  la liga (victorias, diferencia): UdeC y Los Leones 18-4, Osorno 15-7…
+  Español de Talca 4-18. Va fija en `lnbch.ts` y se comprueba con las actas.
+  Un partido se dio por perdido en los despachos (Los Leones–UdeC, 0-20 por
+  un jugador mal inscrito; en la pista, 88-97): cuenta la victoria oficial y
+  las estadísticas de la pista (`FORFEITS`).
+- **Genius «hosted»** (`hosted.dcd.shared.geniussports.com/embednf/FDBCH/es/…`,
+  la web de FEBACHILE): contesta un JSON con el HTML dentro. Competiciones
+  42131 (Transición) y 48076 (Apertura), fases «Conferencia centro» y
+  «Conferencia sur». De ahí salen los equipos, el calendario, la plantilla
+  (fecha de nacimiento y nacionalidad; la altura casi nunca y el puesto, de
+  relleno), el cuerpo técnico y el **acta** con el **id de persona**, que es
+  el mismo en los dos torneos. Contesta a veces un 404 suelto: se reintenta.
+  El id de equipo cambia en dos clubes (Puente Alto y Las Ánimas): la tabla
+  de clubes lleva los dos.
+- **FIBA LiveStats** (`fibalivestats…/data/<partido>/data.json`): el acta de
+  Genius no trae titulares ni faltas recibidas; el `data.json` sí, y también
+  el nombre legal completo y el entrenador, pero no el id. Se casan por
+  dorsal y apellido (o la inicial: la mesa teclea «Suzum» por «Sudzum» o
+  «Henry Lenell D»). Dos vienen sin números o cortados: en esos, sin
+  titulares ni faltas recibidas.
+- **Quien cambió de club** entre torneos (una veintena) se queda donde más
+  minutos jugó; quien se fue a Puerto Montt o Castro, en su club de los 12
+  (lo jugado allí no cuenta).
+- **Altura, puesto y nombre con tildes**: de las fichas de los clubes en la
+  Wikipedia en español (tablas por temporada con bandera, puesto B/E/A/AP/P,
+  altura y fecha; cinco versiones, de noviembre de 2025 a septiembre de
+  2026). Sin puesto ni altura, `positionFromStats` (el de Argentina). La
+  Wikipedia pone «AP» a casi todos los americanos: los ala-pívots de menos de
+  198 cm pasan a alero (`chileanPosition`; sin eso, un 30 % de ala-pívots).
+- **Nacionalidad**: la de Genius, corregida con la Wikipedia (la de la
+  ficha del club o la tabla de extranjeros de cada torneo, que tiene a los
+  cortados): Fundora cubano (Genius: ECU), Bieshaar neerlandés (USA), Corbett
+  de las Islas Vírgenes de EE. UU. (USA). Los nacionalizados (dos banderas en
+  la Wikipedia o chilenos en Genius) y los que vienen vacíos, chilenos.
+- **Nombres**: el nombre de pila del `data.json` y, en los de habla hispana,
+  el **primer apellido** («Herrera Alvarez» → Herrera) con sus partículas
+  («De la Fuente»); los de fuera, el apellido entero. Las excepciones
+  (compuestos como Vander Stell, cortados con el nombre mal escrito) van en
+  `lnbch-jugadores.json`, por id de persona.
+- **Club**: nombre de uso y abreviatura propia (las de Genius chocan con
+  códigos de país: ESP, COL), ciudad, pabellón y aforo de la Wikipedia.
+- La copa: la **Copa Chile** (se jugó dos veces en la temporada, en noviembre
+  de 2025 y mayo de 2026), que ya es el nombre de la ficticia.
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -829,6 +893,10 @@ Cómo entran:
 - **Liga Adriática**: las dos tienen **dos de más** (18 para 16 y 16 para 14):
   no entran las invitaciones de Rumanía y Austria en la ABA ni los dos
   macedonios en la ABA2 (`SourceLeague.excluded`, ver «Liga Adriática»).
+- **Chile**: la temporada son dos torneos. La Transición 2025 tuvo los **12**
+  del juego y el Apertura 2026, **14**: Puerto Montt y Castro, que sólo
+  jugaron el segundo, no se extraen como equipos (sus partidos contra los 12
+  sí cuentan). Ver «Chile».
 
 ### Conversión (`real:build`)
 
@@ -870,7 +938,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas, las adriáticas, la BNXT y la argentina, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas, las adriáticas, la BNXT, la argentina y la chilena, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -1032,6 +1100,20 @@ siguen inventados.
   El de Peñarol va como «Leo Costa», su nombre de uso: «Leonardo Costa» es
   también un jugador inventado del dataset público y `edition.test.ts` no
   deja que un nombre real se cuele en él.
+- **LNB chilena**: el del `data.json` de LiveStats del **primer partido de la
+  Transición 2025** de cada club; `real:lnbch` avisa de cada cambio que ve.
+  Genius no da ni fecha ni nacionalidad: van a mano en
+  `lnbch-entrenadores.json` (`inicio`, por id de club de la Transición, con el
+  mismo formato que el argentino). Sólo cambió uno en toda la temporada: en
+  ABA Ancud, Sebastián Figueredo dejó el sitio a Jorge Luis Álvarez entre los
+  dos torneos. En Boston College el `data.json` pone a Sergio Correa en todos
+  los partidos, pero el entrenador es **Benjamín Gasc** (el del acta tendrá
+  la licencia): manda la mano. Con fecha, Santiago Gómez, Guillermo Frutos y
+  Bernardo Murphy; con edad de prensa, Damián Gamarra y Sebastián Figueredo.
+  De los otros siete (Español de Osorno, Puente Alto, Las Ánimas, CD
+  Valdivia, Colo-Colo, Boston College y Español de Talca), todos chilenos, no
+  se ha encontrado ni fecha ni edad: el juego se los inventa, las siete
+  excepciones que admite `edition.test.ts` en `chile-1`.
 - **Serie A2** y **Segunda FEB**: sólo el del equipo invitado. La LNP no publica
   los técnicos de temporadas pasadas: el de la A2 es el del inicio de temporada
   y va a mano en `resources/real-data/manual/lnp-entrenadores.json` (por id de
