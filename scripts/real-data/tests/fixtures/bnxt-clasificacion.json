@@ -1,0 +1,130 @@
+{
+ "data": [
+  {
+   "team": {
+    "id": 506,
+    "name": "Windrose Giants Antwerp playoff",
+    "short_name": "ANT",
+    "club": {
+     "id": 1,
+     "name": "Belgium"
+    },
+    "created_at": "2025-06-25"
+   },
+   "win": 29,
+   "loss": 5,
+   "even": 0,
+   "score": 3286,
+   "against": 2622,
+   "percent": 85.3,
+   "score_difference": 664,
+   "point": 63,
+   "position": 1,
+   "played": 34,
+   "point_percent": 0.93,
+   "win_loss": {
+    "home": {
+     "win": 16,
+     "loss": 1
+    },
+    "away": {
+     "win": 13,
+     "loss": 4
+    }
+   },
+   "last5": {
+    "win": 5,
+    "loss": 0
+   },
+   "streak": {
+    "is_win": true,
+    "count": 7
+   },
+   "group": null
+  },
+  {
+   "team": {
+    "id": 504,
+    "name": "Filou Oostende playoff",
+    "short_name": "OOS",
+    "club": {
+     "id": 1,
+     "name": "Belgium"
+    },
+    "created_at": "2025-06-25"
+   },
+   "win": 25,
+   "loss": 9,
+   "even": 0,
+   "score": 3019,
+   "against": 2698,
+   "percent": 73.5,
+   "score_difference": 321,
+   "point": 59,
+   "position": 2,
+   "played": 34,
+   "point_percent": 0.87,
+   "win_loss": {
+    "home": {
+     "win": 14,
+     "loss": 3
+    },
+    "away": {
+     "win": 11,
+     "loss": 6
+    }
+   },
+   "last5": {
+    "win": 3,
+    "loss": 2
+   },
+   "streak": {
+    "is_win": true,
+    "count": 1
+   },
+   "group": null
+  },
+  {
+   "team": {
+    "id": 518,
+    "name": "Zeeuw & Zeeuw Rotterdam City",
+    "short_name": "RCB",
+    "club": {
+     "id": 2,
+     "name": "Netherlands"
+    },
+    "created_at": "2025-06-25"
+   },
+   "win": 4,
+   "loss": 30,
+   "even": 0,
+   "score": 2520,
+   "against": 3096,
+   "percent": 11.8,
+   "score_difference": -576,
+   "point": 38,
+   "position": 17,
+   "played": 34,
+   "point_percent": 0.56,
+   "win_loss": {
+    "home": {
+     "win": 4,
+     "loss": 13
+    },
+    "away": {
+     "win": 0,
+     "loss": 17
+    }
+   },
+   "last5": {
+    "win": 0,
+    "loss": 5
+   },
+   "streak": {
+    "is_win": false,
+    "count": 6
+   },
+   "group": null
+  }
+ ]
+}

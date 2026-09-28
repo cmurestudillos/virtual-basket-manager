@@ -61,6 +61,7 @@
     "real:winner": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/winner.ts",
     "real:lkl": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/lkl.ts",
     "real:aba": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/aba.ts",
+    "real:bnxt": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/bnxt.ts",
     "real:build": "tsx --tsconfig tsconfig.node.json scripts/real-data/build-real-dataset.ts"
   },
   "dependencies": {

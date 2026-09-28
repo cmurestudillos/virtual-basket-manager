@@ -56,7 +56,10 @@ const REAL_CUPS: Record<string, { name: string; shortName: string }> = {
   GER: { name: 'BBL-Pokal', shortName: 'Pokal' },
   ISR: { name: 'Gvia HaMedina', shortName: 'Gvia' },
   LTU: { name: 'Karaliaus Mindaugo taurė', shortName: 'KMT' },
-  ABA: { name: 'ABA Super Cup', shortName: 'Supercup' }
+  ABA: { name: 'ABA Super Cup', shortName: 'Supercup' },
+  // La BNXT no tiene copa conjunta (cada país juega la suya): la del juego
+  // enfrenta a clubes de los dos, así que lleva el nombre de la liga.
+  BNL: { name: 'BNXT Cup', shortName: 'Cup' }
 };
 
 /** Altura típica por puesto: para quien no la trae y para deducir el puesto. */

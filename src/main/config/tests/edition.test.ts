@@ -139,9 +139,9 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
   // Los entrenadores reales: los clubes de la ACB, la Primera FEB, la Serie A
   // (con el que sube de la A2), las dos ligas francesas, la A1 griega (con el
   // que sube de la Elite League), la liga turca, las dos alemanas, la
-  // israelí, la LKL y la Liga Adriática llevan el suyo. La Elite League, la
-  // NKL lituana y la ABA2 no: de algunos de sus entrenadores no se ha
-  // encontrado la fecha de nacimiento y el juego se los inventa.
+  // israelí, la LKL, la Liga Adriática y la BNXT llevan el suyo. La Elite
+  // League, la NKL lituana y la ABA2 no: de algunos de sus entrenadores no se
+  // ha encontrado la fecha de nacimiento y el juego se los inventa.
   const coachLeagues = [
     'liga-nacional',
     'liga-plata',
@@ -154,13 +154,18 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
     'alemania-2',
     'israel-1',
     'lituania-1',
-    'adriatica-1'
+    'adriatica-1',
+    'bnxt-1'
   ].filter((id) => realLeagues.has(id));
   // Las excepciones, liga a liga y contadas: clubes cuyo primer entrenador no
   // tiene fecha de nacimiento en ninguna fuente fiable, así que el juego se lo
-  // inventa. Israel: uno. Lituania: los tres que suben de la NKL (ver
-  // docs/DATASET-REAL.md).
-  const INVENTED_COACHES: Record<string, number> = { 'israel-1': 1, 'lituania-1': 3 };
+  // inventa. Israel: uno. Lituania: los tres que suben de la NKL. BNXT: dos
+  // (LWD y Rotterdam; ver docs/DATASET-REAL.md).
+  const INVENTED_COACHES: Record<string, number> = {
+    'israel-1': 1,
+    'lituania-1': 3,
+    'bnxt-1': 2
+  };
   const coachedTeams = realTeams.filter((team) => coachLeagues.includes(team.competitionId));
   const coachName = (coach: { firstName: string; lastName: string }): string =>
     `${coach.firstName} ${coach.lastName}`.trim().toLowerCase();

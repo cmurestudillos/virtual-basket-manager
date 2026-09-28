@@ -1,0 +1,166 @@
+{
+ "data": [
+  {
+   "id": 504,
+   "competition_id": 24,
+   "uu_team_id": 2,
+   "name": "Filou Oostende playoff",
+   "short_name": "OOS",
+   "club": {
+    "id": 1,
+    "name": "Belgium"
+   },
+   "staffs": [
+    {
+     "id": 599,
+     "competition_team_id": 504,
+     "staff": {
+      "id": 701,
+      "name": "Thierry Declercq",
+      "title": {
+       "id": 12,
+       "priority": 1,
+       "name": "Assistant coach",
+       "created_at": "2023-09-26"
+      },
+      "created_at": "2023-09-26"
+     },
+     "title": {
+      "id": 12,
+      "priority": 1,
+      "name": "Assistant coach",
+      "created_at": "2023-09-26"
+     },
+     "created_at": "2026-03-05"
+    },
+    {
+     "id": 601,
+     "competition_team_id": 504,
+     "staff": {
+      "id": 917,
+      "name": "Thomas Dreesen",
+      "title": {
+       "id": 12,
+       "priority": 1,
+       "name": "Assistant coach",
+       "created_at": "2023-09-26"
+      },
+      "created_at": "2025-08-29"
+     },
+     "title": {
+      "id": 12,
+      "priority": 1,
+      "name": "Assistant coach",
+      "created_at": "2023-09-26"
+     },
+     "created_at": "2026-03-05"
+    },
+    {
+     "id": 597,
+     "competition_team_id": 504,
+     "staff": {
+      "id": 951,
+      "name": "Dennis Wucherer",
+      "title": {
+       "id": 1,
+       "priority": 1,
+       "name": "Head coach",
+       "created_at": "2022-08-31"
+      },
+      "created_at": "2026-03-05"
+     },
+     "title": {
+      "id": 1,
+      "priority": 1,
+      "name": "Head coach",
+      "created_at": "2022-08-31"
+     },
+     "created_at": "2026-03-05"
+    }
+   ],
+   "statistics": [],
+   "created_at": "2025-06-25"
+  },
+  {
+   "id": 518,
+   "competition_id": 24,
+   "uu_team_id": 10,
+   "name": "Zeeuw & Zeeuw Rotterdam City",
+   "short_name": "RCB",
+   "club": {
+    "id": 2,
+    "name": "Netherlands"
+   },
+   "staffs": [
+    {
+     "id": 529,
+     "competition_team_id": 518,
+     "staff": {
+      "id": 781,
+      "name": "Deividas Kumelis",
+      "title": {
+       "id": 1,
+       "priority": 1,
+       "name": "Head coach",
+       "created_at": "2022-08-31"
+      },
+      "created_at": "2023-09-26"
+     },
+     "title": {
+      "id": 1,
+      "priority": 1,
+      "name": "Head coach",
+      "created_at": "2022-08-31"
+     },
+     "created_at": "2025-08-29"
+    },
+    {
+     "id": 583,
+     "competition_team_id": 518,
+     "staff": {
+      "id": 939,
+      "name": "Armand Salomon",
+      "title": {
+       "id": 12,
+       "priority": 1,
+       "name": "Assistant coach",
+       "created_at": "2023-09-26"
+      },
+      "created_at": "2025-08-29"
+     },
+     "title": {
+      "id": 12,
+      "priority": 1,
+      "name": "Assistant coach",
+      "created_at": "2023-09-26"
+     },
+     "created_at": "2025-08-29"
+    },
+    {
+     "id": 595,
+     "competition_team_id": 518,
+     "staff": {
+      "id": 949,
+      "name": "Vincent Krieger",
+      "title": {
+       "id": 12,
+       "priority": 1,
+       "name": "Assistant coach",
+       "created_at": "2023-09-26"
+      },
+      "created_at": "2026-02-17"
+     },
+     "title": {
+      "id": 12,
+      "priority": 1,
+      "name": "Assistant coach",
+      "created_at": "2023-09-26"
+     },
+     "created_at": "2026-02-17"
+    }
+   ],
+   "statistics": [],
+   "created_at": "2025-06-25"
+  }
+ ]
+}

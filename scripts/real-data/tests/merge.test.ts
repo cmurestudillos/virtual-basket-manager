@@ -676,3 +676,34 @@ describe('una liga de varios países (la Adriática)', () => {
     });
   });
 });
+
+describe('la BNXT: Bélgica y los Países Bajos en una liga', () => {
+  const bene = (): SourceLeague => {
+    const base = league();
+    base.teams[0]!.country = 'BEL';
+    base.teams[1]!.country = 'NED';
+    base.teams[2]!.country = 'BEL';
+    base.teams[3]!.country = 'NED';
+    return {
+      ...base,
+      competitionId: 'bnxt-1',
+      name: 'BNXT League',
+      shortName: 'BNXT',
+      country: 'BNL'
+    };
+  };
+  const { dataset } = mergeRealLeagues(fictitious, [bene()], known);
+
+  it('cada club lleva su país', () => {
+    const clubs = dataset.teams.filter((entry) => entry.competitionId === 'bnxt-1');
+    expect(clubs.find((entry) => entry.name === 'Club Real 1')?.country).toBe('BEL');
+    expect(clubs.find((entry) => entry.name === 'Club Real 2')?.country).toBe('NED');
+  });
+
+  it('la copa lleva el nombre de la liga', () => {
+    expect(dataset.competitions.find((entry) => entry.id === 'bnxt-copa')).toMatchObject({
+      name: 'BNXT Cup',
+      shortName: 'Cup'
+    });
+  });
+});

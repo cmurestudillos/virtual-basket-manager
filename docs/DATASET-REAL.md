@@ -76,8 +76,8 @@ de `dataset.json` que el ficticio (estadísticas → los 21 atributos). Orden
 decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**,
 **Francia (Betclic ÉLITE y ÉLITE 2)**, **Grecia (GBL y Elite League)**,
 **Turquía (Basketbol Süper Ligi)**, **Alemania (BBL y ProA)**, **Israel (Ligat
-Winner)**, **Lituania (LKL y NKL)**, la **Liga Adriática (ABA y ABA2)** y así
-país a país.
+Winner)**, **Lituania (LKL y NKL)**, la **Liga Adriática (ABA y ABA2)**, la
+**BNXT (Bélgica y Países Bajos)** y así país a país.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -97,6 +97,7 @@ pnpm real:lkl     # LKL y NKL          → .real-data-cache/sources/lkl-2025.jso
                   #                      y nkl-2025.json
 pnpm real:aba     # ABA y ABA2         → .real-data-cache/sources/aba-2025.json
                   #                      y aba2-2025.json
+pnpm real:bnxt    # BNXT League        → .real-data-cache/sources/bnxt-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -124,6 +125,7 @@ inventado.
 | NKL (`lituania-2`)            | `nkl.lt` + basketnews.lt   | Calendario de nkl.lt y actas y fichas de basketnews.lt (mismos ids). Sólo la primera fase. Suben 3 a la LKL y 2 no entran: 12 de 17.                 |
 | ABA League (`adriatica-1`)    | `aba-liga.com`             | HTML: clasificación por fases, las 144 actas de la fase de grupos y la plantilla de cada club. Entran 16 de 18 (fuera Cluj y Vienna).                |
 | ABA League 2 (`adriatica-2`)  | `druga.aba-liga.com`       | La misma aplicación: las 64 actas de liga (8 por club) y las plantillas. Entran 14 de 16 (fuera los dos macedonios).                                 |
+| BNXT League (`bnxt-1`)        | `bnxtleague.com`           | La API JSON de su web (sportpress): clasificación, calendarios, las 306 actas de liga regular y las plantillas. Entran los 18.                       |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -598,6 +600,80 @@ primera vez, unas 250 peticiones y siete minutos.
   «Conversión»).
 - La copa toma su nombre real: **ABA Super Cup** («Supercup»).
 
+#### BeNe (BNXT)
+
+`pnpm real:bnxt` deja `bnxt-2025.json` (`bnxt-1`). Un segundo y medio entre
+peticiones; la primera vez, unas 345 peticiones y nueve minutos.
+
+- **Una liga, dos países**: la BNXT League es la liga conjunta de Bélgica y
+  los Países Bajos. En el juego es un «país» propio (`BNL`) con las dos
+  banderas, sin segunda división. La liga real es `country: 'BNL'` y cada
+  club lleva el suyo (`BEL` o `NED`) en `SourceTeam.country`, que la API da
+  (`club.name`, «Belgium» o «Netherlands»).
+- **Formato real**: **18** equipos (10 belgas y 8 neerlandeses), los mismos
+  que la liga del juego: entran todos. Liga regular conjunta a doble vuelta
+  (34 partidos por club, 306 en total), cuyo primero es el campeón de la BNXT
+  (Antwerp); después, unos playoffs de cada país por separado, que no cuentan.
+  El **puesto final** es el de la liga regular.
+- **La API**: bnxtleague.com es una aplicación de Vue que lee la API JSON de
+  sportpress (`bnxt.sportpress.info/api/v1/`). Pide la cabecera
+  `X-Authorization` con una clave pública que va escrita en el JavaScript de
+  la web (si deja de valer, se copia de allí). La temporada es el año en que
+  acaba (`2026` es la 2025-26), la competición `24` y la liga regular, la
+  fase `169`. Sin anti-robots.
+  - **Clasificación** (`standings/competition/24/phase/169`) y **equipos**
+    (`competition-team/all?competition_id=24`): el id del equipo cambia cada
+    temporada; el del club (`uu_team_id`) no, y es el que se usa como
+    `sourceId` y en los ficheros a mano.
+  - **Calendario** de cada equipo (`schedule/club/2026?…&competition_team_id=<id>&month=-1`):
+    de la unión de los 18 salen los 306 partidos de la fase 169. Las victorias
+    del calendario se comparan con la clasificación.
+  - **Estadísticas**: la suma de las **actas** (`boxscore/game/24/<id>`):
+    minutos (**enteros**), tiros, rebotes de ataque y defensa, asistencias,
+    robos, pérdidas, tapones puestos y **recibidos**, faltas cometidas y
+    **recibidas** (`defensive_foul`), valoración y **titulares**. Los mates
+    vienen siempre a cero: no se usan. Se comprueba que los puntos cuadren con
+    el tanteo y que haya cinco titulares. El Rotterdam–Den Helder del
+    01-04-2026 (0-40) se dio por perdido y **no tiene acta**: cuenta en la
+    clasificación, no en las estadísticas (esos dos clubes tienen 33 actas).
+    Dos actas de Rotterdam no suman el tanteo (les falta un jugador): se avisa
+    y se usan.
+  - **Plantilla** (`roster/team-players/<id>`): la del **final**, sin los que
+    se fueron: puesto, altura, peso, fecha y nacionalidad. Quien jugó y ya no
+    está sale de su acta (nombre, fecha, nacionalidad y puesto) y, si está en
+    la plantilla de otro equipo, de ella la altura.
+- **El id de jugador es el de la persona**. Quien jugó en dos equipos de la
+  liga (en la 2025-26, tres) se queda sólo en el que más minutos jugó; lo
+  hace el extractor, porque a dos de ellos les falta la fecha y el montaje no
+  los reconocería.
+- **Puestos**: la API sólo tiene `point_guard` (base), `shooting_guard`
+  (escolta), `small_forward` y `center`, y a veces dos unidos por un guion
+  (cuenta el primero). No hay ala-pívots: lo son los aleros desde 205 cm
+  (`BNXT_POWER_FORWARD_CM`) y los pívots de menos de 203 cm
+  (`BNXT_CENTER_MIN_CM`; con 206 la liga se quedaba con un 11 % de pívots).
+- **Nacionalidad**: código **COI** (`SLO`, `SUI`, `GER`), no ISO
+  (`toNationCode`), a veces en minúsculas. Una vacía va a mano.
+- **Nombres**: los de uso; del nombre de pila legal («Troy Drake») se queda
+  el primero (`usualFirstName`), los sufijos se escriben igual («Junior»,
+  «Jr» → «Jr.»), lo que viene en mayúsculas se pasa a mayúscula inicial y las
+  partículas de los **neerlandeses** van en minúscula («Van Der Vuurst» →
+  «van der Vuurst»), como se escriben en los Países Bajos; las de los belgas,
+  como vienen («Van Den Eynde»).
+- **Lo que falta**: la API no da la fecha de nacimiento de muchos
+  estadounidenses. Las de Wikidata y, para los que pasan de unos 300 minutos,
+  las de RealGM, Eurobasket, Proballers o su universidad (sólo si coinciden o
+  hay una), van a mano en `resources/real-data/manual/bnxt-jugadores.json`
+  (`jugadores`, por id de jugador; también nombre de uso, nacionalidad,
+  altura o puesto). El resto se queda sin fecha y se avisa.
+- **Club**: nombre sin patrocinador (se quedan Landstede Hammers y Heroes Den
+  Bosch, que son nombres del club), abreviatura de la API, ciudad (en
+  español cuando lo tiene: Amberes, Ostende, Bruselas, Lovaina, Malinas,
+  Róterdam, Groninga) y pabellón con aforo de la Wikipedia inglesa, en
+  `BNXT_TEAMS` (`bnxt.ts`).
+- La copa: la BNXT no tiene copa conjunta (cada país juega la suya y hay una
+  supercopa entre los dos campeones); la del juego enfrenta a clubes de los
+  dos países y se llama **BNXT Cup** («Cup»).
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -660,6 +736,7 @@ Cómo entran:
   **17**: suben de la NKL los tres primeros que no son filiales
   (`SourceLeague.promoted`) y de los 14 que quedan, los dos últimos se quedan
   fuera (`SourceLeague.excluded`, ver «Lituania»).
+- **BNXT**: la real tuvo **18**, como la del juego: entran todos.
 - **Liga Adriática**: las dos tienen **dos de más** (18 para 16 y 16 para 14):
   no entran las invitaciones de Rumanía y Austria en la ABA ni los dos
   macedonios en la ABA2 (`SourceLeague.excluded`, ver «Liga Adriática»).
@@ -704,7 +781,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas y las adriáticas, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas, las adriáticas y la BNXT, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -839,6 +916,18 @@ siguen inventados.
   tenía el pasaporte en regla). En la ABA2 sólo 9 de 14 tienen fecha: los
   demás se inventan (por eso `edition.test.ts` no exige entrenador en
   `adriatica-2`).
+- **BNXT**: todos a mano, en `bnxt-entrenadores.json` (`inicio`, por id de
+  club de la API, con nombre de uso, nacimiento como la FEB, nacionalidad,
+  fuente, `despues` y `enApi`, cómo escribe la API al del final si no es
+  igual). La API sólo tiene el cuerpo técnico del **final** y las actas no
+  traen entrenador: el del inicio sale de la Wikipedia neerlandesa de la
+  temporada (tabla de clubes y de cambios de entrenador) y las fechas, de
+  Wikidata o de esa Wikipedia. `real:bnxt` avisa cuando el del final no es el
+  de la mano ni uno de los de `despues`. En la 2025-26 cambiaron Oostende
+  (empezó Georgios Dedas), Rotterdam (Tim Arns) y BAL (Radenko Varagić). De
+  van Sliedregt (LWD) y Arns (Rotterdam) no se ha encontrado la fecha: el
+  juego se los inventa, las dos excepciones que admite `edition.test.ts` en
+  `bnxt-1`.
 - **Serie A2** y **Segunda FEB**: sólo el del equipo invitado. La LNP no publica
   los técnicos de temporadas pasadas: el de la A2 es el del inicio de temporada
   y va a mano en `resources/real-data/manual/lnp-entrenadores.json` (por id de
