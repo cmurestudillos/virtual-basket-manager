@@ -17,6 +17,7 @@
 
 import type { CourtEvent } from '@shared/contracts/match.contract';
 import type { Position } from './positions';
+import { NATIONAL_TEAM_ID_PREFIX } from './national-teams';
 
 export const COURT_LENGTH = 28;
 export const COURT_WIDTH = 15;
@@ -682,8 +683,40 @@ function hashOf(text: string): number {
   return hash >>> 0;
 }
 
-/** La equipación de un club: la de casa, la que lleva su escudo. */
+/**
+ * Las selecciones visten el color por el que se las conoce —no un escudo ni un
+ * diseño concreto, sólo el color—, así que no salen del sorteo de `KITS`.
+ */
+export const NATIONAL_KITS: Readonly<Record<string, Kit>> = {
+  ARG: { shirt: '#7dd3fc', number: '#0f172a' },
+  AUS: { shirt: '#15803d', number: '#facc15' },
+  BEL: { shirt: '#dc2626', number: '#ffffff' },
+  BIH: { shirt: '#1d4ed8', number: '#facc15' },
+  BRA: { shirt: '#facc15', number: '#15803d' },
+  CHI: { shirt: '#dc2626', number: '#ffffff' },
+  CRO: { shirt: '#dc2626', number: '#ffffff' },
+  ESP: { shirt: '#c1121f', number: '#facc15' },
+  FRA: { shirt: '#1e3a8a', number: '#ffffff' },
+  GER: { shirt: '#111827', number: '#ffffff' },
+  GRE: { shirt: '#1d4ed8', number: '#ffffff' },
+  ISR: { shirt: '#1d4ed8', number: '#ffffff' },
+  ITA: { shirt: '#2563eb', number: '#ffffff' },
+  LTU: { shirt: '#fbbf24', number: '#166534' },
+  MNE: { shirt: '#b91c1c', number: '#facc15' },
+  NED: { shirt: '#f97316', number: '#ffffff' },
+  SEN: { shirt: '#16a34a', number: '#facc15' },
+  SLO: { shirt: '#16a34a', number: '#ffffff' },
+  SRB: { shirt: '#b91c1c', number: '#ffffff' },
+  TUR: { shirt: '#dc2626', number: '#ffffff' },
+  USA: { shirt: '#1e3a8a', number: '#ffffff' }
+};
+
+/** La equipación de un club: la de casa, la que lleva su escudo. Las selecciones, la de su país. */
 export function teamKit(teamId: string): Kit {
+  if (teamId.startsWith(NATIONAL_TEAM_ID_PREFIX)) {
+    const national = NATIONAL_KITS[teamId.slice(NATIONAL_TEAM_ID_PREFIX.length).toUpperCase()];
+    if (national) return national;
+  }
   return KITS[hashOf(teamId) % KITS.length] as Kit;
 }
 
@@ -691,7 +724,7 @@ export function teamKit(teamId: string): Kit {
 export function matchKits(homeTeamId: string, awayTeamId: string): Record<CourtSide, Kit> {
   const home = teamKit(homeTeamId);
   const away = teamKit(awayTeamId);
-  return { home, away: away === home ? AWAY_KIT : away };
+  return { home, away: away.shirt === home.shirt ? AWAY_KIT : away };
 }
 
 /**

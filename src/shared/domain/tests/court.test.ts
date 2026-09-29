@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import type { CourtEvent } from '@shared/contracts/match.contract';
+import { nationalTeamId } from '@shared/domain/national-teams';
 import { FIBA_RULESET } from '@shared/domain/rulesets';
 import { simulateGame, type EngineTeam, type GameEvent } from '@shared/engine/basketball';
 import { buildTestTeam } from '@shared/engine/basketball/tests/test-teams';
@@ -11,9 +12,12 @@ import {
   COURT_WIDTH,
   CourtDirector,
   hoopFor,
+  KITS,
   matchKits,
+  NATIONAL_KITS,
   shirtNumbers,
   shortPlayerName,
+  teamKit,
   THREE_POINT_RADIUS,
   type CourtBeat,
   type CourtRosterPlayer
@@ -229,6 +233,18 @@ describe('equipaciones y dorsales', () => {
 
   it('si los dos visten igual, el visitante va de blanco', () => {
     const kits = matchKits('mismo', 'mismo');
+    expect(kits.away).toBe(AWAY_KIT);
+  });
+
+  it('las selecciones visten el color de su país', () => {
+    expect(teamKit(nationalTeamId('ESP'))).toBe(NATIONAL_KITS.ESP);
+    expect(teamKit(nationalTeamId('NED')).shirt).toBe('#f97316');
+    // Una selección sin color propio sale del sorteo, como un club.
+    expect(KITS).toContain(teamKit(nationalTeamId('XXX')));
+  });
+
+  it('dos selecciones del mismo color: el visitante va de blanco', () => {
+    const kits = matchKits(nationalTeamId('SRB'), nationalTeamId('MNE'));
     expect(kits.away).toBe(AWAY_KIT);
   });
 
