@@ -1,4 +1,4 @@
-import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or } from 'drizzle-orm';
+import { and, asc, desc, eq, inArray, isNotNull, isNull, lt, or, sql } from 'drizzle-orm';
 import type { SaveDatabase } from '../../database/save-database';
 import {
   boardTable,
@@ -181,11 +181,15 @@ export class InboxRepository {
     });
   }
 
+  /**
+   * El mismo día, el último en llegar arriba: por orden de alta (`rowid`), no
+   * por el id, que es un UUID y dejaría el orden al azar.
+   */
   messages(): InboxMessageRow[] {
     return this.db
       .select()
       .from(inboxMessagesTable)
-      .orderBy(desc(inboxMessagesTable.createdOn), desc(inboxMessagesTable.id))
+      .orderBy(desc(inboxMessagesTable.createdOn), sql`rowid DESC`)
       .all();
   }
 

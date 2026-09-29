@@ -15,7 +15,8 @@ import {
   gamesTable,
   playersTable,
   pressConferencesTable,
-  teamsTable
+  teamsTable,
+  type NewInboxMessageRow
 } from '../../../database/schema/save';
 import { loadDataset } from '../../saves/dataset';
 import { seedSave } from '../../saves/save-seeder';
@@ -27,6 +28,7 @@ import {
   PressConferenceClosedError,
   PressConferenceNotFoundError
 } from '../inbox.service';
+import { InboxRepository } from '../inbox.repository';
 
 /**
  * La bandeja contra una partida de verdad.
@@ -313,5 +315,27 @@ describe('ruedas de prensa', () => {
     expect(() => inbox.answerPress(ruedas.find((row) => row.expired)!.id, 'humble')).toThrow(
       PressConferenceClosedError
     );
+  });
+});
+
+describe('orden de la bandeja', () => {
+  it('el mismo día, el último en llegar va arriba, sea cual sea su id', () => {
+    const repository = new InboxRepository(db);
+    const on = new Date('2025-10-05T00:00:00Z');
+    const message = (id: string): NewInboxMessageRow => ({
+      id,
+      createdOn: on,
+      seasonNumber: 1,
+      category: 'board',
+      title: id,
+      body: id
+    });
+    repository.insertMessages([message('c'), message('a'), message('b')]);
+
+    const sameDay = repository
+      .messages()
+      .filter((row) => row.createdOn.getTime() === on.getTime())
+      .map((row) => row.id);
+    expect(sameDay).toEqual(['b', 'a', 'c']);
   });
 });
