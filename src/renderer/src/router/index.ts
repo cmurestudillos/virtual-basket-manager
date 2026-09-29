@@ -163,6 +163,14 @@ export const router = createRouter({
       path: '/game/match/:gameId',
       name: 'match',
       component: () => import('@renderer/features/match/pages/MatchPage.vue')
+    },
+    {
+      // La pantalla de campeón y la gala (trofeos, 2026-09-29), fuera del
+      // layout por lo mismo que el partido: es una retransmisión, y la barra
+      // lateral al lado de la copa sobra.
+      path: '/game/celebration',
+      name: 'celebration',
+      component: () => import('@renderer/features/trophies/pages/CelebrationPage.vue')
     }
   ]
 });

@@ -18,6 +18,7 @@ import { registerYouthIpcHandlers } from '../features/youth/youth.ipc-handler';
 import { registerMarketIpcHandlers } from '../features/market/market.ipc-handler';
 import { registerMatchIpcHandlers } from '../features/match/match.ipc-handler';
 import { registerHistoryIpcHandlers } from '../features/history/history.ipc-handler';
+import { registerTrophiesIpcHandlers } from '../features/trophies/trophies.ipc-handler';
 import { registerNationalIpcHandlers } from '../features/national/national.ipc-handler';
 import { registerDraftIpcHandlers } from '../features/draft/draft.ipc-handler';
 import { registerCareerIpcHandlers } from '../features/career/career.ipc-handler';
@@ -49,6 +50,7 @@ export function registerIpcHandlers(): void {
   registerMarketIpcHandlers();
   registerMatchIpcHandlers();
   registerHistoryIpcHandlers();
+  registerTrophiesIpcHandlers();
   registerCareerIpcHandlers();
   registerNationalIpcHandlers();
   registerDraftIpcHandlers();

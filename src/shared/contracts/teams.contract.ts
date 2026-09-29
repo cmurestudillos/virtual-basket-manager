@@ -1,7 +1,7 @@
 import type { BoardObjective } from '@shared/domain/board';
 import type { CompetitionKind } from '@shared/domain/competition-kind';
 import type { MatchScouting } from '@shared/contracts/match.contract';
-import type { TrophyEntry } from '@shared/contracts/history.contract';
+import type { PromotionEntry, TrophyEntry } from '@shared/contracts/history.contract';
 import type { PlayerSummary } from '@shared/contracts/players.contract';
 import type { StandingEntry } from '@shared/contracts/season.contract';
 import type { PlayerSeasonStats } from '@shared/contracts/stats.contract';
@@ -163,6 +163,8 @@ export interface TeamProfile {
   } | null;
   trophies: TrophyEntry[];
   totalTrophies: number;
+  /** Sus ascensos en la partida: placa en la vitrina, sin contar como título. */
+  promotions: PromotionEntry[];
   leaders: TeamProfileLeader[];
   squad: TeamProfilePlayer[];
   /** Medias de temporada de la plantilla en su liga. */

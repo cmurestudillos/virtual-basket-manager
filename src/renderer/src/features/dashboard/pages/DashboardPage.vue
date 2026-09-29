@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { computed, onMounted, ref, watch } from 'vue';
-import { RouterLink } from 'vue-router';
+import { RouterLink, useRouter } from 'vue-router';
 import { storeToRefs } from 'pinia';
 import { matchKits } from '@shared/domain/court';
 import type {
@@ -34,6 +34,7 @@ import { useGameStateStore } from '@renderer/shared/game-state.store';
 import { useSeasonStore } from '@renderer/features/season/season.store';
 import { useContinueStore } from '@renderer/features/season/continue.store';
 import { useInboxStore } from '@renderer/features/inbox/inbox.store';
+import { goToPendingCelebrations } from '@renderer/features/trophies/usePendingCelebrations';
 import {
   formatMatchDate,
   formatMoney,
@@ -62,6 +63,7 @@ const gameState = useGameStateStore();
 const seasonStore = useSeasonStore();
 const continuing = useContinueStore();
 const inbox = useInboxStore();
+const router = useRouter();
 
 const team = ref<TeamSummary | null>(null);
 const standings = ref<StandingEntry[]>([]);
@@ -135,6 +137,11 @@ const restingRound = computed(() =>
 );
 
 onMounted(async () => {
+  // Un título ganado mientras no se miraba (al cargar la partida, al volver
+  // del partido): su pantalla, antes que el inicio.
+  if (await goToPendingCelebrations(router)) {
+    return;
+  }
   if (!gameState.state) {
     await gameState.refresh();
   }

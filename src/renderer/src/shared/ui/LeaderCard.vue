@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import AppAvatar from './AppAvatar.vue';
+import type { AvatarKind } from './avatars';
 import AppFlag from './AppFlag.vue';
 import PlayerName from './PlayerName.vue';
 
@@ -29,13 +30,28 @@ withDefaults(
     rank?: number | null;
     /** `initial` («A. KOZŁOWSKI») para columnas estrechas. */
     nameMode?: 'full' | 'initial';
+    /** De quién es la cara: un jugador casi siempre; el entrenador del año, en la gala. */
+    avatarKind?: AvatarKind;
+    /** Lo tuyo (tu jugador, tu entrenador): la franja en azul pálido. */
+    mine?: boolean;
   }>(),
-  { valueLabel: 'Media', nationality: null, note: '', rank: null, nameMode: 'full' }
+  {
+    valueLabel: 'Media',
+    nationality: null,
+    note: '',
+    rank: null,
+    nameMode: 'full',
+    avatarKind: 'player',
+    mine: false
+  }
 );
 </script>
 
 <template>
-  <article class="flex min-w-0 items-stretch bg-tv-cell text-tv-ink">
+  <article
+    class="flex min-w-0 items-stretch text-tv-ink"
+    :class="mine ? 'bg-tv-select' : 'bg-tv-cell'"
+  >
     <span
       v-if="rank !== null"
       class="figure flex w-7 shrink-0 items-center justify-center bg-tv-800 text-sm font-bold text-white"
@@ -43,7 +59,7 @@ withDefaults(
       {{ rank }}
     </span>
     <div class="flex min-w-0 flex-1 items-center gap-3 px-2 py-1.5">
-      <AppAvatar kind="player" :seed="seed" :name="name" :size="44" />
+      <AppAvatar :kind="avatarKind" :seed="seed" :name="name" :size="44" />
       <div class="flex min-w-0 flex-1 flex-col leading-tight">
         <span class="truncate text-sm">{{ label }}</span>
         <span class="flex min-w-0 items-center gap-1.5 text-sm font-bold">

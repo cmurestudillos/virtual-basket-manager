@@ -13,23 +13,32 @@
  * los récords en una lista con aspecto de tabla (celdas grises separadas por
  * huecos; lo tuyo, en azul pálido). Es lista y no tabla porque el arnés cuenta
  * sus filas como `li`.
+ *
+ * Trofeos (2026-09-29): cada título en la vitrina con **su** copa en 3D (forma
+ * por tipo, metal por categoría; ver `shared/domain/trophies.ts`), los
+ * ascensos aparte con su placa y sin sumar al contador, y la pestaña Galas con
+ * los premios de fin de temporada de la liga que jugaba el club cada año.
  */
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import type { HistoryView } from '@shared/contracts/history.contract';
 import {
   AppBadge,
   AppEmpty,
   AppFlag,
   AppPanel,
+  AppSelect,
   AppStat,
   AppTabs,
   PlayerName,
   TONE_TEXT,
+  type SelectOption,
   type TabOption
 } from '@renderer/shared/ui';
 import PageToolbar from '@renderer/features/app-shell/components/PageToolbar.vue';
+import GalaAwards from '@renderer/features/trophies/components/GalaAwards.vue';
+import TrophyThumbnail from '@renderer/features/trophies/components/TrophyThumbnail.vue';
 
-type Tab = 'seasons' | 'trophies' | 'records';
+type Tab = 'seasons' | 'trophies' | 'galas' | 'records';
 
 const tab = ref<Tab>('seasons');
 const view = ref<HistoryView | null>(null);
@@ -37,8 +46,31 @@ const view = ref<HistoryView | null>(null);
 const TABS: TabOption[] = [
   { id: 'seasons', label: 'Temporadas' },
   { id: 'trophies', label: 'Palmarés' },
+  { id: 'galas', label: 'Galas' },
   { id: 'records', label: 'Récords' }
 ];
+
+/** La gala que se mira: por defecto, la última. */
+const galaSeasonId = ref('');
+const galaOptions = computed<SelectOption[]>(() =>
+  (view.value?.galas ?? []).map((gala) => ({
+    id: gala.seasonId,
+    label: `${gala.years} · ${gala.competitionName}`,
+    short: gala.years
+  }))
+);
+const gala = computed(
+  () =>
+    view.value?.galas.find((entry) => entry.seasonId === galaSeasonId.value) ??
+    view.value?.galas[0] ??
+    null
+);
+watch(
+  () => view.value?.galas[0]?.seasonId,
+  (seasonId) => {
+    if (seasonId && !galaSeasonId.value) galaSeasonId.value = seasonId;
+  }
+);
 
 onMounted(async () => {
   view.value = await window.api.history.get();
@@ -69,20 +101,6 @@ function positionZone(position: number | null, teams: number): string {
   if (position <= 3) return 'zone-up';
   if (position > teams - 3) return 'zone-down';
   return '';
-}
-
-/**
- * El color del trofeo según la competición: liga, copa o Europa. Relleno y
- * trazo escritos enteros, que Tailwind sólo genera las clases que ve.
- */
-const TROPHY_COLOR: Record<string, string> = {
-  league: 'fill-tv-amber stroke-tv-amber',
-  cup: 'fill-tv-muted stroke-tv-muted',
-  continental: 'fill-tv-cyan stroke-tv-cyan'
-};
-
-function trophyColor(format: string): string {
-  return TROPHY_COLOR[format] ?? TROPHY_COLOR.league!;
 }
 </script>
 
@@ -151,37 +169,82 @@ function trophyColor(format: string): string {
     </AppPanel>
 
     <!-- Palmarés -->
-    <AppPanel v-else-if="tab === 'trophies'" title="Palmarés" :hint="view?.teamName ?? ''">
-      <AppEmpty v-if="!view || view.trophies.length === 0">
-        La vitrina está vacía. Todavía.
-      </AppEmpty>
-      <ul v-else class="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
-        <li
-          v-for="trophy in view.trophies"
-          :key="trophy.competitionId"
-          class="flex flex-col items-center gap-2"
-        >
-          <!-- Un trofeo propio y genérico: el color dice si es liga, copa o Europa. -->
-          <svg viewBox="0 0 48 56" class="h-20 w-20" aria-hidden="true">
-            <g :class="trophyColor(trophy.format)">
-              <path stroke="none" d="M12 4 H36 V16 C36 26 31 32 24 32 C17 32 12 26 12 16 Z" />
-              <path stroke="none" d="M21 31 H27 V42 H21 Z" />
-              <path stroke="none" d="M13 42 H35 V50 H13 Z" />
-              <path fill="none" stroke-width="3" d="M12 8 H6 V13 C6 19 9 22 13 23" />
-              <path fill="none" stroke-width="3" d="M36 8 H42 V13 C42 19 39 22 35 23" />
-            </g>
-          </svg>
-          <AppStat
-            :label="trophy.competitionName"
-            boxed
-            :note="trophy.years.join(', ')"
-            class="w-full"
+    <template v-else-if="tab === 'trophies'">
+      <AppPanel title="Palmarés" :hint="view?.teamName ?? ''">
+        <AppEmpty v-if="!view || view.trophies.length === 0">
+          La vitrina está vacía. Todavía.
+        </AppEmpty>
+        <ul v-else class="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
+          <li
+            v-for="trophy in view.trophies"
+            :key="trophy.competitionId"
+            class="flex flex-col items-center gap-2"
+            :data-trophy-kind="trophy.trophyKind ?? ''"
           >
-            {{ trophy.seasons.length }}
-          </AppStat>
-        </li>
-      </ul>
-    </AppPanel>
+            <!-- La copa de ese título: la forma dice qué es y el metal, a qué nivel. -->
+            <TrophyThumbnail
+              v-if="trophy.trophyKind"
+              :kind="trophy.trophyKind"
+              :size="104"
+              :label="trophy.competitionName"
+            />
+            <AppStat
+              :label="trophy.competitionName"
+              boxed
+              :note="trophy.years.join(', ')"
+              class="w-full"
+            >
+              {{ trophy.seasons.length }}
+            </AppStat>
+          </li>
+        </ul>
+      </AppPanel>
+
+      <!-- Los ascensos, aparte: se celebran, pero no son títulos. -->
+      <AppPanel
+        v-if="view && view.promotions.length > 0"
+        title="Ascensos"
+        :hint="`${view.promotions.length}`"
+      >
+        <ul class="grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-4">
+          <li
+            v-for="promotion in view.promotions"
+            :key="promotion.seasonNumber"
+            class="flex flex-col items-center gap-2"
+            data-trophy-kind="promotion"
+          >
+            <TrophyThumbnail kind="promotion" :size="88" :label="`Ascenso ${promotion.years}`" />
+            <AppStat
+              :label="`A ${promotion.toCompetitionName}`"
+              boxed
+              size="md"
+              :note="`desde ${promotion.fromCompetitionName}`"
+              class="w-full"
+            >
+              {{ promotion.years }}
+            </AppStat>
+          </li>
+        </ul>
+      </AppPanel>
+    </template>
+
+    <!-- Galas: los premios de fin de temporada de la liga del club -->
+    <template v-else-if="tab === 'galas'">
+      <PageToolbar v-if="galaOptions.length > 1">
+        <AppSelect v-model="galaSeasonId" :options="galaOptions" label="Temporada" />
+      </PageToolbar>
+      <AppPanel v-if="!gala" title="Galas">
+        <AppEmpty>
+          Todavía no se ha entregado ningún premio: salen el día que termina la liga.
+        </AppEmpty>
+      </AppPanel>
+      <GalaAwards
+        v-else
+        :awards="gala.awards"
+        :hint="`${gala.competitionName} · ${gala.years}`"
+        compact
+      />
+    </template>
 
     <!-- Récords -->
     <AppPanel v-else title="Récords de la partida" hint="la mejor marca vista hasta ahora" flush>

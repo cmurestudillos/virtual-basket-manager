@@ -18,6 +18,7 @@ import type { StaffApi } from '@shared/contracts/staff.contract';
 import type { YouthApi } from '@shared/contracts/youth.contract';
 import type { MarketApi } from '@shared/contracts/market.contract';
 import type { HistoryApi } from '@shared/contracts/history.contract';
+import type { TrophiesApi } from '@shared/contracts/trophies.contract';
 import type { CareerApi } from '@shared/contracts/career.contract';
 import type { NationalApi } from '@shared/contracts/national.contract';
 import type { DraftApi } from '@shared/contracts/draft.contract';
@@ -45,6 +46,7 @@ export interface VbmApi {
   market: MarketApi;
   match: MatchApi;
   history: HistoryApi;
+  trophies: TrophiesApi;
   career: CareerApi;
   national: NationalApi;
   draft: DraftApi;

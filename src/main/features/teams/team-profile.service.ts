@@ -23,11 +23,13 @@ import { POSITIONS } from '@shared/domain/positions';
 import { LINEUP_SIZE } from '@shared/domain/rotation';
 import { perGame } from '@shared/domain/season-stats';
 import { NO_SCOUT_ERROR } from '@shared/domain/staff';
+import { trophyKindOf } from '@shared/domain/trophies';
 import type { SaveDatabase } from '../../database/save-database';
 import type { CompetitionRow, GameRow } from '../../database/schema/save';
 // Entrenadores de la IA (fase 5).
 import { CoachService } from '../coaches/coaches.service';
 import { HistoryRepository } from '../history/history.repository';
+import { promotionsOf } from '../history/promotions';
 import { buildEngineTeam } from '../match/engine-input';
 import { analystReportsRivals, describeTactics } from '../match/rival-scouting';
 import { toPlayerSummary, withoutMorale } from '../players/players.mapper';
@@ -135,6 +137,7 @@ export class TeamProfileService {
           : null,
       trophies,
       totalTrophies: trophies.reduce((sum, trophy) => sum + trophy.seasons.length, 0),
+      promotions: promotionsOf(new HistoryRepository(db), () => team.id),
       leaders: leadersOf(playerStats),
       squad,
       playerStats,
@@ -386,6 +389,7 @@ function trophiesOf(history: HistoryRepository, teamId: string): TrophyEntry[] {
       competitionId: competition.id,
       competitionName: competition.name,
       format: competition.format,
+      trophyKind: trophyKindOf(competition),
       seasons: [],
       years: []
     };

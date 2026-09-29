@@ -5,6 +5,14 @@ import type { Position } from '@shared/domain/positions';
 import { MORALE_LEVELS } from '@shared/domain/morale';
 import { COMPETITION_KINDS, COMPETITION_KIND_LABEL } from '@shared/domain/competition-kind';
 import {
+  TROPHY_DESIGN,
+  TROPHY_KINDS,
+  TROPHY_KIND_LABEL,
+  TROPHY_METALS,
+  TROPHY_METAL_LABEL
+} from '@shared/domain/trophies';
+import TrophyThumbnail from '@renderer/features/trophies/components/TrophyThumbnail.vue';
+import {
   AppAvatar,
   AppBackdrop,
   AppBadge,
@@ -44,6 +52,7 @@ import {
   RATING_CHIP,
   ResultBlock,
   TONE_TEXT,
+  TrophyIcon,
   type AttributeItem,
   type Tone
 } from '@renderer/shared/ui';
@@ -534,6 +543,36 @@ const COMPETITIONS = [
         </div>
       </AppPanel>
     </div>
+
+    <!-- Trofeos (2026-09-29): una forma por tipo de título, el metal por categoría. -->
+    <AppPanel title="Trofeos" hint="TrophyThumbnail · TrophyIcon">
+      <div class="flex flex-col gap-3">
+        <ul class="grid grid-cols-10 gap-[3px]" data-testid="style-trophies">
+          <li
+            v-for="kind in TROPHY_KINDS"
+            :key="kind"
+            class="flex flex-col items-center gap-1 bg-tv-cell px-1 py-2 text-center"
+          >
+            <TrophyThumbnail :kind="kind" :size="72" :label="TROPHY_KIND_LABEL[kind]" />
+            <span class="text-xs font-bold">{{ TROPHY_KIND_LABEL[kind] }}</span>
+            <span class="text-xs text-tv-muted">
+              {{ TROPHY_METAL_LABEL[TROPHY_DESIGN[kind].metal] }}
+            </span>
+          </li>
+        </ul>
+        <AppSectionTitle size="xs" hint="sin WebGL, y en la guía">El trofeo plano</AppSectionTitle>
+        <p class="flex flex-wrap items-end gap-6">
+          <span
+            v-for="metal in TROPHY_METALS"
+            :key="metal"
+            class="flex flex-col items-center gap-1 text-xs"
+          >
+            <TrophyIcon :metal="metal" :size="44" :label="TROPHY_METAL_LABEL[metal]" />
+            tv-metal-{{ metal }}
+          </span>
+        </p>
+      </div>
+    </AppPanel>
 
     <div class="h-56 shrink-0 overflow-hidden">
       <AppBackdrop class="h-full">

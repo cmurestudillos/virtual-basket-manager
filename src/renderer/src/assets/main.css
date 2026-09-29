@@ -118,6 +118,19 @@
   --color-tv-event-market: #1f5fbf;
   --color-tv-event-national: var(--color-tv-comp-national);
 
+  /* Los metales de los trofeos (2026-09-29): el color de la copa y su sombra,
+     que es el trazo del trofeo plano (`TrophyIcon`) y lo que lo despega del
+     papel claro, donde el platino solo no se vería. Los mismos colores que la
+     copa en 3D (`features/trophies/trophy-metals.ts`; un test los compara). */
+  --color-tv-metal-gold: #d9a92b;
+  --color-tv-metal-gold-deep: #7a560c;
+  --color-tv-metal-silver: #c3c9d1;
+  --color-tv-metal-silver-deep: #5f6773;
+  --color-tv-metal-bronze: #b87333;
+  --color-tv-metal-bronze-deep: #633713;
+  --color-tv-metal-platinum: #e3e8ee;
+  --color-tv-metal-platinum-deep: #6c7a8a;
+
   /* Rótulo del correo: la única cabecera azul y no añil de IBM (131054). */
   --color-tv-mail-from: #1c61a9;
   --color-tv-mail-to: #2777c8;

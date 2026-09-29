@@ -64,6 +64,7 @@ import type {
 import { FitnessService } from '../fitness/fitness.service';
 import { MatchService } from '../match/match.service';
 import { toPlayerSummary } from '../players/players.mapper';
+import { TrophyService } from '../trophies/trophies.service';
 import {
   NATIONAL_TEAMS_COMPETITION_ID,
   QUALIFIERS_COMPETITION_ID,
@@ -841,6 +842,15 @@ export class NationalService {
       const champion = winners[0];
       if (champion) {
         repository.setChampion(worldCup.id, champion);
+        // Campeones del mundo con la selección del usuario: su pantalla, como
+        // la de un título de club (`SeasonService.crown`).
+        if (champion === repository.openSpell()?.teamId) {
+          new TrophyService(this.resolveDb).celebrateTitle(
+            worldCup.id,
+            champion,
+            repository.gameState().currentDate
+          );
+        }
       }
       repository.setStage(worldCup.id, 'finished');
       this.federationReview(repository, worldCup.seasonNumber);

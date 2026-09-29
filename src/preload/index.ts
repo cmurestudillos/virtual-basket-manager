@@ -31,6 +31,12 @@ import type {
   CalendarMonthRequest
 } from '@shared/contracts/calendar.contract';
 import type { HistoryApi, HistoryView } from '@shared/contracts/history.contract';
+import type {
+  ManagerCabinet,
+  PendingCelebration,
+  SeasonGala,
+  TrophiesApi
+} from '@shared/contracts/trophies.contract';
 import type { CareerApi, CareerStatus } from '@shared/contracts/career.contract';
 // Entrenadores y ranking (fase 5).
 import type {
@@ -397,6 +403,17 @@ const history: HistoryApi = {
   get: () => ipcRenderer.invoke(IPC_CHANNELS.historyGet) as Promise<HistoryView>
 };
 
+const trophies: TrophiesApi = {
+  listPending: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.trophiesListPending) as Promise<PendingCelebration[]>,
+  markSeen: (celebrationId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.trophiesMarkSeen, celebrationId) as Promise<void>,
+  getGala: (seasonId: string) =>
+    ipcRenderer.invoke(IPC_CHANNELS.trophiesGetGala, seasonId) as Promise<SeasonGala | null>,
+  getManagerCabinet: () =>
+    ipcRenderer.invoke(IPC_CHANNELS.trophiesGetManagerCabinet) as Promise<ManagerCabinet>
+};
+
 export const api = {
   settings,
   saves,
@@ -416,6 +433,7 @@ export const api = {
   market,
   match,
   history,
+  trophies,
   career,
   national,
   draft,

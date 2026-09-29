@@ -79,6 +79,11 @@ export const IPC_CHANNELS = {
   matchPreview: 'match:preview',
   matchRoundResults: 'match:roundResults',
   historyGet: 'history:get',
+  // Trofeos, pantallas de campeón y gala (2026-09-29).
+  trophiesListPending: 'trophies:listPending',
+  trophiesMarkSeen: 'trophies:markSeen',
+  trophiesGetGala: 'trophies:getGala',
+  trophiesGetManagerCabinet: 'trophies:getManagerCabinet',
   careerGetStatus: 'career:getStatus',
   careerAccept: 'career:accept',
   careerResign: 'career:resign',

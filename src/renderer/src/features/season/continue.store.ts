@@ -3,6 +3,7 @@ import { computed, ref } from 'vue';
 import type { BoardView } from '@shared/contracts/club.contract';
 import type { CareerStatus } from '@shared/contracts/career.contract';
 import { useGameStateStore } from '@renderer/shared/game-state.store';
+import { hasPendingCelebrations } from '@renderer/features/trophies/usePendingCelebrations';
 import { useSeasonStore } from './season.store';
 import {
   canAdvanceDay,
@@ -132,9 +133,12 @@ export const useContinueStore = defineStore('continue', () => {
       if (gameId) {
         return gameId;
       }
+      // Un título o la gala por enseñar también paran: CONTINUAR no debe
+      // pasar por encima de una copa (la enseña `useContinue`).
       if (
         seasonStore.dismissed ||
         stopRequested.value ||
+        (await hasPendingCelebrations()) ||
         gameState.state?.currentDate === before ||
         continueKey(action.value) !== key
       ) {

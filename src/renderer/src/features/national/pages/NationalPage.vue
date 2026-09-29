@@ -35,6 +35,7 @@ import PageActions from '@renderer/features/app-shell/components/PageActions.vue
 import PageToolbar from '@renderer/features/app-shell/components/PageToolbar.vue';
 import GameRow from '@renderer/features/competition/components/GameRow.vue';
 import NationalCompetition from '@renderer/features/national/components/NationalCompetition.vue';
+import TrophyThumbnail from '@renderer/features/trophies/components/TrophyThumbnail.vue';
 
 type Tab = 'team' | 'qualifiers' | 'worldCup' | 'ranking';
 
@@ -316,7 +317,13 @@ function codeOf(teamId: string): string {
             :class="champion.teamName === overview?.myTeam?.name ? 'is-mine' : ''"
           >
             <td class="numeric w-16">{{ champion.startYear + 1 }}</td>
-            <td>{{ champion.teamName }}</td>
+            <td class="py-0.5">
+              <!-- La esfera del Mundial, la misma que levanta el campeón (trofeos, 2026-09-29). -->
+              <span class="flex items-center gap-2">
+                <TrophyThumbnail kind="world_cup" :size="28" />
+                {{ champion.teamName }}
+              </span>
+            </td>
           </tr>
         </tbody>
       </table>

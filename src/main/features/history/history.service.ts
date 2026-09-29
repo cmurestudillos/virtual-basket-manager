@@ -10,6 +10,7 @@ import { continentalRoundName } from '@shared/domain/continental';
 import { CUP_TEAMS, cupRoundName } from '@shared/domain/cup';
 import { buildPlayoffFormat } from '@shared/domain/playoffs';
 import { computeStandings } from '@shared/domain/standings';
+import { trophyKindOf } from '@shared/domain/trophies';
 import type { SaveDatabase } from '../../database/save-database';
 import {
   gamePlayerStatsTable,
@@ -17,7 +18,9 @@ import {
   type CompetitionRow,
   type SeasonRow
 } from '../../database/schema/save';
+import { TrophyService } from '../trophies/trophies.service';
 import { HistoryRepository, type RawRecord } from './history.repository';
+import { promotionsOf } from './promotions';
 
 /** Lo que se va apuntando de cada título mientras se recorren las temporadas. */
 interface WonTrophy {
@@ -43,7 +46,15 @@ export class HistoryService {
     const repository = new HistoryRepository(this.resolveDb());
     const teamId = repository.managedTeamId();
     if (!teamId) {
-      return { teamName: '', seasons: [], trophies: [], totalTrophies: 0, records: [] };
+      return {
+        teamName: '',
+        seasons: [],
+        trophies: [],
+        totalTrophies: 0,
+        promotions: [],
+        galas: [],
+        records: []
+      };
     }
 
     const competitions = repository.competitions();
@@ -64,6 +75,8 @@ export class HistoryService {
 
     const seasons: HistorySeasonEntry[] = [];
     const trophies = new Map<string, WonTrophy>();
+    // La temporada de liga de cada curso, para buscar su gala.
+    const leagueSeasonIds: string[] = [];
 
     for (const [seasonNumber, group] of [...byNumber].sort((a, b) => b[0] - a[0])) {
       const entry = this.buildSeason(
@@ -76,7 +89,8 @@ export class HistoryService {
         trophies
       );
       if (entry) {
-        seasons.push(entry);
+        seasons.push(entry.season);
+        leagueSeasonIds.push(entry.leagueSeasonId);
       }
     }
 
@@ -85,6 +99,7 @@ export class HistoryService {
         competitionId: won.competition.id,
         competitionName: won.competition.name,
         format: won.competition.format,
+        trophyKind: trophyKindOf(won.competition),
         seasons: won.seasons,
         years: won.years
       }))
@@ -99,6 +114,13 @@ export class HistoryService {
       seasons,
       trophies: trophyList,
       totalTrophies: trophyList.reduce((sum, trophy) => sum + trophy.seasons.length, 0),
+      // Las placas de ascenso van aparte: se ven en la vitrina, pero no son títulos.
+      promotions: promotionsOf(repository, (seasonNumber) =>
+        teamManagedIn(spells, seasonNumber, teamId)
+      ),
+      galas: new TrophyService(this.resolveDb).galasOf(leagueSeasonIds, (seasonNumber) =>
+        teamManagedIn(spells, seasonNumber, teamId)
+      ),
       records: this.records(repository, teamId)
     };
   }
@@ -112,7 +134,7 @@ export class HistoryService {
     group: readonly SeasonRow[],
     teamId: string | null,
     trophies: Map<string, WonTrophy>
-  ): HistorySeasonEntry | null {
+  ): { season: HistorySeasonEntry; leagueSeasonId: string } | null {
     if (!teamId) {
       // Un año sin banquillo: en carrera pasa, y no es una temporada dirigida.
       return null;
@@ -165,7 +187,7 @@ export class HistoryService {
       others.unshift(playoffs);
     }
 
-    return {
+    const entry: HistorySeasonEntry = {
       seasonNumber,
       years: seasonYears(season),
       competitionId: competition.id,
@@ -178,6 +200,7 @@ export class HistoryService {
       championTeamName: season.championTeamId ? (names.get(season.championTeamId) ?? null) : null,
       others
     };
+    return { season: entry, leagueSeasonId: season.id };
   }
 
   /** Puesto y balance del club en la liga regular de esa temporada. */

@@ -6,6 +6,8 @@
  * sería un segundo sitio donde apuntar lo mismo, y el día que no coincidieran
  * habría que decidir cuál de los dos miente.
  */
+import type { TrophyKind } from '../domain/trophies';
+import type { SeasonGala } from './trophies.contract';
 
 /** Un título del club dirigido. */
 export interface TrophyEntry {
@@ -13,9 +15,25 @@ export interface TrophyEntry {
   competitionName: string;
   /** `league`, `cup` o `continental`. */
   format: string;
+  /** Qué copa se levantó (forma y metal): sale de la competición, así que vale también para partidas viejas. */
+  trophyKind: TrophyKind | null;
   /** Temporadas en las que se ganó, de la más reciente a la más antigua. */
   seasons: number[];
   years: string[];
+}
+
+/**
+ * Un ascenso: acabar en puesto de subir en una división con otra por encima.
+ * Va en la vitrina con su placa, pero **no suma** al contador de títulos.
+ */
+export interface PromotionEntry {
+  seasonNumber: number;
+  /** «2025-26». */
+  years: string;
+  /** La división de la que se subió. */
+  fromCompetitionName: string;
+  /** Y a la que se subió. */
+  toCompetitionName: string;
 }
 
 /** Lo que hizo el club en una competición de una temporada concreta. */
@@ -66,8 +84,12 @@ export interface HistoryView {
   /** Temporadas jugadas, de la más reciente a la más antigua. */
   seasons: HistorySeasonEntry[];
   trophies: TrophyEntry[];
-  /** Cuántos títulos en total, para la cabecera. */
+  /** Cuántos títulos en total, para la cabecera. Los ascensos no cuentan. */
   totalTrophies: number;
+  /** Las placas de ascenso, de la más reciente a la más antigua. */
+  promotions: PromotionEntry[];
+  /** Los premios de fin de temporada de las ligas que jugó el club, de la más reciente a la más antigua. */
+  galas: SeasonGala[];
   records: RecordEntry[];
 }
 

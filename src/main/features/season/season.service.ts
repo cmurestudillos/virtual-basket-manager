@@ -86,6 +86,8 @@ import { DraftService } from '../draft/draft.service';
 import { NationalService } from '../national/national.service';
 // Entrenadores de la IA y su carrusel (fase 5).
 import { CoachService } from '../coaches/coaches.service';
+// Trofeos, pantallas de campeón y gala (2026-09-29).
+import { TrophyService } from '../trophies/trophies.service';
 import { SeasonRepository } from './season.repository';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
@@ -150,6 +152,7 @@ export class SeasonService {
   private readonly nationalService: NationalService;
   private readonly draftService: DraftService;
   private readonly coachService: CoachService;
+  private readonly trophyService: TrophyService;
 
   /**
    * La conexión llega como resolutor y no como instancia porque la partida
@@ -167,6 +170,7 @@ export class SeasonService {
     this.nationalService = new NationalService(resolveDb);
     this.draftService = new DraftService(resolveDb);
     this.coachService = new CoachService(resolveDb);
+    this.trophyService = new TrophyService(resolveDb);
   }
 
   /**
@@ -1087,8 +1091,9 @@ export class SeasonService {
       if (regularFinished) {
         const champion = this.regularStandings(repository, season)[0];
         if (champion) {
-          repository.setChampion(season.id, champion.teamId);
+          this.crown(repository, season, champion.teamId);
         }
+        this.closeLeague(repository, season, champion?.teamId ?? null, null);
         this.closeClubSeason(repository, season, champion?.teamId ?? null);
         repository.setStage(season.id, 'finished');
       }
@@ -1199,7 +1204,7 @@ export class SeasonService {
     if (currentRound >= format.length) {
       const champion = winners[0]?.teamId ?? null;
       if (champion) {
-        repository.setChampion(cup.id, champion);
+        this.crown(repository, cup, champion);
       }
       repository.setStage(cup.id, 'finished');
       this.rewardCup(repository, cup, currentRound, champion);
@@ -1397,7 +1402,7 @@ export class SeasonService {
 
     if (currentRound >= FINAL_ROUND) {
       const champion = (inRound[0] as ContinentalSeries).winnerTeamId as string;
-      repository.setChampion(continental.id, champion);
+      this.crown(repository, continental, champion);
       repository.setStage(continental.id, 'finished');
       this.rewardContinental(repository, continental, competition, currentRound, champion);
       return;
@@ -1744,6 +1749,97 @@ export class SeasonService {
     }
   }
 
+  /**
+   * El único sitio donde se corona a un campeón: liga, playoffs, finales de la
+   * liga americana, Copa y continentales (el Mundial lo corona
+   * `NationalService`). Además de apuntarlo en la temporada —que es de donde
+   * sale el palmarés—, si el título es del usuario deja su pantalla de campeón
+   * pendiente. Que gane un rival no deja nada: para eso está el correo.
+   */
+  private crown(repository: SeasonRepository, season: SeasonRow, championTeamId: string): void {
+    repository.setChampion(season.id, championTeamId);
+    if (this.userTeamIds(repository).includes(championTeamId)) {
+      this.trophyService.celebrateTitle(
+        season.id,
+        championTeamId,
+        repository.gameState().currentDate
+      );
+    }
+  }
+
+  /**
+   * Una liga acaba de terminar: premios de fin de temporada (en todas las
+   * ligas), y en la del usuario, la placa si sube y la gala, que sale después
+   * de la pantalla del título si lo hubo.
+   *
+   * Va **antes** del cierre del club (`closeClubSeason`): ahí el consejo dicta
+   * su veredicto, y un entrenador destituido ese mismo día ha dirigido la
+   * temporada entera y tiene su gala igual.
+   */
+  private closeLeague(
+    repository: SeasonRepository,
+    season: SeasonRow,
+    championTeamId: string | null,
+    finalRound: number | null
+  ): void {
+    const managedTeamId = repository.gameState().managedTeamId;
+    const own =
+      managedTeamId !== null &&
+      this.userTeamIds(repository).includes(managedTeamId) &&
+      repository.teamIdsInCompetition(season.competitionId).includes(managedTeamId);
+    const standings = this.regularStandings(repository, season);
+
+    if (own) {
+      this.celebratePromotion(repository, season, standings, managedTeamId);
+    }
+    this.trophyService.closeLeague(season.id, {
+      standings,
+      finalRound,
+      championTeamId,
+      galaFor: own ? managedTeamId : null
+    });
+  }
+
+  /**
+   * Si el club del usuario acaba en puesto de subir, su placa. Es la misma
+   * cuenta que hará `applyCountryPromotions` en septiembre, sólo que la
+   * pantalla sale el día que se consigue y no al empezar el curso siguiente.
+   */
+  private celebratePromotion(
+    repository: SeasonRepository,
+    season: SeasonRow,
+    standings: readonly StandingRow[],
+    teamId: string
+  ): void {
+    const competition = repository.findCompetition(season.competitionId);
+    if (!competition || competition.tier <= 1) {
+      return;
+    }
+    const leagues = this.leagueSeasonsOf(repository, competition.country, season.seasonNumber);
+    // La liga americana es cerrada: ni sube ni baja nadie.
+    if (leagues.some((row) => repository.findCompetition(row.competitionId)?.nbaFormat)) {
+      return;
+    }
+    const index = leagues.findIndex((row) => row.id === season.id);
+    const upper = index > 0 ? leagues[index - 1] : undefined;
+    const upperCompetition = upper ? repository.findCompetition(upper.competitionId) : null;
+    if (!upper || !upperCompetition) {
+      return;
+    }
+    const { promoted } = divisionSwap({
+      upper: this.regularStandings(repository, upper),
+      lower: standings
+    });
+    if (promoted.includes(teamId)) {
+      this.trophyService.celebratePromotion(
+        season.id,
+        teamId,
+        upperCompetition,
+        repository.gameState().currentDate
+      );
+    }
+  }
+
   /** Cierre de curso del club: premios en la caja y veredicto del consejo. */
   private closeClubSeason(
     repository: SeasonRepository,
@@ -1944,7 +2040,8 @@ export class SeasonService {
     const lastRound = format[format.length - 1] as PlayoffRound;
     if (currentRound >= lastRound.round) {
       const champion = (inRound[0] as SeriesState).winnerTeamId as string;
-      repository.setChampion(season.id, champion);
+      this.crown(repository, season, champion);
+      this.closeLeague(repository, season, champion, currentRound);
       this.closeClubSeason(repository, season, champion);
       repository.setStage(season.id, 'finished');
       return;
@@ -2051,7 +2148,8 @@ export class SeasonService {
 
     if (currentRound >= format.length) {
       const champion = (inRound[0] as SeriesState).winnerTeamId as string;
-      repository.setChampion(season.id, champion);
+      this.crown(repository, season, champion);
+      this.closeLeague(repository, season, champion, currentRound);
       this.closeClubSeason(repository, season, champion);
       repository.setStage(season.id, 'finished');
       return;

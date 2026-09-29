@@ -489,6 +489,7 @@ El partido va ahora **a pantalla completa**, fuera del menú lateral del juego.
 | ✅  | Dimitir y año sabático  | Irse por su pie, escuchar ofertas con equipo y esperar | M   |
 | ✅  | Dificultad              | Incluye poder jugar sin despido                        | S   |
 | ✅  | Historial y palmarés    | Temporadas, títulos, récords                           | M   |
+| ✅  | Trofeos y gala          | Copa en 3D por título, pantalla de campeón y premios   | M   |
 | ✅  | Prensa y notificaciones | Bandeja de avisos, ruedas de prensa                    | M   |
 | ✅  | Editor de datos         | Editar equipos y plantillas dentro del juego           | M   |
 | ✅  | Ajustes                 | Resolución y reglamento; sólo en español               | S   |
@@ -706,6 +707,49 @@ para ordenarlas costaría más que todo el resto del historial junto.
 
 Y es, además, la memoria que necesita el **modo carrera**: un entrenador vale lo
 que dice su palmarés.
+
+### Trofeos, pantalla de campeón y gala (2026-09-29)
+
+«Como en DerbiManager», con diez decisiones del usuario:
+
+- **Una copa por tipo de título y el metal por categoría**, dibujadas por
+  código en 3D y sin parecerse a ningún trofeo real: la liga es una copa alta
+  de dos asas (oro en primera, bronce en segunda), el campeón de la liga
+  americana un cáliz con tres aros, la Copa una copa baja de plata, las
+  continentales una boca muy abierta (platino, plata y bronce por nivel), el
+  Mundial una esfera de meridianos, el ascenso una placa de bronce y los
+  premios una estatuilla con balón. La tabla vive en
+  `shared/domain/trophies.ts` y el porqué, en `assets/trophies/LICENSE.md`.
+- **Pantalla de campeón** fuera del marco, como el partido: el pabellón de la
+  previa con los colores del campeón y la copa en el centro de la pista, en
+  un único contexto WebGL y quieta con `prefers-reduced-motion`. Sale para la
+  liga, las finales americanas, la Copa, las continentales, el Mundial y el
+  ascenso, **sólo** del club o la selección que dirige el usuario: si gana un
+  rival, está el correo.
+- **Gala** al acabar la liga del usuario, después del título si lo hubo: MVP,
+  máximo anotador, reboteador y asistente, mejor defensor (robos + tapones),
+  mejor joven (22 años o menos), entrenador del año (el que más supera el
+  puesto que se esperaba de su club por reputación), quinteto ideal (uno por
+  puesto) y MVP de la final. Medias de fase regular con el mínimo de partidos
+  de la tabla de líderes. Los premios se entregan en **todas** las ligas que
+  se juegan; la gala sólo enseña la tuya.
+- **El ascenso** va en la vitrina con su placa, pero **no suma** títulos.
+- **Nada hacia atrás**: el palmarés sigue saliendo de los campeones de cada
+  temporada, así que una partida vieja ve sus títulos con su copa; lo que no
+  tiene es pantalla ni premios de cursos ya jugados.
+- **Vitrinas**: el historial (palmarés con las copas, ascensos aparte y la
+  pestaña Galas), la ficha de cualquier club, la ficha del mánager (clubes y
+  selecciones) y «Campeones del mundo» en Selecciones. Sin WebGL, el trofeo
+  plano del kit (`TrophyIcon`) en el mismo metal.
+
+Cómo funciona: la partida guarda dos cosas nuevas (migración `0018`):
+`celebrations`, las pantallas pendientes (índice único por temporada y tipo,
+así que reintentar un avance no apunta dos veces la misma copa), y
+`season_awards`, los premios con los nombres congelados. Hay un único punto de
+coronación en `SeasonService.crown` (el Mundial, en `NationalService`), y los
+premios se entregan en `closeLeague`, el día que termina cada liga. La
+interfaz pregunta por las pendientes al abrir el inicio y al acabar CONTINUAR,
+que además se para si por el camino se ha ganado algo.
 
 ---
 

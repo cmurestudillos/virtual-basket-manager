@@ -9,10 +9,14 @@
  *
  * Irse de un banquillo no se deshace: dimitir y dejar la selección van en dos
  * pasos, el primero pregunta.
+ *
+ * Al pie, la vitrina del mánager (trofeos, 2026-09-29): lo que ha ganado él,
+ * en todos sus clubes y con su selección, cada título con su copa.
  */
 import { onMounted, ref } from 'vue';
 import { useRouter } from 'vue-router';
 import type { CareerStatus } from '@shared/contracts/career.contract';
+import type { ManagerCabinet } from '@shared/contracts/trophies.contract';
 import { matchKits } from '@shared/domain/court';
 import {
   AppBadge,
@@ -24,6 +28,7 @@ import {
   TeamBadge
 } from '@renderer/shared/ui';
 import { useContinueStore } from '@renderer/features/season/continue.store';
+import TrophyCabinet from '@renderer/features/trophies/components/TrophyCabinet.vue';
 import CoachProfileView from '../components/CoachProfileView.vue';
 
 const router = useRouter();
@@ -33,8 +38,14 @@ const continuing = useContinueStore();
 const career = ref<CareerStatus | null>(null);
 const view = ref<InstanceType<typeof CoachProfileView> | null>(null);
 
+/** Lo que ha ganado el usuario como entrenador. */
+const cabinet = ref<ManagerCabinet | null>(null);
+
 onMounted(async () => {
-  career.value = await window.api.career.getStatus();
+  [career.value, cabinet.value] = await Promise.all([
+    window.api.career.getStatus(),
+    window.api.trophies.getManagerCabinet()
+  ]);
 });
 
 const confirmingResign = ref(false);
@@ -204,5 +215,20 @@ const kitOf = (teamId: string) => matchKits(teamId, '').home;
         </ul>
       </AppPanel>
     </div>
+
+    <AppPanel
+      title="Vitrina"
+      :hint="
+        cabinet
+          ? `${cabinet.totalTrophies} ${cabinet.totalTrophies === 1 ? 'título' : 'títulos'}`
+          : ''
+      "
+    >
+      <TrophyCabinet
+        :trophies="cabinet?.trophies ?? []"
+        :promotions="cabinet?.promotions ?? []"
+        empty="Todavía no has levantado ningún título."
+      />
+    </AppPanel>
   </CoachProfileView>
 </template>

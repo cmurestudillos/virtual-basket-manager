@@ -40,6 +40,12 @@ mkdirSync(SHOTS, { recursive: true });
 console.log('sembrando una partida con la temporada terminada…');
 execSync('pnpm seed:finished', { cwd: PROJECT, stdio: 'inherit' });
 
+// Y otra que acaba la temporada con títulos (Copa y liga): la pantalla de
+// campeón y la gala sólo salen al ganar algo, y ganarlo jugando no cabe en una
+// pasada del arnés (trofeos, 2026-09-29).
+console.log('sembrando una partida con títulos por enseñar…');
+execSync('pnpm seed:champion', { cwd: PROJECT, stdio: 'inherit' });
+
 // Y una tercera en modo carrera con el entrenador ya destituido: la pantalla de
 // ofertas no se alcanza jugando, hacen falta media temporada de derrotas.
 console.log('sembrando una partida de carrera sin equipo…');
@@ -129,6 +135,51 @@ async function cargarPartida(nombre) {
   await page.getByRole('button', { name: 'Cargar', exact: true }).click();
 }
 
+/**
+ * Las pantallas de campeón que traiga una partida al cargarla (trofeos,
+ * 2026-09-29): el inicio lleva a ellas solo. Se captura cada una —título,
+ * ascenso o gala— y se pasa a la siguiente hasta volver al inicio. Devuelve
+ * cuántas había.
+ */
+async function pasarCelebraciones(prefijo) {
+  let vistas = 0;
+  for (let guard = 0; guard < 12; guard += 1) {
+    const pantalla = page.getByTestId('celebration-page');
+    try {
+      await pantalla.waitFor({ timeout: vistas === 0 ? 4000 : 2500 });
+    } catch {
+      break;
+    }
+    await page.getByTestId('celebration-headline').waitFor({ timeout: 10_000 });
+    // El pabellón y la copa en 3D tardan un momento en pintarse.
+    await page.waitForTimeout(2500);
+    vistas += 1;
+    const tipo = await pantalla.getAttribute('data-kind');
+    const titular = (await page.getByTestId('celebration-headline').innerText()).trim();
+    const escenario = page.getByTestId('trophy-stage');
+    const copa = (await escenario.count()) > 0 ? await escenario.getAttribute('data-trophy') : '';
+    const premios = await page.locator('[data-testid="gala-awards"] li').count();
+    const desborda = await page.evaluate(
+      () => document.documentElement.scrollWidth > window.innerWidth
+    );
+    console.log(
+      `${prefijo} · pantalla ${vistas}:`,
+      tipo,
+      '·',
+      titular,
+      '· copa:',
+      copa,
+      premios ? `· premios: ${premios}` : '',
+      '· se desborda:',
+      desborda
+    );
+    await page.screenshot({ path: `${SHOTS}/${prefijo}-${vistas}-${tipo}.png` });
+    await page.getByTestId('celebration-continue').click();
+    await page.waitForTimeout(1500);
+  }
+  return vistas;
+}
+
 // La guía de estilo, antes que nada: es la que enseña si alguna pieza del kit
 // se ha roto, y verlo aquí es más barato que cazarlo en la pantalla donde esté
 // escondida.
@@ -152,6 +203,16 @@ console.log(
     .join(' · ')
 );
 await page.screenshot({ path: `${SHOTS}/01b3-guia-de-estilo-competiciones.png` });
+// Los trofeos: una copa por tipo de título, en 3D, y el trofeo plano de respaldo.
+await page.getByTestId('style-trophies').scrollIntoViewIfNeeded();
+await page.waitForTimeout(1200);
+console.log(
+  'guía · trofeos en 3D:',
+  await page.locator('[data-testid="style-trophies"] img').count(),
+  'de',
+  await page.locator('[data-testid="style-trophies"] li').count()
+);
+await page.screenshot({ path: `${SHOTS}/01b4-guia-de-estilo-trofeos.png` });
 await page.goto(`${appUrl}#/`);
 await page.waitForTimeout(800);
 
@@ -796,6 +857,8 @@ await page.getByRole('link', { name: 'Cargar partida' }).click();
 await page.waitForTimeout(1200);
 await cargarPartida('Temporada terminada');
 await page.waitForTimeout(2500);
+// El club no ganó nada, pero su liga ha terminado: sale la gala antes del inicio.
+console.log('temporada terminada · pantallas al cargar:', await pasarCelebraciones('21a-gala'));
 const finDeTemporada = await page.locator('section').first().innerText();
 console.log('fin de temporada:', finDeTemporada.split('\n').join(' · '));
 await page.screenshot({ path: `${SHOTS}/21-campeon.png` });
@@ -1001,6 +1064,7 @@ await page.getByRole('link', { name: 'Cargar partida' }).click();
 await page.waitForTimeout(1200);
 await cargarPartida('Liga americana con draft');
 await page.waitForTimeout(2500);
+console.log('liga americana · pantallas al cargar:', await pasarCelebraciones('31a-gala-nba'));
 
 await goTo('Competición', 'Competiciones');
 await page.waitForTimeout(1800);
@@ -1398,6 +1462,94 @@ console.log(
   visibilidad.analista >= 2 ? conPizarra && !sinInforme : sinInforme && !conPizarra
 );
 await enLaVentanaMinima('ficha del rival · tácticas', '37k-ficha-rival-tacticas-1280');
+
+// --- Trofeos: la pantalla de campeón, la gala y las vitrinas ------------------
+//
+// La partida que acaba con la Copa y la liga ganadas. Va al final, en la
+// ventana mínima (1280×720), que es donde más aprieta; la gala de la
+// «Temporada terminada» se vio antes en la ventana grande.
+
+/** Los textos de unas filas, en una línea cada una. */
+async function filas(selector) {
+  return (await page.locator(selector).allInnerTexts())
+    .map((text) => text.split(String.fromCharCode(10)).join(' '))
+    .join(' · ');
+}
+
+await page.getByRole('link', { name: 'Salir al menú' }).click();
+await page.waitForTimeout(1000);
+await page.getByRole('link', { name: 'Cargar partida' }).click();
+await page.waitForTimeout(1200);
+await cargarPartida('Campeón de temporada');
+await page.waitForTimeout(2500);
+const celebraciones = await pasarCelebraciones('38-campeon-1280');
+console.log(
+  'campeón · pantallas al cargar:',
+  celebraciones,
+  '· esperadas: título(s) y gala; la Copa depende de la pasada'
+);
+// Vistas: al volver al inicio ya no salen.
+await goTo('Club', 'Historial');
+await goTo('Inicio');
+await page.waitForTimeout(2000);
+console.log(
+  'campeón · vuelve a salir al volver al inicio:',
+  (await page.getByTestId('celebration-page').count()) > 0
+);
+
+await goTo('Club', 'Historial');
+await page.waitForTimeout(1200);
+await page.getByRole('button', { name: 'Palmarés' }).click();
+await page.waitForTimeout(2500);
+console.log(
+  'vitrina del historial:',
+  (
+    await page
+      .locator('main [data-trophy-kind]')
+      .evaluateAll((items) => items.map((item) => item.getAttribute('data-trophy-kind')))
+  ).join(' · '),
+  '· copas en 3D:',
+  await page.locator('main img[data-trophy]').count()
+);
+await enLaVentanaMinima('vitrina del historial', '38b-palmares-1280');
+
+await page.getByRole('button', { name: 'Galas' }).click();
+await page.waitForTimeout(1500);
+console.log(
+  'galas · premios de la temporada:',
+  await page.locator('[data-testid="gala-awards"] li').count()
+);
+await enLaVentanaMinima('galas del historial', '38c-galas-1280');
+
+await goTo('Mánager', 'Ficha');
+await page.waitForTimeout(2500);
+await page.getByTestId('trophy-cabinet').scrollIntoViewIfNeeded();
+await page.waitForTimeout(800);
+console.log('vitrina del mánager:', await filas('[data-testid="trophy-cabinet"] li'));
+await enLaVentanaMinima('vitrina del mánager', '38d-vitrina-manager-1280');
+
+await goTo('Equipo', 'Club');
+await page.waitForTimeout(2500);
+console.log('palmarés de la ficha del club:', await filas('[data-testid="team-trophies"] li'));
+await enLaVentanaMinima('palmarés de la ficha del club', '38e-ficha-club-palmares-1280');
+
+// Y la ficha de un club ajeno, con su propio palmarés (o su vitrina vacía).
+await goTo('Competición', 'Clubes');
+await page.waitForTimeout(1500);
+await page.locator('main tbody tr:not(.is-mine)').first().getByRole('link').first().click();
+await page.getByText('Información del equipo', { exact: true }).waitFor({ timeout: 10_000 });
+await page.waitForTimeout(1500);
+await enLaVentanaMinima('palmarés de un club ajeno', '38f-ficha-ajena-palmares-1280');
+
+await goTo('Selecciones');
+await page.waitForTimeout(1500);
+const rankingYPalmares = page.getByRole('button', { name: 'Ranking y palmarés' });
+if ((await rankingYPalmares.count()) > 0) {
+  await rankingYPalmares.click();
+  await page.waitForTimeout(1500);
+}
+await page.getByText('Campeones del mundo', { exact: true }).scrollIntoViewIfNeeded();
+await enLaVentanaMinima('campeones del mundo', '38g-campeones-del-mundo-1280');
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);

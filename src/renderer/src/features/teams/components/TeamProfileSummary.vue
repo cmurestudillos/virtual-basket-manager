@@ -14,6 +14,7 @@ import {
   TONE_TEXT
 } from '@renderer/shared/ui';
 import GameRow from '@renderer/features/competition/components/GameRow.vue';
+import TrophyThumbnail from '@renderer/features/trophies/components/TrophyThumbnail.vue';
 
 /**
  * El resumen de la ficha: cómo va la temporada, la racha y lo que se le pide; el
@@ -139,21 +140,47 @@ const injured = computed(() => props.profile.squad.filter((player) => player.inj
       </AppPanel>
 
       <AppPanel title="Palmarés" :hint="profile.totalTrophies ? `${profile.totalTrophies}` : ''">
-        <p v-if="profile.trophies.length === 0" class="text-center text-sm text-tv-muted">
+        <p
+          v-if="profile.trophies.length === 0 && profile.promotions.length === 0"
+          class="text-center text-sm text-tv-muted"
+        >
           Ningún título en esta partida. Todavía.
         </p>
-        <ul v-else class="flex flex-col gap-[3px]">
+        <ul v-else class="flex flex-col gap-[3px]" data-testid="team-trophies">
           <li
             v-for="trophy in profile.trophies"
             :key="trophy.competitionId"
             class="flex items-center gap-3 bg-tv-cell px-3 py-1 text-sm"
+            :data-trophy-kind="trophy.trophyKind ?? ''"
           >
             <span class="figure min-w-8 bg-tv-box py-0.5 text-center font-bold">
               {{ trophy.seasons.length }}
             </span>
+            <TrophyThumbnail
+              v-if="trophy.trophyKind"
+              :kind="trophy.trophyKind"
+              :size="32"
+              :label="trophy.competitionName"
+            />
             <span class="flex min-w-0 flex-col leading-tight">
               <span class="truncate font-semibold">{{ trophy.competitionName }}</span>
               <span class="truncate text-xs text-tv-muted">{{ trophy.years.join(', ') }}</span>
+            </span>
+          </li>
+          <!-- Los ascensos, con su placa y sin cifra: no suman títulos. -->
+          <li
+            v-for="promotion in profile.promotions"
+            :key="`ascenso-${promotion.seasonNumber}`"
+            class="flex items-center gap-3 bg-tv-cell px-3 py-1 text-sm"
+            data-trophy-kind="promotion"
+          >
+            <span class="min-w-8" />
+            <TrophyThumbnail kind="promotion" :size="32" :label="`Ascenso ${promotion.years}`" />
+            <span class="flex min-w-0 flex-col leading-tight">
+              <span class="truncate font-semibold"
+                >Ascenso a {{ promotion.toCompetitionName }}</span
+              >
+              <span class="truncate text-xs text-tv-muted">{{ promotion.years }}</span>
             </span>
           </li>
         </ul>

@@ -16,3 +16,4 @@ export * from './inbox.schema';
 export * from './national.schema';
 export * from './draft.schema';
 export * from './coaches.schema';
+export * from './trophies.schema';

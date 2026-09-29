@@ -87,6 +87,7 @@ al extenderla porque ya se usaba unas 150 veces y el nombre no molesta.
 | Correo      | `tv-mail-from` → `tv-mail-to`                                                            | Rótulo azul del correo: la única cabecera que no es añil                                         |
 | Fondo       | `tv-deco-plum`, `tv-deco-petrol`, `tv-magenta`, `tv-orange`                              | Fondo con franjas: sólo menú, asistente y pantallas vacías                                       |
 | Citas       | `tv-event-season`, `-payroll`, `-market`, `-national`                                    | Citas del club en el calendario mensual (ver abajo)                                              |
+| Metales     | `tv-metal-gold`, `-silver`, `-bronze`, `-platinum`, cada uno con `-deep`                 | El trofeo plano (`TrophyIcon`): relleno del metal y trazo hondo (ver [Trofeos](#trofeos))        |
 
 - **El texto sobre papel** es `tv-ink`; sobre el marco, blanco. Las cifras de
   las tablas van en negro: sólo llevan color los deltas, lo que está en
@@ -235,7 +236,8 @@ papel; `AppPageHeader` y las pestañas `underline`, sobre el marco oscuro.
 | `AppModal`        | Diálogo con rótulo añil y botones abajo; foco, Escape y `role="dialog"`                                    |
 | `TeamBadge`       | Escudo dibujado con la equipación y las iniciales; bandera si es selección                                 |
 | `FixtureCard`     | La tarjeta naranja de un partido; `featured` es el PRÓXIMO PARTIDO del inicio                              |
-| `LeaderCard`      | El líder de una estadística: cara, nombre, partidos y la cifra en su caja gris                             |
+| `LeaderCard`      | El líder de una estadística: cara, nombre, partidos y la cifra en su caja gris; `mine`, `avatarKind`       |
+| `TrophyIcon`      | El trofeo plano en SVG, del metal que toque: respaldo de la copa en 3D y guía de estilo                    |
 | `AppAvatar`       | La cara de un jugador o un técnico, generada a partir de una semilla                                       |
 | `AppFlag`         | La bandera de un país por su código de tres letras                                                         |
 | `AppDrawer`       | Cajón lateral encima de la pantalla: los mandos del banquillo                                              |
@@ -396,6 +398,8 @@ Fuera del kit quedan dos cosas a propósito:
   entrenador (banquillo vacío), «Sin entrenador». **La pantalla no calcula
   nada**: puestos, puntos y reputación llegan hechos del proceso principal.
 
+- **Los trofeos**, en `features/trophies/` (2026-09-29). Ver [Trofeos](#trofeos).
+
 #### Qué se ve de un club ajeno
 
 Decisión del usuario (fase 5). El club propio se ve entero y sin niebla; de
@@ -510,8 +514,9 @@ Las de la fase 5, con sus rutas:
 Con nueve iconos la barra lateral mide 9 × 48 px más Ajustes y Salir, unos
 550 px: cabe en los 648 que deja la ventana de 1280×720 bajo la barra de arriba.
 
-Ajustes y Salir al menú van abajo y salen del marco. El partido, el menú,
-nueva partida, partidas, ajustes, el editor y `#/estilo` siguen fuera de él.
+Ajustes y Salir al menú van abajo y salen del marco. El partido, la pantalla
+de campeón, el menú, nueva partida, partidas, ajustes, el editor y `#/estilo`
+siguen fuera de él.
 
 ### Lo que una pantalla pone en las barras
 
@@ -564,7 +569,9 @@ ahí.
 
 Los cuatro primeros casos son una cadena de `advanceToNextGame`: se repite
 mientras CONTINUAR siga significando lo mismo, y se para en el partido del
-usuario, con un despido, si el reloj no se mueve o si se pulsa «Detener avance».
+usuario, con un despido, si el reloj no se mueve, si se pulsa «Detener avance»
+o si por el camino se ha ganado algo: entonces `useContinue` lleva a la
+pantalla de campeón antes que al partido.
 Con la jornada anterior a medias, el propio avance la juega antes de llegar al
 partido. Esperar un mes, empezar temporada y avanzar un día son una sola llamada
 al proceso principal y no se pueden detener a medias.
@@ -623,6 +630,51 @@ Revisada entera el 2026-09-29; lo que manda:
 - Fuera del marco (asistente de nueva partida, ajustes, editor del mundo) los
   paneles van también a `gap-4` (decisión del usuario, 2026-09-29): antes iban a
   `gap-3` y convivían dos escalas.
+
+## Trofeos
+
+Decisiones del usuario del 2026-09-29, «como en DerbiManager». Lo que no es
+pantalla vive en el dominio, con test:
+
+| Dónde                            | Qué                                                                                                  |
+| -------------------------------- | ---------------------------------------------------------------------------------------------------- |
+| `shared/domain/trophies.ts`      | Tipos de título (`TrophyKind`), la forma y el metal de cada uno (`TROPHY_DESIGN`) y `trophyKindOf()` |
+| `shared/domain/season-awards.ts` | Los premios de la gala a partir de las actas de la fase regular (`computeSeasonAwards`)              |
+
+**Una forma por tipo de título y el metal por categoría**, sin parecerse a
+ningún trofeo real (todas por código, ver `assets/trophies/LICENSE.md`):
+
+| Título                        | Forma                              | Metal                    |
+| ----------------------------- | ---------------------------------- | ------------------------ |
+| Liga de primera / de segunda  | Copa alta de dos asas              | Oro / bronce             |
+| Campeón de la liga americana  | Cáliz alto con tres aros           | Oro                      |
+| Copa nacional                 | Copa baja de dos asas              | Plata                    |
+| Continental, niveles 1, 2 y 3 | Boca muy abierta                   | Platino / plata / bronce |
+| Mundial                       | Esfera de meridianos sobre columna | Oro                      |
+| Ascenso                       | Placa sobre atril                  | Bronce                   |
+| Premios de la gala            | Estatuilla con balón               | Oro                      |
+
+| Pieza                    | Qué hace                                                                                                                                                                                     |
+| ------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `trophy-models.ts`       | Las siete siluetas en three.js (`LatheGeometry`, aros, cajas), de pie sobre su peana y entre 0,5 y 0,9 m, para que valga la misma cámara                                                     |
+| `trophy-metals.ts`       | Los cuatro metales en cifras para three.js: los mismos que los tokens `tv-metal-*` (un test lo comprueba)                                                                                    |
+| `trophy-thumbnail.ts`    | La foto de cada tipo, hecha **una vez** con un único lienzo WebGL compartido y guardada como PNG en memoria: una vitrina con quince títulos no abre quince contextos                         |
+| `TrophyThumbnail`        | La copa pequeña de las vitrinas. three.js llega aparte y después; mientras tanto, y para siempre sin WebGL, `TrophyIcon` en el mismo metal                                                   |
+| `TrophyStage`            | La copa en el centro de la pista, sobre un pedestal, en el pabellón de la previa (`match/arena-scene.ts`) con los colores del campeón. Un solo contexto; quieta con `prefers-reduced-motion` |
+| `CelebrationPage`        | `/game/celebration`, fuera del marco como el partido: cabecera de retransmisión con escudo y titular, la copa detrás y «Siguiente»/«Continuar» abajo. Encadena las pendientes                |
+| `GalaAwards`             | Los premios de una temporada: individuales en `LeaderCard` (lo tuyo con `mine`) y el quinteto ideal de base a pívot con `PositionChip`. En la gala y en Historial → Galas                    |
+| `TrophyCabinet`          | La vitrina de la ficha del mánager: cada título con su copa y los ascensos detrás                                                                                                            |
+| `usePendingCelebrations` | Pregunta si hay pantallas pendientes y lleva a ellas: desde el inicio y al acabar CONTINUAR                                                                                                  |
+
+- **Vitrinas**: Historial (Palmarés con copas grandes y los ascensos aparte, que
+  no suman; pestaña Galas con un selector de temporada), la ficha de cualquier
+  club (panel Palmarés), la ficha del mánager (Vitrina, al pie) y «Campeones
+  del mundo» en Selecciones.
+- **La pantalla de campeón** sale para liga, finales de la liga americana,
+  Copa, continentales, Mundial y ascenso, sólo del club o la selección del
+  usuario; en el orden en que se ganó y, en el mismo día, título, ascenso y
+  gala. En la gala la copa se corre a la izquierda (`shift`) para dejar sitio
+  a los premios. Probada en 1280×720.
 
 ## Reglas
 

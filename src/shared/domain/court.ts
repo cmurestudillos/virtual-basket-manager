@@ -682,10 +682,15 @@ function hashOf(text: string): number {
   return hash >>> 0;
 }
 
+/** La equipación de un club: la de casa, la que lleva su escudo. */
+export function teamKit(teamId: string): Kit {
+  return KITS[hashOf(teamId) % KITS.length] as Kit;
+}
+
 /** Las equipaciones de un partido: si chocan, el visitante se viste de blanco. */
 export function matchKits(homeTeamId: string, awayTeamId: string): Record<CourtSide, Kit> {
-  const home = KITS[hashOf(homeTeamId) % KITS.length] as Kit;
-  const away = KITS[hashOf(awayTeamId) % KITS.length] as Kit;
+  const home = teamKit(homeTeamId);
+  const away = teamKit(awayTeamId);
   return { home, away: away === home ? AWAY_KIT : away };
 }
 
