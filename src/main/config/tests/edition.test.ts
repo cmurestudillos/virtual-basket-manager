@@ -139,7 +139,7 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
   // Los entrenadores reales: los clubes de la ACB, la Primera FEB, la Serie A
   // (con el que sube de la A2), las dos ligas francesas, la A1 griega (con el
   // que sube de la Elite League), la liga turca, las dos alemanas, la
-  // israelí, la LKL, la Liga Adriática, la BNXT, la argentina y la chilena llevan el suyo. La Elite
+  // israelí, la LKL, la Liga Adriática, la BNXT, la argentina, la chilena y la NBL australiana llevan el suyo. La Elite
   // League, la NKL lituana y la ABA2 no: de algunos de sus entrenadores no se
   // ha encontrado la fecha de nacimiento y el juego se los inventa.
   const coachLeagues = [
@@ -157,7 +157,8 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
     'adriatica-1',
     'bnxt-1',
     'argentina-1',
-    'chile-1'
+    'chile-1',
+    'australia-1'
   ].filter((id) => realLeagues.has(id));
   // Las excepciones, liga a liga y contadas: clubes cuyo primer entrenador no
   // tiene fecha de nacimiento en ninguna fuente fiable, así que el juego se lo

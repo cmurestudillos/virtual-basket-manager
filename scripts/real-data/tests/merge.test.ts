@@ -773,3 +773,32 @@ describe('Chile: la liga entera, sin invitados', () => {
     });
   });
 });
+
+describe('Australia: la NBL, con un club de Nueva Zelanda', () => {
+  const nbl = (): SourceLeague => {
+    const base = league();
+    base.teams[1]!.country = 'NZL';
+    return {
+      ...base,
+      competitionId: 'australia-1',
+      name: 'National Basketball League',
+      shortName: 'NBL',
+      country: 'AUS'
+    };
+  };
+  const { dataset } = mergeRealLeagues(fictitious, [nbl()], known);
+
+  it('el club neozelandés lleva su país y los demás el de la liga', () => {
+    const clubs = dataset.teams.filter((entry) => entry.competitionId === 'australia-1');
+    expect(clubs.find((entry) => entry.name === 'Club Real 2')?.country).toBe('NZL');
+    expect(clubs.find((entry) => entry.name === 'Club Real 1')?.country).toBe('AUS');
+  });
+
+  it('la copa es la NBL Ignite Cup', () => {
+    expect(dataset.realLeagues).toEqual(['australia-1']);
+    expect(dataset.competitions.find((entry) => entry.id === 'australia-copa')).toMatchObject({
+      name: 'NBL Ignite Cup',
+      shortName: 'Ignite Cup'
+    });
+  });
+});

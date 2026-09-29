@@ -64,7 +64,10 @@ const REAL_CUPS: Record<string, { name: string; shortName: string }> = {
   ARG: { name: 'Copa Islas Malvinas', shortName: 'Malvinas' },
   // La de la 2025-26 se jugó dos veces (noviembre de 2025 y mayo de 2026),
   // siempre como Copa Chile.
-  CHI: { name: 'Copa Chile', shortName: 'Copa' }
+  CHI: { name: 'Copa Chile', shortName: 'Copa' },
+  // Australia no tiene copa de clubes: la de la NBL es la Ignite Cup, un torneo
+  // dentro de la liga con final aparte.
+  AUS: { name: 'NBL Ignite Cup', shortName: 'Ignite Cup' }
 };
 
 /** Altura típica por puesto: para quien no la trae y para deducir el puesto. */

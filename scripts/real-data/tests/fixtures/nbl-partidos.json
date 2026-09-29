@@ -1,0 +1,5 @@
+{"type":"matches","count":3,"data":[
+{"id":"m-1","start_time":"2025-09-18T09:30:00","round":"1","match_type":"regular","home_score":"90","away_score":"85","venue":{"name":"Pabellón Uno"},"home_team":{"id":"r-a","external_id":"s-a","team_code":"AAA"},"away_team":{"id":"r-b","external_id":"s-b","team_code":"BBB"}},
+{"id":"m-2","start_time":"2026-02-22T05:30:00","round":"IGNITE CUP FINAL","match_type":null,"home_score":"100","away_score":"101","venue":{"name":"Pabellón Dos"},"home_team":{"id":"r-b","external_id":"s-b","team_code":"BBB"},"away_team":{"id":"r-a","external_id":"s-a","team_code":"AAA"}},
+{"id":"m-3","start_time":"2026-03-04T08:30:00","round":"SEEDING","match_type":"final","home_score":null,"away_score":"","venue":{},"home_team":{"id":"r-a","external_id":"s-a","team_code":"AAA"},"away_team":{"id":"r-b","external_id":"s-b","team_code":"BBB"}}
+]}

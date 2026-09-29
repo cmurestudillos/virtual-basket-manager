@@ -1,0 +1,5 @@
+{"type":"rosters","count":3,"data":[
+{"jersey_number":"7","playing_position":"G","player":{"id":"r-p1","external_id":"s-p1","first_name":"Uno","last_name":"Primero","date_of_birth":"1999-01-02","height":188,"weight":84,"nationality_code":"AUS","playing_position":"G"},"team":{"team_code":"AAA"}},
+{"jersey_number":"7","playing_position":"G","player":{"id":"r-p1","external_id":"s-p1","first_name":"Uno","last_name":"Primero","date_of_birth":"1999-01-02","height":188,"weight":84,"nationality_code":"AUS","playing_position":"G"},"team":{"team_code":"AAA"}},
+{"jersey_number":"00","playing_position":"FC","player":{"id":"r-p2","external_id":"s-p2","first_name":"Dos","last_name":"Segundo Jnr","date_of_birth":null,"height":0,"weight":null,"nationality_code":"TRI","playing_position":"F"},"team":{"team_code":"AAA"}}
+]}

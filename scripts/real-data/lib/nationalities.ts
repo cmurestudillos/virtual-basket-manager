@@ -219,7 +219,7 @@ const COUNTRIES: readonly (readonly string[])[] = [
   ['PUR', 'PRI', 'PR', 'Puerto Rico'],
   ['JAM', 'JAM', 'JM', 'Jamaica'],
   ['BAH', 'BHS', 'BS', 'Bahamas', 'The Bahamas', 'Islas Bahamas'],
-  ['TTO', 'TTO', 'TT', 'Trinidad y Tobago', 'Trinidad and Tobago'],
+  ['TTO', 'TTO', 'TT', 'Trinidad y Tobago', 'Trinidad and Tobago', 'TRI'],
   ['BAR', 'BRB', 'BB', 'Barbados'],
   ['ANT', 'ATG', 'AG', 'Antigua y Barbuda', 'Antigua and Barbuda'],
   ['SKN', 'KNA', 'KN', 'San Cristóbal y Nieves', 'Saint Kitts and Nevis'],

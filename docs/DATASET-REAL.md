@@ -77,8 +77,8 @@ decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**
 **Francia (Betclic ÉLITE y ÉLITE 2)**, **Grecia (GBL y Elite League)**,
 **Turquía (Basketbol Süper Ligi)**, **Alemania (BBL y ProA)**, **Israel (Ligat
 Winner)**, **Lituania (LKL y NKL)**, la **Liga Adriática (ABA y ABA2)**, la
-**BNXT (Bélgica y Países Bajos)**, la **Liga Nacional argentina**, la **LNB chilena** y
-así país a país.
+**BNXT (Bélgica y Países Bajos)**, la **Liga Nacional argentina**, la **LNB chilena**, la
+**NBL australiana** y así país a país.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -102,6 +102,7 @@ pnpm real:bnxt    # BNXT League        → .real-data-cache/sources/bnxt-2025.js
 pnpm real:adc     # Liga Nacional (ARG) → .real-data-cache/sources/adc-lnb-2025.json
                   # y la Conferencia Sur de La Liga Argentina → adc-lla-sur-2025.json
 pnpm real:lnbch   # LNB chilena       → .real-data-cache/sources/lnbch-2025.json
+pnpm real:nbl     # NBL australiana   → .real-data-cache/sources/nbl-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -133,6 +134,7 @@ inventado.
 | Liga Nacional (`argentina-1`) | `laliganacional.com.ar`    | HTML de la AdC: calendarios de cada club, las 342 actas de la fase regular y la ficha de cada jugador (sólo la fecha). Entran los 19 y Lanús.        |
 | La Liga Argentina (Sur)       | `laliganacional.com.ar`    | La misma web: la Conferencia Sur entera (272 actas). Sólo entra Lanús, en `argentina-1` (ver «Equipos invitados»).                                   |
 | LNB chilena (`chile-1`)       | Genius Sports + LiveStats  | La web «hosted» de FEBACHILE (plantillas y las 144 actas de la Transición 2025 y el Apertura 2026) y el `data.json` de cada partido. Ver «Chile».    |
+| NBL (`australia-1`)           | `nbl.com.au` (Synergy)     | La API JSON «Rosetta» de su web: partidos, las 165 actas de liga regular con jugada a jugada, plantillas y totales oficiales. Ver «Australia».       |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -820,6 +822,69 @@ entre peticiones; la primera vez, unas 420 peticiones y veinte minutos.
 - La copa: la **Copa Chile** (se jugó dos veces en la temporada, en noviembre
   de 2025 y mayo de 2026), que ya es el nombre de la ficticia.
 
+#### Australia (API Rosetta de la NBL)
+
+`pnpm real:nbl` deja `nbl-2025.json` (`australia-1`). Un segundo entre
+peticiones; la primera vez, unas 195 peticiones y diez minutos (las actas
+tardan).
+
+- **La temporada**: la «NBL26», fase regular del 18-09-2025 al 20-02-2026,
+  **165 partidos, 33 por club**. Son los **10** del juego (liga cerrada: los
+  mismos que la 2024-25), uno de ellos de Nueva Zelanda (los Breakers,
+  `SourceTeam.country = 'NZL'`, abreviatura `NZB`: la de la NBL, `NZL`, es
+  el código del país). Cuenta sólo la fase regular: los partidos de la
+  **Ignite Cup** van dentro (cuentan para la liga); su final, el play-in y
+  los playoffs, no.
+- **Clasificación**: la de la liga (desempate por porcentaje de puntos),
+  fija en `nbl.ts` y comprobada con los partidos: Sydney 24-9 … Brisbane
+  6-27.
+- **La fuente ya no es Genius**: desde la NBL26 los datos son de Synergy
+  (Sportradar) y la web los sirve con su API **Rosetta**
+  (`prod.rosetta.nbl.com.au/get/…`), JSON sin clave pero con la cabecera
+  `Origin: https://www.nbl.com.au` (sin ella, 403). Rutas: `nbl/matches/in/
+season/2025/regular` (los 179 partidos de la temporada), `nbl/players/for/
+team/<id>/in/season/2025` (plantilla con fecha, altura, peso, nacionalidad y
+  un puesto G/F/C), `nbl/player/<id>` (la ficha de los cortados, que no salen
+  en ninguna plantilla), `match/<id>/live/all` (el acta) y `nbl/stats/leaders/
+for/season/id/<id>` (totales oficiales por jugador y club, con los
+  playoffs).
+- **Dos ids** por equipo y jugador: el de Rosetta y el de Synergy
+  (`external_id`). Las actas usan el de Synergy, que es el `sourceId`.
+- **Las actas** pesan más de 1 MB (vídeos, cuotas, el jugada a jugada con
+  fotos): se guardan en caché ya reducidas (`slimNblMatch`). Traen
+  **titulares**, minutos con segundos, tiros, rebotes, asistencias, robos,
+  tapones, pérdidas, faltas y valoración. Del **jugada a jugada** salen las
+  **faltas recibidas**, los **mates** (tiro de 2 anotado con subtipo de mate)
+  y los **tapones recibidos** (cada tapón con el tiro fallado del rival en el
+  mismo periodo y reloj; se casan el 96 %). Un partido viene sin jugada a
+  jugada: en él, esas tres cosas a cero.
+- **Actas cortas**: en cuatro partidos la suma de los jugadores no llega al
+  marcador (31 puntos en total). A quien jugó en ellas se le corrige con los
+  **totales oficiales**, comparados con la suma de todas sus actas de liga y
+  playoffs (la final de la Ignite Cup no cuenta en los totales). Cuadran 29
+  de los 31: los totales oficiales tampoco coinciden del todo con las actas
+  de algún otro partido.
+- **Quien jugó en dos clubes** se queda donde más minutos jugó.
+- **Puesto** (`nblPosition`): la fuente sólo da G/F/C, con seis de cada diez
+  minutos de «G». Manda la altura (desde 2,08, pívot; desde 2,03,
+  ala-pívot); un «F» es ala-pívot si coge 6,5 rebotes por 36 minutos y mide
+  1,98 o más; un «G» de 1,98 o más, alero; el resto de «G», base con 4
+  asistencias por 36 minutos o 1,85 o menos. Queda un 16 % de minutos de
+  pívot.
+- **Nacionalidad**: la de la ficha, con códigos FIBA e ISO mezclados (`NLD`,
+  `TRI`: alias de Trinidad y Tobago en `nationalities.ts`). La que falta, la
+  del club. Las correcciones (Sudán por Sudán del Sur, tildes, una altura que
+  falta, un nombre de pila distinto del de otra liga para la doble ficha) van
+  en `nbl-jugadores.json`, por id de Synergy.
+- **Nombres**: los de la API, con los sufijos siempre igual («Jnr» → «Jr.»).
+- **Club**: nombre sin patrocinio, ciudad y el nombre comercial actual del
+  pabellón; el aforo, de la Wikipedia (la API no lo da).
+- **Doble ficha**: siete jugadores de la NBL acabaron la temporada en Europa
+  (Liga Endesa, Serie A, BBL, Ligat Winner, GBL); como en la NBL jugaron más
+  minutos, se quedan en Australia y salen de esas ligas (`sharedPlayerDrops`).
+- La copa: Australia no tiene copa de clubes; la de la NBL es la **NBL
+  Ignite Cup** («Ignite Cup»), la que toma la del juego.
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -938,7 +1003,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas, las adriáticas, la BNXT, la argentina y la chilena, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas, las adriáticas, la BNXT, la argentina, la chilena y la australiana, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -1114,6 +1179,12 @@ siguen inventados.
   Valdivia, Colo-Colo, Boston College y Español de Talca), todos chilenos, no
   se ha encontrado ni fecha ni edad: el juego se los inventa, las siete
   excepciones que admite `edition.test.ts` en `chile-1`.
+- **NBL australiana**: la API no trae entrenadores. El del **primer partido
+  de la fase regular** va a mano en `nbl-entrenadores.json` (`inicio`, por
+  abreviatura del club), con nombre y bandera de la Wikipedia y la fecha de
+  Wikidata. Nueve con fecha exacta; uno con la edad de la prensa (regla del
+  1 de julio). Sólo cambió uno en toda la temporada, en Brisbane (en
+  diciembre, un interino), y cuenta el del inicio. Ninguno inventado.
 - **Serie A2** y **Segunda FEB**: sólo el del equipo invitado. La LNP no publica
   los técnicos de temporadas pasadas: el de la A2 es el del inicio de temporada
   y va a mano en `resources/real-data/manual/lnp-entrenadores.json` (por id de

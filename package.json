@@ -64,6 +64,7 @@
     "real:bnxt": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/bnxt.ts",
     "real:adc": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/adc.ts",
     "real:lnbch": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/lnbch.ts",
+    "real:nbl": "tsx --tsconfig tsconfig.node.json scripts/real-data/sources/nbl.ts",
     "real:build": "tsx --tsconfig tsconfig.node.json scripts/real-data/build-real-dataset.ts"
   },
   "dependencies": {
