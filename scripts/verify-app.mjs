@@ -46,6 +46,11 @@ execSync('pnpm seed:finished', { cwd: PROJECT, stdio: 'inherit' });
 console.log('sembrando una partida con títulos por enseñar…');
 execSync('pnpm seed:champion', { cwd: PROJECT, stdio: 'inherit' });
 
+// Y una en la que la selección del usuario acaba de ganar el Mundial: la
+// esfera de oro sólo se levanta con una selección campeona.
+console.log('sembrando una partida con el Mundial ganado…');
+execSync('pnpm seed:world', { cwd: PROJECT, stdio: 'inherit' });
+
 // Y una tercera en modo carrera con el entrenador ya destituido: la pantalla de
 // ofertas no se alcanza jugando, hacen falta media temporada de derrotas.
 console.log('sembrando una partida de carrera sin equipo…');
@@ -1550,6 +1555,28 @@ if ((await rankingYPalmares.count()) > 0) {
 }
 await page.getByText('Campeones del mundo', { exact: true }).scrollIntoViewIfNeeded();
 await enLaVentanaMinima('campeones del mundo', '38g-campeones-del-mundo-1280');
+
+// --- El Mundial: la selección del usuario, campeona -------------------------
+
+await page.getByRole('link', { name: 'Salir al menú' }).click();
+await page.waitForTimeout(1000);
+await page.getByRole('link', { name: 'Cargar partida' }).click();
+await page.waitForTimeout(1200);
+await cargarPartida('Campeón del mundo');
+await page.waitForTimeout(2500);
+console.log('mundial · pantallas al cargar:', await pasarCelebraciones('39-mundial-1280'));
+
+// Y la esfera en «Campeones del mundo», ya con un campeón.
+await goTo('Selecciones');
+await page.waitForTimeout(1500);
+const palmaresMundial = page.getByRole('button', { name: 'Ranking y palmarés' });
+if ((await palmaresMundial.count()) > 0) {
+  await palmaresMundial.click();
+  await page.waitForTimeout(2000);
+}
+await page.getByText('Campeones del mundo', { exact: true }).scrollIntoViewIfNeeded();
+console.log('campeones del mundo:', await filas('main tr.is-mine'));
+await enLaVentanaMinima('campeones del mundo con campeón', '39b-campeones-del-mundo-1280');
 
 await app.close();
 console.log(`OK — capturas en ${SHOTS}`);
