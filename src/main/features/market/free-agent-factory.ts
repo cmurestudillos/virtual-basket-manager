@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import {
   ATTRIBUTE_KEYS,
   overallForPosition,
@@ -60,7 +59,9 @@ export function buildFreeAgents(input: {
     const heightCm = (HEIGHT_BY_POSITION[position] as number) + input.rng.int(-5, 5);
 
     rows.push({
-      id: randomUUID(),
+      // Id fijo por puesto en la bolsa: el entreno y las renovaciones se
+      // siembran con él, y uno al azar cambiaría la partida en cada creación.
+      id: `agente-libre-${index + 1}`,
       teamId: null,
       firstName,
       lastName,

@@ -1,4 +1,4 @@
-import { and, asc, eq, inArray, isNotNull, isNull } from 'drizzle-orm';
+import { and, asc, eq, inArray, isNotNull, isNull, sql } from 'drizzle-orm';
 import type { SaveDatabase } from '../../database/save-database';
 import {
   celebrationsTable,
@@ -153,12 +153,16 @@ export class TrophyRepository {
   }
 
   pendingCelebrations(): CelebrationRow[] {
-    return this.db
-      .select()
-      .from(celebrationsTable)
-      .where(isNull(celebrationsTable.seenOn))
-      .orderBy(asc(celebrationsTable.happenedOn), asc(celebrationsTable.createdAt))
-      .all();
+    return (
+      this.db
+        .select()
+        .from(celebrationsTable)
+        .where(isNull(celebrationsTable.seenOn))
+        // El desempate final es el orden de alta: dos pantallas apuntadas en el
+        // mismo milisegundo salían en un orden u otro según el id, que es al azar.
+        .orderBy(asc(celebrationsTable.happenedOn), asc(celebrationsTable.createdAt), sql`rowid`)
+        .all()
+    );
   }
 
   markSeen(celebrationId: string, seenOn: Date): void {

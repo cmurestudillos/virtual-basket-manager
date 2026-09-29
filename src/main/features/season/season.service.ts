@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type {
   AdvanceResult,
   ContinentalSummary,
@@ -89,6 +88,7 @@ import { CoachService } from '../coaches/coaches.service';
 // Trofeos, pantallas de campeón y gala (2026-09-29).
 import { TrophyService } from '../trophies/trophies.service';
 import { SeasonRepository } from './season.repository';
+import { scheduledGameId, seasonIdFor, seriesGameId } from './season-ids';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Tope de días que se saltan de una vez, por si el calendario se queda sin partidos. */
@@ -840,7 +840,7 @@ export class SeasonService {
     // se juegue en 2030.
     const startYear = state.currentDate.getUTCFullYear();
     const season: SeasonRow = {
-      id: randomUUID(),
+      id: seasonIdFor(competition.id, state.seasonNumber, repository.gameState().worldSeed),
       competitionId: competition.id,
       seasonNumber: state.seasonNumber,
       startYear,
@@ -864,8 +864,8 @@ export class SeasonService {
     // juegan ida y vuelta, diez juegan tres vueltas y una de treinta, una sola.
     const rounds = generateRoundRobin(teamIds, roundRobinLaps(teamIds.length));
     const games: NewGameRow[] = rounds.flatMap((pairings, index) =>
-      pairings.map((pairing) => ({
-        id: randomUUID(),
+      pairings.map((pairing, slot) => ({
+        id: scheduledGameId(season.id, index + 1, slot),
         seasonId: season.id,
         round: index + 1,
         scheduledOn: matchdayDate(startYear, index + 1),
@@ -1156,7 +1156,7 @@ export class SeasonService {
       }
 
       cup = {
-        id: randomUUID(),
+        id: seasonIdFor(cupCompetition.id, season.seasonNumber, repository.gameState().worldSeed),
         competitionId: cupCompetition.id,
         seasonNumber: season.seasonNumber,
         startYear: season.startYear,
@@ -1324,7 +1324,7 @@ export class SeasonService {
     entrants: readonly string[]
   ): void {
     const continental: SeasonRow = {
-      id: randomUUID(),
+      id: seasonIdFor(competition.id, season.seasonNumber, repository.gameState().worldSeed),
       competitionId: competition.id,
       seasonNumber: season.seasonNumber,
       startYear: season.startYear,
@@ -1336,8 +1336,8 @@ export class SeasonService {
 
     repository.insertGames(
       generateRoundRobin(entrants, 1).flatMap((pairings, index) =>
-        pairings.map((pairing) => ({
-          id: randomUUID(),
+        pairings.map((pairing, slot) => ({
+          id: scheduledGameId(continental.id, index + 1, slot),
           seasonId: continental.id,
           round: index + 1,
           scheduledOn: continentalDateFor(continental.startYear, index + 1),
@@ -1444,7 +1444,7 @@ export class SeasonService {
         return homeAdvantagePattern(bestOf).map((host, gameIndex) => {
           const higherIsHome = host === 'higher';
           return {
-            id: randomUUID(),
+            id: seriesGameId(seriesId, gameIndex + 1),
             seasonId: continental.id,
             round,
             scheduledOn: continentalDateFor(continental.startYear, round, gameIndex + 1),
@@ -2192,7 +2192,7 @@ export class SeasonService {
       return homeAdvantagePattern(format.bestOf).map((host, gameIndex) => {
         const higherIsHome = host === 'higher';
         return {
-          id: randomUUID(),
+          id: seriesGameId(seriesId, gameIndex + 1),
           seasonId: season.id,
           round: format.round,
           scheduledOn: playoffGameDate(roundStart, gameIndex + 1),

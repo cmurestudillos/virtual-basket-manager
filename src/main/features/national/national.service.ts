@@ -72,6 +72,7 @@ import {
   windowForDate
 } from './national-squad';
 import { NationalRepository } from './national.repository';
+import { scheduledGameId, seasonIdFor } from '../season/season-ids';
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 /** Tope de días que se simulan al cerrar el verano, por si algo no acabara. */
@@ -120,7 +121,7 @@ export class NationalService {
     const ranked = this.refreshTeams(repository);
 
     const qualifiers: SeasonRow = {
-      id: randomUUID(),
+      id: seasonIdFor(QUALIFIERS_COMPETITION_ID, seasonNumber, repository.gameState().worldSeed),
       competitionId: QUALIFIERS_COMPETITION_ID,
       seasonNumber,
       startYear,
@@ -157,10 +158,10 @@ export class NationalService {
       )
     );
     repository.insertGames(
-      groups.flatMap((teamIds) =>
+      groups.flatMap((teamIds, group) =>
         generateRoundRobin(teamIds, 2).flatMap((pairings, index) =>
-          pairings.map((pairing): NewGameRow => ({
-            id: randomUUID(),
+          pairings.map((pairing, slot): NewGameRow => ({
+            id: scheduledGameId(qualifiers.id, index + 1, slot, groupName(group)),
             seasonId: qualifiers.id,
             round: index + 1,
             scheduledOn: qualifierDate(startYear, index + 1),
@@ -752,7 +753,11 @@ export class NationalService {
     rankedEntrants: readonly string[]
   ): void {
     const worldCup: SeasonRow = {
-      id: randomUUID(),
+      id: seasonIdFor(
+        WORLD_CUP_COMPETITION_ID,
+        qualifiers.seasonNumber,
+        repository.gameState().worldSeed
+      ),
       competitionId: WORLD_CUP_COMPETITION_ID,
       seasonNumber: qualifiers.seasonNumber,
       startYear: qualifiers.startYear,
@@ -778,16 +783,16 @@ export class NationalService {
       )
     );
     repository.insertGames(
-      groups.flatMap((teamIds) =>
+      groups.flatMap((teamIds, group) =>
         generateSingleRoundRobin(teamIds).flatMap((pairings, index) =>
-          pairings.map((pairing) =>
+          pairings.map((pairing, slot) =>
             worldCupGame(
               worldCup,
               index + 1,
               pairing.homeTeamId,
               pairing.awayTeamId,
               host,
-              randomUUID()
+              scheduledGameId(worldCup.id, index + 1, slot, groupName(group))
             )
           )
         )

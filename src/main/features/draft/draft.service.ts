@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import type { DraftPickView, DraftProspectView, DraftView } from '@shared/contracts/draft.contract';
 import { marketValueCents } from '@shared/domain/market';
 import {
@@ -192,7 +191,7 @@ export class DraftService {
 
     // La clase: prospectos sin equipo marcados con la temporada del draft.
     const rows: NewPlayerRow[] = Array.from({ length: DRAFT_CLASS_SIZE }, (_, index) =>
-      prospectRow(generateDraftProspect(index + 1, rng), rng, season)
+      prospectRow(generateDraftProspect(index + 1, rng), rng, season, index + 1)
     );
     repository.insertPlayers(rows);
 
@@ -454,12 +453,14 @@ export class DraftService {
 function prospectRow(
   prospect: ReturnType<typeof generateDraftProspect>,
   rng: ReturnType<typeof createRng>,
-  season: SeasonRow
+  season: SeasonRow,
+  rank: number
 ): NewPlayerRow {
   const { firstName, lastName } = randomNameFor(prospect.nationality, rng);
   const referenceYear = season.startYear + 1;
   return {
-    id: randomUUID(),
+    // Fijo, no al azar: el entreno y las renovaciones se siembran con el id.
+    id: `${season.id}-prospecto-${rank}`,
     teamId: null,
     firstName,
     lastName,

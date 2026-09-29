@@ -30,6 +30,11 @@ const DEV_DATA = resolve('.dev-data');
 const SAVES = join(DEV_DATA, 'saves');
 const MANAGED_TEAM = 'liga-nacional-1';
 const NAME = 'Temporada terminada';
+/**
+ * Semilla fija: la temporada (y su campeón) sale igual en cada pasada, y las
+ * capturas del arnés se pueden comparar de una vez a otra.
+ */
+const WORLD_SEED = 'temporada-terminada';
 
 mkdirSync(SAVES, { recursive: true });
 
@@ -39,7 +44,8 @@ const db: SaveDatabase = openSaveDatabase(join(SAVES, fileName), resolve('drizzl
 
 seedSave(db, loadDataset(resolve('resources/seed-data')), {
   managedTeamId: MANAGED_TEAM,
-  managerName: 'Carlos'
+  managerName: 'Carlos',
+  worldSeed: WORLD_SEED
 });
 
 const resolveDb = (): SaveDatabase => db;

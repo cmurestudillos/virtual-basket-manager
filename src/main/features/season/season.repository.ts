@@ -26,7 +26,12 @@ export class SeasonRepository {
 
   constructor(private readonly db: SaveDatabase) {}
 
-  gameState(): { managedTeamId: string | null; currentDate: Date; seasonNumber: number } {
+  gameState(): {
+    managedTeamId: string | null;
+    currentDate: Date;
+    seasonNumber: number;
+    worldSeed: string | null;
+  } {
     const state = this.db.select().from(gameStateTable).get();
     if (!state) {
       throw new Error('La partida no tiene estado de juego');
@@ -34,7 +39,8 @@ export class SeasonRepository {
     return {
       managedTeamId: state.managedTeamId,
       currentDate: state.currentDate,
-      seasonNumber: state.seasonNumber
+      seasonNumber: state.seasonNumber,
+      worldSeed: state.worldSeed
     };
   }
 

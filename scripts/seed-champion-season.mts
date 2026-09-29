@@ -16,13 +16,14 @@ import { SeasonService } from '../src/main/features/season/season.service';
  * Deja en `.dev-data` una partida con la temporada terminada y **títulos por
  * enseñar**: la del club que la gana (trofeos, 2026-09-29).
  *
- * Es `seed-finished-season.mts` con otro banquillo. Con CB Montenegro la
- * temporada sembrada acaba con la Copa y la liga ganadas, así que al cargarla
- * salen, una detrás de otra, las dos pantallas de campeón y la gala: el arnés
- * las captura sin jugar 306 partidos a botonazos. Ojo: la temporada sembrada
- * no sale siempre igual (tampoco la de `seed-finished-season.mts`: el campeón
- * cambia de una pasada a otra), así que unas veces trae la Copa y la liga y
- * otras sólo la liga. El arnés dice cuántas pantallas encontró.
+ * Es `seed-finished-season.mts` con otro banquillo. Con CB Montenegro y la
+ * semilla `WORLD_SEED` la temporada acaba con la Copa, la Euroliga y la liga
+ * ganadas, así que al cargarla salen, una detrás de otra, las tres pantallas de
+ * campeón y la gala: el arnés las captura sin jugar 306 partidos a botonazos.
+ * Sale siempre igual: la partida lleva semilla fija y de ella cuelgan los ids
+ * de temporadas y partidos, que son la semilla del motor (`season-ids.ts`,
+ * 2026-09-29). Si un cambio del motor o del dataset le quita los títulos a
+ * Montenegro, hay que buscar otra semilla que se los dé.
  *
  *   pnpm seed:champion
  */
@@ -30,6 +31,8 @@ import { SeasonService } from '../src/main/features/season/season.service';
 const DEV_DATA = resolve('.dev-data');
 const SAVES = join(DEV_DATA, 'saves');
 const MANAGED_TEAM = 'liga-nacional-3';
+/** Con ella Montenegro gana Copa, Euroliga y liga (2026-09-29). */
+const WORLD_SEED = 'montenegro-3';
 const NAME = 'Campeón de temporada';
 
 mkdirSync(SAVES, { recursive: true });
@@ -40,7 +43,8 @@ const db: SaveDatabase = openSaveDatabase(join(SAVES, fileName), resolve('drizzl
 
 seedSave(db, loadDataset(resolve('resources/seed-data')), {
   managedTeamId: MANAGED_TEAM,
-  managerName: 'Carlos'
+  managerName: 'Carlos',
+  worldSeed: WORLD_SEED
 });
 
 const resolveDb = (): SaveDatabase => db;

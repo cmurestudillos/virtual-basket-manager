@@ -41,7 +41,16 @@ export const gameStateTable = sqliteTable('game_state', {
    * Nulo en las partidas de antes de poder elegir, que juegan sólo el país del
    * club dirigido.
    */
-  activeCountries: text('active_countries')
+  activeCountries: text('active_countries'),
+  /**
+   * La semilla de la partida: los dados que se tiran una sola vez, al crearla.
+   * Va en los ids de las temporadas, y de ahí a los de los partidos, que son la
+   * semilla del motor: dos partidas nuevas del mismo club juegan cursos
+   * distintos, pero la misma partida (o dos creadas con la misma semilla, como
+   * las de los arneses) juega siempre el mismo (reproducibilidad, 2026-09-29).
+   * Las partidas anteriores reciben una al azar al migrar.
+   */
+  worldSeed: text('world_seed')
 });
 
 export type GameStateRow = typeof gameStateTable.$inferSelect;

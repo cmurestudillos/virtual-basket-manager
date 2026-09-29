@@ -253,8 +253,9 @@ describe('lesiones', () => {
     // gente en la enfermería, pero no media liga.
     //
     // Se mide en **proporción y con banda ancha** a propósito. Cada partida
-    // sortea los ids de sus partidos (`randomUUID`), y de ahí sale la semilla
-    // del motor: dos siembras del mismo dataset juegan temporadas distintas, y
+    // sortea su semilla al crearse (`game_state.world_seed`), que va en los ids
+    // de sus partidos y de ahí a la semilla del motor: dos siembras del mismo
+    // dataset sin semilla fija juegan temporadas distintas, y
     // eso es lo que se quiere —dos partidas nuevas del mismo club no pueden ser
     // calcadas—. Así que aquí no hay un número que clavar; lo que se comprueba
     // es el orden de magnitud. Con un número fijo el test fallaba de higos a

@@ -33,6 +33,7 @@ export class NationalRepository {
     dismissalEnabled: boolean;
     careerMode: boolean;
     managedTeamId: string | null;
+    worldSeed: string | null;
   } {
     const state = this.db.select().from(gameStateTable).get();
     if (!state) {
@@ -43,7 +44,8 @@ export class NationalRepository {
       currentDate: state.currentDate,
       dismissalEnabled: state.dismissalEnabled,
       careerMode: state.careerMode,
-      managedTeamId: state.managedTeamId
+      managedTeamId: state.managedTeamId,
+      worldSeed: state.worldSeed
     };
   }
 

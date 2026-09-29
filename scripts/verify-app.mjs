@@ -40,7 +40,7 @@ mkdirSync(SHOTS, { recursive: true });
 console.log('sembrando una partida con la temporada terminada…');
 execSync('pnpm seed:finished', { cwd: PROJECT, stdio: 'inherit' });
 
-// Y otra que acaba la temporada con títulos (Copa y liga): la pantalla de
+// Y otra que acaba la temporada con títulos (Copa, Euroliga y liga): la pantalla de
 // campeón y la gala sólo salen al ganar algo, y ganarlo jugando no cabe en una
 // pasada del arnés (trofeos, 2026-09-29).
 console.log('sembrando una partida con títulos por enseñar…');
@@ -1491,7 +1491,7 @@ const celebraciones = await pasarCelebraciones('38-campeon-1280');
 console.log(
   'campeón · pantallas al cargar:',
   celebraciones,
-  '· esperadas: título(s) y gala; la Copa depende de la pasada'
+  '· esperadas: 4 (Copa, Euroliga, liga y gala)'
 );
 // Vistas: al volver al inicio ya no salen.
 await goTo('Club', 'Historial');

@@ -1,4 +1,3 @@
-import { randomUUID } from 'node:crypto';
 import { randomNameFor } from '@shared/domain/names';
 import { generateProspect } from '@shared/domain/youth';
 import type { Rng } from '@shared/engine/basketball/rng';
@@ -13,6 +12,12 @@ export interface IntakeInput {
   /** Año de arranque de la temporada: de ahí sale la fecha de nacimiento. */
   seasonStartYear: number;
   nationality: string;
+  /**
+   * De dónde salen los ids: `${idPrefix}-1`, `${idPrefix}-2`… El entreno y las
+   * renovaciones se siembran con el id del jugador, así que un id al azar
+   * haría que la misma partida evolucionara distinta cada vez.
+   */
+  idPrefix: string;
 }
 
 /**
@@ -30,7 +35,7 @@ export function buildYouthPlayers(input: IntakeInput): NewPlayerRow[] {
     const { firstName, lastName } = randomNameFor(input.nationality, input.rng);
 
     rows.push({
-      id: randomUUID(),
+      id: `${input.idPrefix}-${index + 1}`,
       teamId: input.teamId,
       firstName,
       lastName,

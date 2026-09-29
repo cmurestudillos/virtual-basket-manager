@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto';
+import { randomBytes, randomUUID } from 'node:crypto';
 import { DEFAULT_TACTICS } from '@shared/domain/tactics';
 import { randomNameFor } from '@shared/domain/names';
 import { resolveActiveCountries } from '@shared/domain/simulation-scope';
@@ -69,6 +69,12 @@ export function seedSave(
     activeCountries?: readonly string[];
     /** Nacionalidad del entrenador; sin ella, la del club. */
     managerNationality?: string;
+    /**
+     * La semilla de la partida (`game_state.world_seed`). Sin ella se tira al
+     * azar, que es lo que quiere una partida nueva de verdad; los arneses y los
+     * tests que necesitan la misma temporada cada vez le pasan una fija.
+     */
+    worldSeed?: string;
   }
 ): void {
   // Todo en una transacción: una partida a medio sembrar es peor que ninguna.
@@ -203,7 +209,8 @@ export function seedSave(
         count: rng.int(3, 5),
         rng,
         seasonStartYear: dataset.seasonStartYear,
-        nationality: team.country
+        nationality: team.country,
+        idPrefix: `${team.id}-cantera-inicial`
       })) {
         tx.insert(playersTable).values(row).run();
       }
@@ -259,6 +266,7 @@ export function seedSave(
         seasonNumber: 1,
         dismissalEnabled: options.dismissalEnabled ?? true,
         careerMode: options.careerMode ?? false,
+        worldSeed: options.worldSeed ?? randomBytes(4).toString('hex'),
         activeCountries: JSON.stringify(
           resolveActiveCountries(
             options.activeCountries ?? [],

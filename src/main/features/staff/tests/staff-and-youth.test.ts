@@ -231,4 +231,29 @@ describe('cantera', () => {
     expect(despues.length).toBeGreaterThanOrEqual(antes);
     expect(despues.length).toBeLessThanOrEqual(10);
   });
+
+  it('los ids de la hornada son fijos y una segunda del mismo curso no choca', () => {
+    // Los ids del juvenil siembran su entreno: tienen que salir de club y curso,
+    // no del azar (reproducibilidad, 2026-09-29).
+    youth.runIntake(2, 2026);
+    const primera = youth
+      .get(MANAGED_TEAM)
+      .players.map((player) => player.playerId)
+      .filter((id) => id.startsWith(`${MANAGED_TEAM}-cantera-t2-`));
+    expect(primera.length).toBeGreaterThan(0);
+
+    // Una hornada repetida del mismo curso (un cambio de club que reabre
+    // temporada) no puede reventar por clave duplicada: se deja sólo al primero
+    // de la hornada, para que haya sitio y su id sea el que chocaría.
+    const primero = `${MANAGED_TEAM}-cantera-t2-1`;
+    for (const row of youth.get(MANAGED_TEAM).players) {
+      if (row.playerId !== primero) {
+        db.delete(playersTable).where(eq(playersTable.id, row.playerId)).run();
+      }
+    }
+    expect(() => youth.runIntake(2, 2026)).not.toThrow();
+    const segunda = youth.get(MANAGED_TEAM).players.map((player) => player.playerId);
+    expect(segunda).toContain(primero);
+    expect(segunda.some((id) => id.startsWith(`${MANAGED_TEAM}-cantera-t2-2-`))).toBe(true);
+  });
 });

@@ -194,13 +194,27 @@ export class YouthService {
           count,
           rng,
           seasonStartYear,
-          nationality: team.country
+          nationality: team.country,
+          idPrefix: this.intakePrefix(repository, `${team.id}-cantera-t${seasonNumber}`)
         })
       );
     }
   }
 
   // ------------------------------------------------------------------------
+
+  /**
+   * El prefijo de ids de una hornada. Normalmente es el del club y el curso;
+   * si ese curso ya tuvo hornada (no debería, pero un cambio de club puede
+   * volver a abrir temporada), se le pone coletilla en vez de chocar.
+   */
+  private intakePrefix(repository: YouthRepository, base: string): string {
+    let prefix = base;
+    for (let attempt = 2; repository.findPlayer(`${prefix}-1`); attempt += 1) {
+      prefix = `${base}-${attempt}`;
+    }
+    return prefix;
+  }
 
   private requireManaged(repository: YouthRepository, teamId: string) {
     const team = repository.findTeam(teamId);
