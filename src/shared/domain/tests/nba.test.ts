@@ -8,6 +8,7 @@ import {
   boardPlayoffRound,
   buildNbaPlayoffFormat,
   canSignUnderCap,
+  completeConferences,
   conferenceOrder,
   conferenceSeeds,
   draftOrder,
@@ -47,6 +48,31 @@ describe('conferencias y divisiones', () => {
     expect([...assignConferences([...TEAMS].reverse()).entries()].sort()).toEqual(
       [...assignConferences(TEAMS).entries()].sort()
     );
+  });
+
+  it('sin conferencias previas, las reparte todas por orden', () => {
+    expect([...completeConferences(TEAMS, new Map()).entries()].sort()).toEqual(
+      [...assignConferences(TEAMS).entries()].sort()
+    );
+  });
+
+  it('respeta las que ya hay y sólo coloca a los que faltan, en la división más corta', () => {
+    // Las del dataset: al revés que el reparto por orden, y sin el último equipo.
+    const given = new Map(
+      [...assignConferences(TEAMS).entries()]
+        .filter(([teamId]) => teamId !== 'usa-1-30')
+        .map(([teamId, value]) => [
+          teamId,
+          value.conference === 'east'
+            ? { conference: 'west' as const, division: 'Pacífico' }
+            : { conference: 'east' as const, division: 'Atlántico' }
+        ])
+    );
+    const added = completeConferences(TEAMS, given);
+    expect([...added.keys()]).toEqual(['usa-1-30']);
+    // Las divisiones vacías van antes: la primera del Este.
+    expect(added.get('usa-1-30')).toEqual({ conference: 'east', division: 'Central' });
+    expect(completeConferences(TEAMS, new Map([...given, ...added])).size).toBe(0);
   });
 
   it('cada conferencia respeta el orden de la general', () => {

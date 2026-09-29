@@ -62,6 +62,7 @@ const FIBA_TO_ISO: Record<string, string> = {
   GRN: 'gd',
   GUI: 'gn',
   HAI: 'ht',
+  HKG: 'hk',
   HUN: 'hu',
   IRI: 'ir',
   IRL: 'ie',
@@ -69,6 +70,7 @@ const FIBA_TO_ISO: Record<string, string> = {
   ISR: 'il',
   ISV: 'vi',
   ITA: 'it',
+  IVB: 'vg',
   JAM: 'jm',
   JOR: 'jo',
   JPN: 'jp',
@@ -87,6 +89,7 @@ const FIBA_TO_ISO: Record<string, string> = {
   MLI: 'ml',
   MLT: 'mt',
   MNE: 'me',
+  NCA: 'ni',
   NED: 'nl',
   NGR: 'ng',
   NIG: 'ne',
@@ -100,6 +103,7 @@ const FIBA_TO_ISO: Record<string, string> = {
   POR: 'pt',
   PUR: 'pr',
   ROU: 'ro',
+  RSA: 'za',
   RUS: 'ru',
   SAM: 'ws',
   SEN: 'sn',
@@ -113,6 +117,7 @@ const FIBA_TO_ISO: Record<string, string> = {
   SUR: 'sr',
   SVK: 'sk',
   SWE: 'se',
+  TOG: 'tg',
   TTO: 'tt',
   TUN: 'tn',
   TUR: 'tr',
@@ -125,7 +130,7 @@ const FIBA_TO_ISO: Record<string, string> = {
 };
 
 const FILES = import.meta.glob(
-  '../../../../../node_modules/flag-icons/flags/4x3/{ad,ao,ar,am,au,at,az,bs,bb,be,ba,br,bg,cf,ca,cg,td,cl,cn,ci,cm,cd,co,cv,hr,cu,cz,dk,do,eg,es,ee,fi,fr,gb,ge,de,gh,gr,gn,ht,hu,ir,ie,is,il,it,jm,jo,jp,kr,lv,lb,lt,lu,mx,mk,ml,me,nl,ng,no,nz,ph,pl,pt,pr,ro,ru,sn,kn,sl,si,rs,ss,ch,sk,se,tn,tr,ug,ua,uy,us,ve,dz,by,bf,dm,er,gm,gd,ke,xk,lc,mg,ma,mt,ne,ws,sc,sr,tt,cy,ga,pa,ae,ec,py,pe,vi}.svg',
+  '../../../../../node_modules/flag-icons/flags/4x3/{ad,ao,ar,am,au,at,az,bs,bb,be,ba,br,bg,cf,ca,cg,td,cl,cn,ci,cm,cd,co,cv,hr,cu,cz,dk,do,eg,es,ee,fi,fr,gb,ge,de,gh,gr,gn,ht,hu,ir,ie,is,il,it,jm,jo,jp,kr,lv,lb,lt,lu,mx,mk,ml,me,nl,ng,no,nz,ph,pl,pt,pr,ro,ru,sn,kn,sl,si,rs,ss,ch,sk,se,tn,tr,ug,ua,uy,us,ve,dz,by,bf,dm,er,gm,gd,ke,xk,lc,mg,ma,mt,ne,ws,sc,sr,tt,cy,ga,pa,ae,ec,py,pe,vi,hk,vg,ni,za,tg}.svg',
   { eager: true, query: '?url', import: 'default' }
 ) as Record<string, string>;
 

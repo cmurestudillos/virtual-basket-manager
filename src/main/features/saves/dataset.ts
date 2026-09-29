@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import type { PlayerAttributes } from '@shared/domain/attributes';
+import type { Conference } from '@shared/domain/nba';
 import type { Position } from '@shared/domain/positions';
 
 /**
@@ -54,6 +55,12 @@ export interface DatasetTeam {
   budgetCents: number;
   /** Entrenador real (edición privada); ausente en el mundo inventado. */
   coach?: DatasetCoach;
+  /**
+   * Conferencia y división reales de una liga con formato NBA (edición
+   * privada). Sin ellas, el juego las reparte al empezar la temporada.
+   */
+  conference?: Conference;
+  division?: string;
 }
 
 export interface DatasetPlayer {

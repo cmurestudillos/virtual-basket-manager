@@ -98,6 +98,56 @@ describe('estructura', () => {
     }
   });
 
+  it('sin conferencias en el dataset, las reparte por orden de id', () => {
+    const rows = db
+      .select({ id: teamsTable.id, conference: teamsTable.conference })
+      .from(teamsTable)
+      .where(eq(teamsTable.competitionId, 'usa-1'))
+      .all();
+    const east = rows
+      .filter((row) => row.conference === 'east')
+      .map((row) => row.id)
+      .sort();
+    const all = rows.map((row) => row.id).sort();
+    expect(east).toEqual(all.slice(0, 15));
+  });
+
+  it('las conferencias que trae el dataset se respetan', () => {
+    closeSaveDatabase(filePath);
+    rmSync(filePath, { force: true });
+    db = openSaveDatabase(filePath, MIGRATIONS);
+    const dataset = loadDataset(SEED_DIRECTORY);
+    // Las del dataset (como las reales de la edición privada): los pares al
+    // Oeste, en el Pacífico, y los impares al Este, en el Atlántico.
+    const given = new Map<string, { conference: 'east' | 'west'; division: string }>();
+    for (const team of dataset.teams.filter((row) => row.competitionId === 'usa-1')) {
+      const even = Number(team.id.split('-').pop()) % 2 === 0;
+      const value = even
+        ? { conference: 'west' as const, division: 'Pacífico' }
+        : { conference: 'east' as const, division: 'Atlántico' };
+      Object.assign(team, value);
+      given.set(team.id, value);
+    }
+    seedSave(db, dataset, { managedTeamId: MANAGED_TEAM, managerName: 'Carlos' });
+    season = new SeasonService(() => db);
+    season.getCurrent();
+    const rows = db
+      .select({
+        id: teamsTable.id,
+        conference: teamsTable.conference,
+        division: teamsTable.division
+      })
+      .from(teamsTable)
+      .where(isNotNull(teamsTable.conference))
+      .all();
+    expect(rows).toHaveLength(30);
+    for (const row of rows) {
+      expect({ conference: row.conference, division: row.division }).toEqual(given.get(row.id));
+    }
+    const standings = season.getStandings('usa-1');
+    expect(standings.filter((row) => row.conference === 'east')).toHaveLength(15);
+  });
+
   it('la liga sale marcada como NBA', () => {
     const league = season.listLeagues().find((row) => row.competitionId === 'usa-1');
     expect(league?.nbaFormat).toBe(true);

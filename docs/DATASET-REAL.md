@@ -78,7 +78,7 @@ decidido: **España primero (ACB y Primera FEB)**, después **Italia (Serie A)**
 **Turquía (Basketbol Süper Ligi)**, **Alemania (BBL y ProA)**, **Israel (Ligat
 Winner)**, **Lituania (LKL y NKL)**, la **Liga Adriática (ABA y ABA2)**, la
 **BNXT (Bélgica y Países Bajos)**, la **Liga Nacional argentina**, la **LNB chilena**, la
-**NBL australiana** y así país a país.
+**NBL australiana** y, el último, **EE. UU. (NBA y G League)**.
 
 ```
 pnpm real:acb     # Liga Endesa        → .real-data-cache/sources/acb-2025.json
@@ -103,6 +103,8 @@ pnpm real:adc     # Liga Nacional (ARG) → .real-data-cache/sources/adc-lnb-202
                   # y la Conferencia Sur de La Liga Argentina → adc-lla-sur-2025.json
 pnpm real:lnbch   # LNB chilena       → .real-data-cache/sources/lnbch-2025.json
 pnpm real:nbl     # NBL australiana   → .real-data-cache/sources/nbl-2025.json
+pnpm real:nba     # NBA               → .real-data-cache/sources/nba-2025.json
+pnpm real:gleague # G League          → .real-data-cache/sources/gleague-2025.json
 pnpm real:build   # todas las ligas extraídas → resources/real-data/dataset.json
 ```
 
@@ -135,6 +137,8 @@ inventado.
 | La Liga Argentina (Sur)       | `laliganacional.com.ar`    | La misma web: la Conferencia Sur entera (272 actas). Sólo entra Lanús, en `argentina-1` (ver «Equipos invitados»).                                   |
 | LNB chilena (`chile-1`)       | Genius Sports + LiveStats  | La web «hosted» de FEBACHILE (plantillas y las 144 actas de la Transición 2025 y el Apertura 2026) y el `data.json` de cada partido. Ver «Chile».    |
 | NBL (`australia-1`)           | `nbl.com.au` (Synergy)     | La API JSON «Rosetta» de su web: partidos, las 165 actas de liga regular con jugada a jugada, plantillas y totales oficiales. Ver «Australia».       |
+| NBA (`usa-1`)                 | b-reference + API NBA      | HTML de basketball-reference (totales, fichas, entrenadores) y la API oficial de estadísticas (país, faltas y tapones recibidos). Ver «EE. UU.».     |
+| G League (`usa-2`)            | API NBA (`LeagueID=20`)    | La API oficial de estadísticas: totales y titulares por club, plantillas y fichas. Entran 16 de 31 (fuera México, Canadá y los 13 peores).           |
 
 - Cada extractor sólo lee su web y deja los datos **tal cual** en un formato
   común (`scripts/real-data/lib/source-types.ts`). Lo único que retoca es el
@@ -885,6 +889,103 @@ for/season/id/<id>` (totales oficiales por jugador y club, con los
 - La copa: Australia no tiene copa de clubes; la de la NBL es la **NBL
   Ignite Cup** («Ignite Cup»), la que toma la del juego.
 
+#### EE. UU. (basketball-reference y la API de estadísticas de la NBA)
+
+`pnpm real:nba` deja `nba-2025.json` (`usa-1`) y `pnpm real:gleague`,
+`gleague-2025.json` (`usa-2`). La primera vez, unas 100 peticiones y 9
+minutos la NBA y 224 peticiones y 21 minutos la G League (la API tarda en
+contestar).
+
+- **Las fuentes**:
+  - **basketball-reference** (`www.basketball-reference.com`, HTML): como
+    mucho **veinte peticiones por minuto** (si no, bloquea una hora): cinco
+    segundos entre peticiones. Muchas tablas van dentro de **comentarios
+    HTML** (`uncommentHtml`) y cada celda lleva su `data-stat`. Rutas (la
+    2025-26 es «2026»): `/leagues/NBA_2026_totals.html` (una fila por
+    jugador y club y otra `2TM`/`3TM`/`4TM` con la suma de quien cambió de
+    club), `_shooting.html` (mates), `_standings.html` (puesto con los
+    desempates oficiales), `_coaches.html` (entrenadores de cada club, en
+    orden), `/teams/<COD>/2026.html` (plantilla con fecha, altura, peso,
+    puesto y **país de nacimiento**, y el pabellón) y `/coaches/<id>.html`
+    (la fecha de cada entrenador).
+  - **La API oficial de estadísticas**: `stats.nba.com` no contesta desde
+    fuera de un navegador y `cdn.nba.com` da 403, pero la misma API responde
+    en **`stats.gleague.nba.com/stats`** con las cabeceras `Referer` y
+    `Origin` de `gleague.nba.com`, y sirve la NBA (`LeagueID=00`) y la G
+    League (`LeagueID=20`). Tarda de 5 a 12 segundos por petición. Rutas:
+    `playerindex` (nombre partido, país, medidas), `leaguedashplayerstats`
+    (totales con `PFD`, faltas recibidas, y `BLKA`, tapones recibidos; por
+    club con `TeamID` y titulares con `StarterBench=Starters`),
+    `commonteamroster` (plantilla final con la fecha de nacimiento),
+    `commonplayerinfo` (la ficha de cualquiera) y `leaguestandingsv3`. El
+    `PERSON_ID` es el mismo en las dos ligas: es el `sourceId`.
+- **Sólo la fase regular**: en la NBA, 82 partidos (la final de la **NBA
+  Cup** no cuenta, tampoco en la liga real; ni el play-in ni los playoffs);
+  en la G League, los **36** de la fase regular (sin el Tip-Off Tournament de
+  noviembre ni los playoffs).
+- **NBA**: los **30** del juego, con el puesto de la fase regular (Oklahoma
+  City 1.º … Washington 30.º; los Knicks, campeones, 7.º). Cada club lleva su
+  **conferencia y división reales** (`SourceTeam.conference`/`division`, con
+  los nombres del juego: Atlántico, Central, Sudeste, Noroeste, Pacífico,
+  Suroeste), comprobadas con la API. Nombre completo sin patrocinio,
+  abreviatura oficial (`BKN`, `CHA`, `PHX`; basketball-reference usa otras),
+  ciudad en castellano donde la hay (Nueva York, Filadelfia, Nueva Orleans,
+  Los Ángeles, Indianápolis), pabellón con el nombre de la 2025-26 y aforo de
+  la Wikipedia, fijos en `sources/nba.ts`. **Toronto va con el país de la liga**: con
+  el de Canadá, el cupo de jugadores del país del club le ataría.
+- **Estadísticas NBA**: las de basketball-reference (minutos enteros,
+  titulares, tiros, rebotes, asistencias, robos, tapones, pérdidas, faltas y
+  **mates**) más las faltas y los tapones recibidos de la API. Quien jugó en
+  varios clubes (72) suma sus números y se queda en el de más minutos. Cada
+  jugador de basketball-reference se casa con su `PERSON_ID` por el nombre
+  sin tildes ni sufijos o, si no (apodos), por apellido y partidos jugados:
+  se casan los 582. El **puesto** es el de basketball-reference (17 % de
+  minutos de pívot).
+- **Nacionalidad**: la de la API (la deportiva: basketball-reference da el
+  país de nacimiento). Las que da mal van en `nba-jugadores.json`, por
+  `PERSON_ID` (sirve para las dos ligas). La API escribe «DRC» por la
+  República Democrática del Congo (alias en `nationalities.ts`); Nicaragua,
+  Sudáfrica, Togo, Hong Kong y las Islas Vírgenes Británicas se añadieron al
+  juego con su bandera.
+- **G League**: la real tiene **31** clubes (los treinta filiales y los
+  Capitanes de México) y la del juego 16. Entran **los 16 mejores de la fase
+  regular que son de EE. UU.** (por porcentaje de victorias y, a igualdad,
+  diferencia de puntos): fuera **Mexico City Capitanes** y **Raptors 905**
+  (Canadá) y los trece peores (`SourceLeague.excluded`, valorados con la
+  liga entera). El corte no cae en un empate (los cinco con 18-18 entran
+  todos). Nombres, ciudades, pabellones y aforos, los de la Wikipedia al
+  empezar la temporada (en la 2026-27 Birmingham y South Bay cambian de
+  nombre), fijos en `sources/gleague.ts`.
+- **Estadísticas G League**: las de la API, por club (quien pasó por dos
+  suma y se queda en el de más minutos), con titulares, faltas y tapones
+  recibidos; sin mates. Fichas: la plantilla final y, de los que no están en
+  ninguna (cortados, llamados a la NBA, idos a Europa: un 12 % de los
+  minutos), su ficha: fecha de nacimiento del 100 %.
+- **Puesto G League** (`gleaguePosition`): la API sólo da G, F y C. Desde
+  2,08, pívot; un «C» o «F-C» es pívot si mide 2,06 o coge 9 rebotes por 36
+  minutos; un «F» desde 2,03 (o de 1,98 con 7 rebotes por 36), ala-pívot; un
+  escolta de 2,00, alero; el resto, base si mide 1,90 o menos o da 5
+  asistencias por 36. Queda un 18 % de minutos de pívot.
+- **Escala**: la NBA con la de su liga ficticia (`usa-1`, la más alta del
+  juego). En la NBA el puesto del equipo **pesa menos** (`teamWeight: 0.25`,
+  `SourceLeague.teamWeight`; en el resto 0,45): con treinta equipos las
+  estrellas de los de abajo se quedaban por debajo de suplentes de los de
+  arriba. La G League **sube un tercio de escalón hacia la NBA**
+  (`SourceLeague.scale`, `stepsDown: -1/3`, la misma extrapolación de
+  `scaleReference` que baja a los invitados): con la de su liga ficticia, los
+  mismos jugadores salían 5-8 puntos por debajo de sus ligas europeas.
+- **Doble ficha**: muchos jugaron en la NBA y la G League (contratos dobles,
+  asignaciones). La mayoría ya se queda fuera de la plantilla de 14 de la
+  NBA; de los que no, cada uno juega donde más minutos jugó
+  (`sharedPlayerDrops`): 6 salen de la NBA y 17 de la G League. Siete
+  jugadores de ligas europeas jugaron más en EE. UU. y salen de allí.
+- **Sueldos**: como en todas las ligas, estimados de la media. El tope
+  salarial del formato NBA es la nómina media de la liga, así que funciona
+  igual con los datos reales.
+- La copa: la **NBA Cup** («NBA Cup», sin el patrocinador). La Winter
+  Showcase Cup de la G League no tiene sitio: la copa del juego es de la
+  primera división.
+
 #### Equipos invitados (la plaza que falta)
 
 La Serie A real 2025-26 tiene 15 equipos y la del juego 16; la Primera FEB real,
@@ -962,6 +1063,9 @@ Cómo entran:
   del juego y el Apertura 2026, **14**: Puerto Montt y Castro, que sólo
   jugaron el segundo, no se extraen como equipos (sus partidos contra los 12
   sí cuentan). Ver «Chile».
+- **EE. UU.**: la NBA cuadra (30). La G League real tiene **31** para 16
+  plazas: fuera los de México y Canadá y los trece peores
+  (`SourceLeague.excluded`, ver «EE. UU.»).
 
 ### Conversión (`real:build`)
 
@@ -978,6 +1082,11 @@ Cómo entran:
   los que suben o se quedan fuera. Los que suben de categoría y los equipos
   invitados ceden siempre: si la persona ya juega en otro equipo del juego,
   se queda allí.
+- **Conferencias**: los clubes de la NBA real traen su conferencia y
+  división (`DatasetTeam.conference`/`division`); al sembrar la partida se
+  escriben en la tabla de equipos y `ensureConferences` las respeta (sólo
+  coloca a quien no la tenga, en la división más corta). En el mundo
+  inventado no vienen y se reparten por orden de id, como siempre.
 - **Atributos**: cada jugador se coloca en un percentil de su liga y recibe el
   valor de ese percentil en la liga ficticia equivalente, así el motor sigue
   calibrado. Cada atributo mezcla el **nivel** con la estadística de su **estilo**
@@ -1003,7 +1112,7 @@ Cómo entran:
 ### Entrenadores
 
 Los clubes de las ligas reales llevan a su **primer entrenador de la 2025-26**:
-en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas, las adriáticas, la BNXT, la argentina, la chilena y la australiana, **el que empezó la temporada**, que es el que
+en la Liga Endesa, la Serie A, las ligas francesas, las griegas, la turca, las alemanas, la israelí, las lituanas, las adriáticas, la BNXT, la argentina, la chilena, la australiana, la NBA y la G League, **el que empezó la temporada**, que es el que
 está en el banquillo el día que arranca la partida; en la Primera FEB, el que
 publica la ficha del equipo (la web no da otro). El resto del mundo y la bolsa de libres
 siguen inventados.
@@ -1185,6 +1294,21 @@ siguen inventados.
   Wikidata. Nueve con fecha exacta; uno con la edad de la prensa (regla del
   1 de julio). Sólo cambió uno en toda la temporada, en Brisbane (en
   diciembre, un interino), y cuenta el del inicio. Ninguno inventado.
+- **NBA**: el del inicio va a mano en `nba-entrenadores.json` (`inicio`, por
+  abreviatura oficial, con nombre de uso con sus tildes, bandera de la
+  Wikipedia y `bbrefId`); la fecha sale de su ficha de basketball-reference
+  (y, si no la da, de Wikidata, a mano). `real:nba` avisa si el primero de la
+  tabla de entrenadores no es el de la mano. Cambiaron dos: en Nueva Orleans,
+  destituido en noviembre (cuenta el del inicio), y en **Portland**, cuyo
+  entrenador dirigió sólo el primer partido y fue apartado por la liga por
+  una investigación federal; el interino dirigió los otros 81 y es el que va
+  (`motivo` en el fichero; manda la mano, como en Racing de Chivilcoy).
+  Ninguno inventado.
+- **G League**: la API no da entrenadores. El del inicio, de la tabla de
+  clubes de la Wikipedia inglesa de noviembre de 2025 y la fecha de Wikidata,
+  en `gleague-entrenadores.json`, sólo para los que la tienen: **7 de los 16**
+  (uno sólo con el año: regla del 1 de julio). Los otros nueve se los inventa
+  el juego, las excepciones que admite `edition.test.ts` en `usa-2`.
 - **Serie A2** y **Segunda FEB**: sólo el del equipo invitado. La LNP no publica
   los técnicos de temporadas pasadas: el de la A2 es el del inicio de temporada
   y va a mano en `resources/real-data/manual/lnp-entrenadores.json` (por id de

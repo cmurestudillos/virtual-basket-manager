@@ -67,7 +67,10 @@ const REAL_CUPS: Record<string, { name: string; shortName: string }> = {
   CHI: { name: 'Copa Chile', shortName: 'Copa' },
   // Australia no tiene copa de clubes: la de la NBL es la Ignite Cup, un torneo
   // dentro de la liga con final aparte.
-  AUS: { name: 'NBL Ignite Cup', shortName: 'Ignite Cup' }
+  AUS: { name: 'NBL Ignite Cup', shortName: 'Ignite Cup' },
+  // La copa de la NBA se juega dentro de la liga, con la final a partido
+  // único en sede neutral: la del juego. Sin el nombre del patrocinador.
+  USA: { name: 'NBA Cup', shortName: 'NBA Cup' }
 };
 
 /** Altura típica por puesto: para quien no la trae y para deducir el puesto. */
@@ -288,8 +291,9 @@ function tierAbove(competitionId: string): LeagueTier | null {
  */
 export function scaleReference(fictitious: Dataset, scale: SourceGuest['scale']): LeagueReference {
   const base = referenceFrom(fictitiousPlayersOf(fictitious, scale.league));
+  // Con pasos negativos sube hacia la de encima en vez de bajar.
   const steps = scale.stepsDown ?? 0;
-  const upperTier = steps > 0 ? tierAbove(scale.league) : null;
+  const upperTier = steps !== 0 ? tierAbove(scale.league) : null;
   if (!upperTier) return base;
   const upper = referenceFrom(fictitiousPlayersOf(fictitious, upperTier.id));
   const attributes = {} as LeagueReference['attributes'];
@@ -439,7 +443,11 @@ export function mergeRealLeagues(
       // La misma fórmula que el mundo ficticio: el presupuesto sale de la
       // reputación, y el motor económico está calibrado con ella.
       budgetCents: (300_000 + reputation * 58_000) * 100,
-      ...(coach ? { coach } : {})
+      ...(coach ? { coach } : {}),
+      // Conferencia y división reales (formato NBA); sin ellas las reparte el juego.
+      ...(sourceTeam.conference && sourceTeam.division
+        ? { conference: sourceTeam.conference, division: sourceTeam.division }
+        : {})
     });
 
     for (const sourcePlayer of roster) {
@@ -501,7 +509,8 @@ export function mergeRealLeagues(
       [...selection.rosters.values()].flat(),
       reference,
       positionFor,
-      (sourcePlayer) => strength.get(sourcePlayer) ?? null
+      (sourcePlayer) => strength.get(sourcePlayer) ?? null,
+      source.teamWeight
     );
     return { ...selection, rated };
   }
@@ -538,7 +547,9 @@ export function mergeRealLeagues(
       cupCompetition.shortName = cup.shortName;
     }
 
-    const reference = referenceFrom(fictitiousPlayersOf(fictitious, source.competitionId));
+    const reference = source.scale
+      ? scaleReference(fictitious, source.scale)
+      : referenceFrom(fictitiousPlayersOf(fictitious, source.competitionId));
     // Toda la liga se valora junta, también los que suben a la de encima: el
     // percentil de cada jugador es el de su liga entera.
     const { rosters, droppedDuplicates, droppedOverRoster, rated } = rateSource(source, reference);

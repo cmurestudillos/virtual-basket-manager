@@ -140,7 +140,12 @@ export const NATION_NAMES: Record<string, string> = {
   SWE: 'Suecia',
   TTO: 'Trinidad y Tobago',
   UAE: 'Emiratos Árabes Unidos',
-  UGA: 'Uganda'
+  UGA: 'Uganda',
+  HKG: 'Hong Kong',
+  IVB: 'Islas Vírgenes Británicas',
+  NCA: 'Nicaragua',
+  RSA: 'Sudáfrica',
+  TOG: 'Togo'
 };
 
 export function nationName(code: string): string {

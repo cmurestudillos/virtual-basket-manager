@@ -1,0 +1,60 @@
+{
+  "totales": {
+    "resource": "leaguedashplayerstats",
+    "resultSets": [
+      {
+        "name": "LeagueDashPlayerStats",
+        "headers": ["PLAYER_ID", "PLAYER_NAME", "TEAM_ID", "TEAM_ABBREVIATION", "GP", "MIN", "FGM", "FGA", "FG3M", "FG3A", "FTM", "FTA", "OREB", "DREB", "AST", "TOV", "STL", "BLK", "BLKA", "PF", "PFD", "PTS"],
+        "rowSet": [[101, "Uno Primero", 9, "AAA", 30, 700.5, 130, 290, 30, 90, 50, 60, 10, 70, 80, 40, 20, 5, 7, 50, 66, 340]]
+      }
+    ]
+  },
+  "indice": {
+    "resource": "playerindex",
+    "resultSets": [
+      {
+        "name": "PlayerIndex",
+        "headers": ["PERSON_ID", "PLAYER_LAST_NAME", "PLAYER_FIRST_NAME", "TEAM_ID", "JERSEY_NUMBER", "POSITION", "HEIGHT", "WEIGHT", "COUNTRY"],
+        "rowSet": [
+          [101, "Primero", "Uno", 9, "8", "G-F", "6-5", "205", "DRC"],
+          [102, "Segundo Jr", "Dos", 9, null, "C", "7-0", null, "USA"]
+        ]
+      }
+    ]
+  },
+  "plantilla": {
+    "resource": "commonteamroster",
+    "resultSets": [
+      {
+        "name": "CommonTeamRoster",
+        "headers": ["TeamID", "PLAYER", "NUM", "POSITION", "HEIGHT", "WEIGHT", "BIRTH_DATE", "PLAYER_ID"],
+        "rowSet": [[9, "Uno Primero", "8", "G", "6-5", "205", "AUG 10, 2005", 101]]
+      },
+      { "name": "Coaches", "headers": ["COACH_ID"], "rowSet": [] }
+    ]
+  },
+  "ficha": {
+    "resource": "commonplayerinfo",
+    "resultSets": [
+      {
+        "name": "CommonPlayerInfo",
+        "headers": ["PERSON_ID", "FIRST_NAME", "LAST_NAME", "BIRTHDATE", "COUNTRY", "HEIGHT", "WEIGHT", "JERSEY", "POSITION"],
+        "rowSet": [[103, "Tres", "Tercero III", "2002-03-22T00:00:00", "Nicaragua", "6-10", "240", "", "Forward-Center"]]
+      }
+    ]
+  },
+  "clasificacion": {
+    "resource": "leaguestandingsv3",
+    "resultSets": [
+      {
+        "name": "Standings",
+        "headers": ["TeamID", "TeamCity", "TeamName", "Conference", "Division", "WINS", "LOSSES", "DiffPointsPG"],
+        "rowSet": [
+          [1, "Ciudad", "Uno", "East", null, 18, 18, -1.2],
+          [2, "Ciudad", "Dos", "West", null, 18, 18, 2.5],
+          [3, "Ciudad", "Tres", "West", "Pacific", 26, 10, 0]
+        ]
+      }
+    ]
+  }
+}

@@ -81,6 +81,10 @@ export function seedSave(
       tx.insert(teamsTable)
         .values({
           ...team,
+          // Las conferencias reales de una liga NBA (edición privada); sin
+          // ellas, `ensureConferences` las reparte al empezar la temporada.
+          conference: team.conference ?? null,
+          division: team.division ?? null,
           crest: null,
           ticketPriceCents: DEFAULT_TICKET_PRICE_CENTS,
           fanSupport: DEFAULT_SUPPORT,

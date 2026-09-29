@@ -802,3 +802,88 @@ describe('Australia: la NBL, con un club de Nueva Zelanda', () => {
     });
   });
 });
+
+describe('EE. UU.: la NBA con sus conferencias y la G League con su escala', () => {
+  const nba = (overrides: Partial<SourceLeague> = {}): SourceLeague => {
+    const base = league();
+    base.teams.forEach((entry, index) => {
+      entry.conference = index % 2 === 0 ? 'west' : 'east';
+      entry.division = index % 2 === 0 ? 'Pacífico' : 'Atlántico';
+    });
+    return {
+      ...base,
+      competitionId: 'usa-1',
+      name: 'National Basketball Association',
+      shortName: 'NBA',
+      country: 'USA',
+      ...overrides
+    };
+  };
+  const development = (overrides: Partial<SourceLeague> = {}): SourceLeague => ({
+    ...league(),
+    competitionId: 'usa-2',
+    name: 'NBA G League',
+    shortName: 'G League',
+    country: 'USA',
+    ...overrides
+  });
+  const { dataset } = mergeRealLeagues(fictitious, [nba()], known);
+  const overallOf = (rows: typeof dataset.players, id: string): number => {
+    const found = rows.find((entry) => entry.lastName === id)!;
+    return Object.values(found.attributes).reduce((sum, value) => sum + value, 0);
+  };
+
+  it('cada club lleva la conferencia y la división de la fuente', () => {
+    const clubs = dataset.teams.filter((entry) => entry.competitionId === 'usa-1');
+    expect(clubs.find((entry) => entry.name === 'Club Real 1')).toMatchObject({
+      conference: 'west',
+      division: 'Pacífico'
+    });
+    expect(clubs.find((entry) => entry.name === 'Club Real 2')).toMatchObject({
+      conference: 'east',
+      division: 'Atlántico'
+    });
+    // Las ligas sin conferencias no las llevan.
+    expect(dataset.teams.find((entry) => entry.competitionId === 'liga-plata')?.conference).toBe(
+      undefined
+    );
+  });
+
+  it('la copa es la NBA Cup', () => {
+    expect(dataset.competitions.find((entry) => entry.id === 'usa-copa')).toMatchObject({
+      name: 'NBA Cup',
+      shortName: 'NBA Cup'
+    });
+  });
+
+  it('con menos peso del equipo, el mejor del último sube y el del primero baja', () => {
+    const light = mergeRealLeagues(fictitious, [nba({ teamWeight: 0.1 })], known).dataset;
+    expect(overallOf(light.players, 't3-p0')).toBeGreaterThan(overallOf(dataset.players, 't3-p0'));
+    expect(overallOf(light.players, 't0-p0')).toBeLessThanOrEqual(
+      overallOf(dataset.players, 't0-p0')
+    );
+  });
+
+  it('una escala propia hacia arriba sube los atributos de toda la liga', () => {
+    const plain = mergeRealLeagues(fictitious, [development()], known).dataset;
+    const raised = mergeRealLeagues(
+      fictitious,
+      [development({ scale: { league: 'usa-2', stepsDown: -1 / 3 } })],
+      known
+    ).dataset;
+    const total = (rows: typeof dataset.players): number =>
+      rows
+        .filter((entry) => entry.teamId.startsWith('usa-2-'))
+        .reduce((sum, entry) => sum + overallOf(rows, entry.lastName), 0);
+    expect(total(raised.players)).toBeGreaterThan(total(plain.players));
+  });
+});
+
+describe('scaleReference con pasos negativos', () => {
+  it('sube hacia la categoría de encima', () => {
+    const base = scaleReference(fictitious, { league: 'usa-2' });
+    const up = scaleReference(fictitious, { league: 'usa-2', stepsDown: -1 / 3 });
+    const median = (values: number[]): number => values[Math.floor(values.length / 2)]!;
+    expect(median(up.attributes.close)).toBeGreaterThan(median(base.attributes.close));
+  });
+});

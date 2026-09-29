@@ -1,5 +1,5 @@
 import { and, asc, eq, inArray, isNotNull, isNull, lte, or } from 'drizzle-orm';
-import { assignConferences, type Conference } from '@shared/domain/nba';
+import { completeConferences, type Conference } from '@shared/domain/nba';
 import { parseActiveCountries, resolveActiveCountries } from '@shared/domain/simulation-scope';
 import type { SaveDatabase } from '../../database/client';
 import {
@@ -75,13 +75,15 @@ export class SeasonRepository {
     );
   }
 
-  /** Reparte conferencias a los equipos de la liga que aún no la tengan. */
+  /**
+   * Reparte conferencias a los equipos de la liga que aún no la tengan: todos
+   * por orden si no la tiene ninguno (el mundo inventado); si no, se respetan
+   * las que hay (las reales del dataset privado) y sólo se completa.
+   */
   ensureConferences(competitionId: string): void {
     const teamIds = this.teamIdsInCompetition(competitionId);
-    if (this.conferencesOf(competitionId).size === teamIds.length) {
-      return;
-    }
-    for (const [teamId, value] of assignConferences(teamIds)) {
+    const existing = this.conferencesOf(competitionId);
+    for (const [teamId, value] of completeConferences(teamIds, existing)) {
       this.db
         .update(teamsTable)
         .set({ conference: value.conference, division: value.division })

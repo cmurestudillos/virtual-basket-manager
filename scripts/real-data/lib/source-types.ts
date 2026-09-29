@@ -109,6 +109,13 @@ export interface SourceTeam {
    * entrenador. Sin él, la de la liga.
    */
   country?: string;
+  /**
+   * Conferencia y división reales, en una liga con formato NBA (`usa-1`). La
+   * división con el nombre del juego (`DIVISIONS` de `nba.ts`: «Atlántico»,
+   * «Pacífico»…). Sin ellas, el juego las reparte al empezar la temporada.
+   */
+  conference?: 'east' | 'west';
+  division?: string;
 }
 
 /**
@@ -168,6 +175,20 @@ export interface SourceLeague {
    * los demás, porque el percentil es el de la liga entera, pero no se meten.
    */
   excluded?: string[];
+  /**
+   * Cuánto pesa el puesto del equipo en el nivel de sus jugadores, si no es el
+   * de siempre (`TEAM_WEIGHT`). En la NBA pesa menos: con treinta equipos y
+   * plantillas cortas, las estrellas de los equipos de abajo se quedarían por
+   * debajo de suplentes de los de arriba.
+   */
+  teamWeight?: number;
+  /**
+   * La escala con la que se traducen sus percentiles, si no es la de su liga
+   * ficticia: como la de un invitado ({@link SourceGuest.scale}). Con
+   * `stepsDown` negativo sube hacia la categoría de encima (la G League, un
+   * tercio de escalón hacia la NBA).
+   */
+  scale?: SourceGuest['scale'];
 }
 
 export interface SourcePromotion {

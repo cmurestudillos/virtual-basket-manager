@@ -72,6 +72,48 @@ export function assignConferences(
 }
 
 /**
+ * Conferencia y división para los equipos de la liga que aún no la tienen.
+ *
+ * Si no la tiene ninguno (el mundo inventado), se reparten todos por orden
+ * con {@link assignConferences}. Si ya la traen (las conferencias reales del
+ * dataset de la edición privada), se respetan y sólo se coloca a los que
+ * falten, cada uno en la división con menos equipos: así un equipo nuevo no
+ * obliga a rehacer las conferencias de los demás.
+ */
+export function completeConferences(
+  teamIds: readonly string[],
+  existing: ReadonlyMap<string, { conference: Conference; division: string }>
+): Map<string, { conference: Conference; division: string }> {
+  const present = teamIds.filter((teamId) => existing.has(teamId));
+  if (present.length === 0) return assignConferences(teamIds);
+  const missing = teamIds.filter((teamId) => !existing.has(teamId)).sort();
+  const count = new Map<string, number>();
+  const key = (conference: Conference, division: string): string => `${conference}|${division}`;
+  for (const teamId of present) {
+    const value = existing.get(teamId) as { conference: Conference; division: string };
+    const slot = key(value.conference, value.division);
+    count.set(slot, (count.get(slot) ?? 0) + 1);
+  }
+  const result = new Map<string, { conference: Conference; division: string }>();
+  for (const teamId of missing) {
+    let best: { conference: Conference; division: string } | null = null;
+    for (const conference of CONFERENCES) {
+      for (const division of DIVISIONS[conference]) {
+        const teams = count.get(key(conference, division)) ?? 0;
+        if (!best || teams < (count.get(key(best.conference, best.division)) ?? 0)) {
+          best = { conference, division };
+        }
+      }
+    }
+    const chosen = best as { conference: Conference; division: string };
+    result.set(teamId, chosen);
+    const slot = key(chosen.conference, chosen.division);
+    count.set(slot, (count.get(slot) ?? 0) + 1);
+  }
+  return result;
+}
+
+/**
  * La clasificación de cada conferencia a partir de la general: el orden de la
  * general se respeta, sólo se separa por conferencias. Como en la NBA desde
  * 2016, ganar la división no da puesto.

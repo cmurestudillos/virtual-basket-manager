@@ -268,13 +268,14 @@ export function ageFrom(birthDate: string | null, seasonStartYear: number): numb
  * estimación por altura), y la referencia es la liga ficticia con la que se
  * calibra. `teamStrengthOf` da el nivel de su equipo en la liga (1 el
  * campeón de la liga regular, 0 el último; `null` si no se sabe), que entra
- * en el nivel con `TEAM_WEIGHT`.
+ * en el nivel con `teamWeight` (`TEAM_WEIGHT` si la liga no dice otro).
  */
 export function rateLeague(
   players: readonly SourcePlayer[],
   reference: LeagueReference,
   positionOf: (player: SourcePlayer) => Position,
-  teamStrengthOf: (player: SourcePlayer) => number | null = () => null
+  teamStrengthOf: (player: SourcePlayer) => number | null = () => null,
+  teamWeight: number = TEAM_WEIGHT
 ): RatedPlayer[] {
   const withStats = players.filter(
     (player) => player.stats && player.stats.seconds / 60 >= MIN_MINUTES_FOR_STATS
@@ -352,7 +353,7 @@ export function rateLeague(
       ? (percentiles.minutes + percentiles.ratingRate) / 2
       : estimatedLevel(player);
     const team = teamStrengthOf(player);
-    percentiles.level = team === null ? own : own * (1 - TEAM_WEIGHT) + team * TEAM_WEIGHT;
+    percentiles.level = team === null ? own : own * (1 - teamWeight) + team * teamWeight;
     if (!metrics) percentiles.minutes = percentiles.level;
 
     const blend = {} as Record<keyof PlayerAttributes, number>;

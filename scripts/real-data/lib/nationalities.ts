@@ -134,6 +134,8 @@ const COUNTRIES: readonly (readonly string[])[] = [
     'DR Congo',
     'Congo Kinshasa',
     'Democratic Republic of the Congo',
+    // Así lo escribe la API de la NBA.
+    'DRC',
     'Zaire'
   ],
   [

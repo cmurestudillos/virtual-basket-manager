@@ -100,6 +100,8 @@ interface NamedDataset {
     competitionId: string;
     reputation: number;
     coach?: { firstName: string; lastName: string; nationality: string; birthDate: string };
+    conference?: string;
+    division?: string;
   }[];
   players: { teamId: string; firstName: string; lastName: string; birthDate: string }[];
 }
@@ -122,6 +124,24 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
     expect(realLeagues.size).toBeGreaterThan(0);
   });
 
+  // La NBA real lleva sus conferencias y divisiones: quince por conferencia y
+  // cinco por división, como las reparte el juego en el mundo inventado.
+  it.skipIf(!realLeagues.has('usa-1'))('la NBA real trae sus conferencias y divisiones', () => {
+    const clubs = realTeams.filter((team) => team.competitionId === 'usa-1');
+    expect(clubs).toHaveLength(30);
+    const count = new Map<string, number>();
+    for (const club of clubs) {
+      count.set(club.conference ?? '?', (count.get(club.conference ?? '?') ?? 0) + 1);
+      const division = `${club.conference}|${club.division}`;
+      count.set(division, (count.get(division) ?? 0) + 1);
+    }
+    expect(count.get('east')).toBe(15);
+    expect(count.get('west')).toBe(15);
+    const divisions = [...count].filter(([key]) => key.includes('|'));
+    expect(divisions).toHaveLength(6);
+    expect(divisions.every(([, teams]) => teams === 5)).toBe(true);
+  });
+
   it('no comparte ningún club', () => {
     const names = new Set(realTeams.map((team) => team.name.toLowerCase()));
     const leaked = fictitious.teams.filter((team) => names.has(team.name.toLowerCase()));
@@ -139,7 +159,8 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
   // Los entrenadores reales: los clubes de la ACB, la Primera FEB, la Serie A
   // (con el que sube de la A2), las dos ligas francesas, la A1 griega (con el
   // que sube de la Elite League), la liga turca, las dos alemanas, la
-  // israelí, la LKL, la Liga Adriática, la BNXT, la argentina, la chilena y la NBL australiana llevan el suyo. La Elite
+  // israelí, la LKL, la Liga Adriática, la BNXT, la argentina, la chilena, la NBL australiana
+  // y las dos de EE. UU. llevan el suyo. La Elite
   // League, la NKL lituana y la ABA2 no: de algunos de sus entrenadores no se
   // ha encontrado la fecha de nacimiento y el juego se los inventa.
   const coachLeagues = [
@@ -158,7 +179,9 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
     'bnxt-1',
     'argentina-1',
     'chile-1',
-    'australia-1'
+    'australia-1',
+    'usa-1',
+    'usa-2'
   ].filter((id) => realLeagues.has(id));
   // Las excepciones, liga a liga y contadas: clubes cuyo primer entrenador no
   // tiene fecha de nacimiento en ninguna fuente fiable, así que el juego se lo
@@ -166,13 +189,16 @@ describe.skipIf(!existsSync(REAL))('el dataset ficticio frente al real', () => {
   // (LWD y Rotterdam). Argentina: cinco (Obras, Racing de Chivilcoy, Unión,
   // Platense y Argentino de Junín). Chile: siete, todos chilenos (Español de
   // Osorno, Puente Alto, Las Ánimas, CD Valdivia, Colo-Colo, Boston College y
-  // Español de Talca; ver docs/DATASET-REAL.md).
+  // Español de Talca). G League: nueve de los dieciséis (la API no da
+  // entrenadores y de esos no hay fecha en ninguna fuente fiable; ver
+  // docs/DATASET-REAL.md).
   const INVENTED_COACHES: Record<string, number> = {
     'israel-1': 1,
     'lituania-1': 3,
     'bnxt-1': 2,
     'argentina-1': 5,
-    'chile-1': 7
+    'chile-1': 7,
+    'usa-2': 9
   };
   const coachedTeams = realTeams.filter((team) => coachLeagues.includes(team.competitionId));
   const coachName = (coach: { firstName: string; lastName: string }): string =>
