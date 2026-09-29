@@ -24,6 +24,7 @@ import type { DraftApi } from '@shared/contracts/draft.contract';
 import type { InboxApi } from '@shared/contracts/inbox.contract';
 import type { WorldEditorApi } from '@shared/contracts/world-editor.contract';
 import type { UpdatesApi } from '@shared/contracts/updates.contract';
+import type { AppApi } from '@shared/contracts/app.contract';
 
 export interface VbmApi {
   settings: SettingsApi;
@@ -50,6 +51,7 @@ export interface VbmApi {
   inbox: InboxApi;
   editor: WorldEditorApi;
   updates: UpdatesApi;
+  app: AppApi;
 }
 
 declare global {

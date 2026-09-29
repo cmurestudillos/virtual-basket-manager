@@ -68,6 +68,8 @@ page.on('pageerror', (error) => console.log('[pageerror]', error.message));
 await page.waitForTimeout(1500);
 console.log('título:', await page.title());
 await page.screenshot({ path: `${SHOTS}/01-menu.png` });
+// «Salir» sólo se comprueba que está: pulsarlo cerraría la aplicación.
+console.log('menú · botón Salir:', await page.getByRole('button', { name: 'Salir' }).count());
 
 // --- El marco del juego (fase 2 del estilo IBM) -----------------------------
 //

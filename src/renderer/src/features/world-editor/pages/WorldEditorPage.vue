@@ -314,7 +314,7 @@ function attributeKeys(group: keyof typeof ATTRIBUTE_GROUPS): readonly Attribute
       <p class="shrink-0 text-sm font-bold">{{ editedLabel }}</p>
     </header>
 
-    <main class="grid min-h-0 flex-1 grid-cols-[15rem_minmax(0,1fr)] gap-3 p-4">
+    <main class="grid min-h-0 flex-1 grid-cols-[15rem_minmax(0,1fr)] gap-4 p-4">
       <!-- Ligas y clubes -->
       <nav aria-label="Clubes" class="flex min-h-0 flex-col">
         <AppPanel
@@ -363,7 +363,7 @@ function attributeKeys(group: keyof typeof ATTRIBUTE_GROUPS): readonly Attribute
         </AppPanel>
       </nav>
 
-      <div v-if="team" class="flex min-h-0 flex-col gap-3 overflow-auto">
+      <div v-if="team" class="flex min-h-0 flex-col gap-4 overflow-auto">
         <!-- El club -->
         <AppPanel
           :title="team.name"
@@ -416,7 +416,7 @@ function attributeKeys(group: keyof typeof ATTRIBUTE_GROUPS): readonly Attribute
           </div>
         </AppPanel>
 
-        <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start gap-3">
+        <div class="grid grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)] items-start gap-4">
           <!-- La plantilla -->
           <AppPanel title="Plantilla" :hint="`${team.players.length} jugadores`" flush>
             <table class="data-table">

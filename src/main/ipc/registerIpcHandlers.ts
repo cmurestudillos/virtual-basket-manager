@@ -24,6 +24,7 @@ import { registerCareerIpcHandlers } from '../features/career/career.ipc-handler
 import { registerInboxIpcHandlers } from '../features/inbox/inbox.ipc-handler';
 import { registerWorldEditorIpcHandlers } from '../features/world-editor/world-editor.ipc-handler';
 import { registerUpdatesIpcHandlers } from '../features/updates/updates.ipc-handler';
+import { registerAppLifecycleIpcHandlers } from '../features/app-lifecycle/app-lifecycle.ipc-handler';
 
 /**
  * Único punto donde se cablean los handlers IPC de cada feature. Una línea por
@@ -54,4 +55,5 @@ export function registerIpcHandlers(): void {
   registerInboxIpcHandlers();
   registerWorldEditorIpcHandlers();
   registerUpdatesIpcHandlers();
+  registerAppLifecycleIpcHandlers();
 }

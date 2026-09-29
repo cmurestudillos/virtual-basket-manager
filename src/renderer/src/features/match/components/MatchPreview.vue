@@ -7,6 +7,7 @@
  * Se pasa con «Continuar»; quien tenga prisa se la salta entera de una vez.
  */
 import { computed, defineAsyncComponent, ref } from 'vue';
+import { useRouter } from 'vue-router';
 import { formatWhole } from '@renderer/shared/format';
 import type {
   MatchPreview,
@@ -36,6 +37,7 @@ const props = defineProps<{
 }>();
 
 const emit = defineEmits<{ done: [] }>();
+const router = useRouter();
 
 const STEPS = ['starters', 'leaders', 'teams'] as const;
 const step = ref(0);
@@ -93,12 +95,7 @@ function keyPlayerOf(team: MatchPreviewTeam) {
         class="grid grid-cols-[1fr_auto_1fr] items-stretch bg-tv-900/95 shadow-lg shadow-black/50"
       >
         <div class="flex items-center gap-4 px-5">
-          <RouterLink
-            :to="{ name: 'dashboard' }"
-            class="text-xs font-semibold uppercase tracking-wide text-white/70 hover:text-white"
-          >
-            ‹ Volver al club
-          </RouterLink>
+          <AppButton @click="router.push({ name: 'dashboard' })">‹ Volver al club</AppButton>
         </div>
         <div class="flex items-center gap-6 py-2">
           <div class="bg-white p-1">

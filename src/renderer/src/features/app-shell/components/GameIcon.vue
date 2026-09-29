@@ -33,6 +33,8 @@ const PATHS = {
     'M12 8.5 A3.5 3.5 0 1 0 12.01 8.5 Z M12 2.5 V5 M12 19 V21.5 M2.5 12 H5 M19 12 H21.5 M5.3 5.3 L7 7 M17 17 L18.7 18.7 M5.3 18.7 L7 17 M17 7 L18.7 5.3',
   // Una puerta con la flecha saliendo.
   exit: 'M13 3.5 H20 V20.5 H13 M10 8 L6 12 L10 16 M6 12 H16',
+  // Un billete con su círculo en medio: las nóminas del calendario.
+  money: 'M3 6.5 H21 V17.5 H3 Z M12 9.5 A2.5 2.5 0 1 0 12.01 9.5 Z M6.5 10 V14 M17.5 10 V14',
   // Una hoja de calendario con el día siguiente.
   day: 'M4 6 H20 V20 H4 Z M4 10 H20 M8 3.5 V7.5 M16 3.5 V7.5 M10 15 H15 M13 13 L15 15 L13 17'
 } as const;

@@ -157,7 +157,7 @@ function absolute(cents: number): string {
 </script>
 
 <template>
-  <div v-if="finances" class="flex flex-col gap-3">
+  <div v-if="finances" class="flex flex-col gap-4">
     <!-- La barra negra del resumen de IBM: el dinero que hay y el que se va cada mes. -->
     <header class="flex flex-wrap items-center gap-x-8 gap-y-2 bg-tv-slab px-4 py-2.5 text-white">
       <article class="flex items-baseline gap-2">
@@ -186,7 +186,7 @@ function absolute(cents: number): string {
       <p class="ml-auto text-xs text-white/70">Las nóminas se pagan el primero de cada mes</p>
     </header>
 
-    <div class="grid grid-cols-3 items-start gap-3">
+    <div class="grid grid-cols-3 items-start gap-4">
       <!-- Consejo -->
       <AppPanel v-if="board" title="Consejo" :hint="board.teamName">
         <div class="flex flex-col gap-3">
@@ -302,7 +302,7 @@ function absolute(cents: number): string {
     </p>
 
     <!-- Ingresos y gastos de la temporada, con su fila TOTAL -->
-    <div class="grid grid-cols-2 items-start gap-3">
+    <div class="grid grid-cols-2 items-start gap-4">
       <AppPanel title="Ingresos" hint="Esta temporada" flush>
         <KeyValueList v-if="incomeTotals.length > 0" :items="asItems(incomeTotals)" />
         <AppEmpty v-else>Todavía no ha entrado dinero esta temporada.</AppEmpty>

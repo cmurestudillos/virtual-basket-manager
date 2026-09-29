@@ -1,7 +1,7 @@
 /**
  * Lo que pasa en el club un día cualquiera aunque no haya partido: nóminas,
- * mercado, selecciones e inicio de temporada. Son los puntos del calendario
- * mensual.
+ * mercado, selecciones e inicio de temporada. Son las etiquetas de color del
+ * calendario mensual.
  *
  * Todo sale de reglas de fecha que ya existen —`windowFor` para el mercado,
  * `callupDate` y `dutyPeriod` para las selecciones, el primero de mes del reloj

@@ -87,7 +87,7 @@ function trophyColor(format: string): string {
 </script>
 
 <template>
-  <div class="flex flex-col gap-3">
+  <div class="flex flex-col gap-4">
     <PageToolbar place="tabs">
       <AppTabs :model-value="tab" :options="TABS" @update:model-value="tab = $event as Tab" />
     </PageToolbar>

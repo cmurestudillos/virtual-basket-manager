@@ -95,7 +95,7 @@ function headroom(player: YouthPlayer): number {
 <template>
   <div v-if="academy" class="flex flex-col gap-4">
     <AppPanel>
-      <section class="grid grid-cols-4 gap-4">
+      <section class="grid grid-cols-4 gap-3">
         <AppStat label="Instalaciones" size="md" boxed>
           {{ academy.levelLabel }}
           <template #note>

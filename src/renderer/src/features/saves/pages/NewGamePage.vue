@@ -452,7 +452,7 @@ async function create(): Promise<void> {
         <!-- 1. Equipo -->
         <div
           v-if="step === 0"
-          class="grid h-full min-h-0 grid-cols-[13rem_minmax(0,1fr)_19rem] gap-3"
+          class="grid h-full min-h-0 grid-cols-[13rem_minmax(0,1fr)_19rem] gap-4"
         >
           <nav aria-label="Ligas" class="flex min-h-0 flex-col">
             <AppPanel title="Ligas" scroll flush class="min-h-0 flex-1">
@@ -576,9 +576,9 @@ async function create(): Promise<void> {
         <!-- 2. Entrenador -->
         <div
           v-else-if="step === 1"
-          class="mx-auto grid h-full max-h-full max-w-5xl grid-cols-2 content-start gap-3 overflow-auto"
+          class="mx-auto grid h-full max-h-full max-w-5xl grid-cols-2 content-start gap-4 overflow-auto"
         >
-          <div class="flex flex-col gap-3">
+          <div class="flex flex-col gap-4">
             <AppPanel title="Nuevo entrenador">
               <div class="flex flex-col gap-3">
                 <AppSectionTitle>Escribe tu nombre</AppSectionTitle>
@@ -663,7 +663,7 @@ async function create(): Promise<void> {
         <!-- 3. Ligas que se juegan -->
         <div
           v-else-if="step === 2"
-          class="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_18rem] gap-3"
+          class="grid h-full min-h-0 grid-cols-[minmax(0,1fr)_18rem] gap-4"
         >
           <AppPanel
             title="Países"
@@ -717,7 +717,7 @@ async function create(): Promise<void> {
             </ul>
           </AppPanel>
 
-          <aside class="flex min-h-0 flex-col gap-3 overflow-auto">
+          <aside class="flex min-h-0 flex-col gap-4 overflow-auto">
             <AppPanel title="Tiempo de simulación">
               <div class="flex flex-col gap-3">
                 <div class="grid grid-cols-2 gap-3">
@@ -747,7 +747,7 @@ async function create(): Promise<void> {
         <!-- 4. Resumen -->
         <div
           v-else
-          class="mx-auto grid h-full max-h-full max-w-5xl grid-cols-[minmax(0,1fr)_22rem] content-start gap-3 overflow-auto"
+          class="mx-auto grid h-full max-h-full max-w-5xl grid-cols-[minmax(0,1fr)_22rem] content-start gap-4 overflow-auto"
         >
           <AppPanel title="Tu partida">
             <KeyValueList :items="summaryItems">

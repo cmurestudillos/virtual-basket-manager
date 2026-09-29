@@ -108,6 +108,16 @@
   --color-tv-comp-national: #8f6400;
   --color-tv-comp-national-deep: #4f3700;
 
+  /* Citas del club en el calendario mensual (fase 5): un color por tipo, todos
+     con letra blanca encima (4,5:1 o más). Propios, no de IBM: lejos de los
+     colores de competición que comparten casilla, del verde y el granate de
+     ganar y perder y del azul claro de lo que se pulsa. Selecciones es el de su
+     competición. Se pintan con `CALENDAR_EVENT_FILL`. */
+  --color-tv-event-season: #6a2fc0;
+  --color-tv-event-payroll: #2c7a1f;
+  --color-tv-event-market: #1f5fbf;
+  --color-tv-event-national: var(--color-tv-comp-national);
+
   /* Rótulo del correo: la única cabecera azul y no añil de IBM (131054). */
   --color-tv-mail-from: #1c61a9;
   --color-tv-mail-to: #2777c8;

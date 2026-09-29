@@ -558,12 +558,9 @@ async function leaveResults(): Promise<void> {
           :status="moment"
         >
           <template #corner>
-            <RouterLink
-              :to="{ name: 'dashboard' }"
-              class="text-[0.7rem] font-semibold uppercase text-tv-muted hover:text-tv-blue"
-            >
+            <AppButton size="sm" class="self-start" @click="router.push({ name: 'dashboard' })">
               ‹ Volver al club
-            </RouterLink>
+            </AppButton>
           </template>
 
           <template #under-away>
@@ -740,7 +737,7 @@ async function leaveResults(): Promise<void> {
                 :regulation-periods="state.regulationPeriods"
               />
               <AppPanel v-else title="Comentarios">
-                <p class="p-3 text-center text-sm text-tv-muted">
+                <p class="text-center text-sm text-tv-muted">
                   De los partidos entre otros equipos sólo se guarda el acta: la retransmisión se
                   queda para los tuyos.
                 </p>

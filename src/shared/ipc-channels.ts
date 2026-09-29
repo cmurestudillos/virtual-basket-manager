@@ -93,6 +93,7 @@ export const IPC_CHANNELS = {
   draftSimulateAll: 'draft:simulateAll',
   nationalGetCallup: 'national:getCallup',
   nationalSaveCallup: 'national:saveCallup',
+  appQuit: 'app:quit',
   updatesGet: 'updates:get',
   updatesCheck: 'updates:check',
   updatesInstall: 'updates:install',

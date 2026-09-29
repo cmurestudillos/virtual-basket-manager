@@ -8,8 +8,9 @@
  * reputación en estrellas (también en modo mánager, desde la fase 5); la fecha
  * en dos líneas; y CONTINUAR, que lleva el escudo del rival cuando lo siguiente
  * es un partido.
- * Al lado de CONTINUAR, pequeñas, las acciones secundarias: «Avanzar día» y,
- * sin club pero con selección, «Esperar un mes».
+ * Al lado de CONTINUAR, a su misma altura pero en tamaño medio y en el azul
+ * apagado, las acciones secundarias: «Avanzar día» y, sin club pero con
+ * selección, «Esperar un mes».
  *
  * Qué hace CONTINUAR no se decide aquí: ver `features/season/continue-action.ts`.
  */
@@ -170,7 +171,7 @@ const continueDisabled = computed(() => store.busy || store.action.kind === 'non
     <div class="flex shrink-0 items-center gap-2 py-2 pr-2">
       <AppButton
         v-if="store.waitAvailable"
-        size="sm"
+        class="h-full"
         :disabled="store.busy"
         title="Pasa un mes sin club: la selección sigue y se abren otros banquillos"
         @click="waitMonth"
@@ -179,13 +180,13 @@ const continueDisabled = computed(() => store.busy || store.action.kind === 'non
       </AppButton>
       <AppButton
         v-if="store.dayAvailable"
-        size="sm"
+        class="h-full"
         :disabled="store.busy"
         title="Juega sólo el día de hoy"
         @click="advanceDay"
       >
-        <span class="flex items-center gap-1.5">
-          <GameIcon name="day" :size="16" />
+        <span class="flex items-center gap-2">
+          <GameIcon name="day" :size="20" />
           Avanzar día
         </span>
       </AppButton>

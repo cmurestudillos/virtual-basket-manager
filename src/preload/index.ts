@@ -49,6 +49,7 @@ import type {
 } from '@shared/contracts/national.contract';
 import type { InboxApi, InboxView, PressConference } from '@shared/contracts/inbox.contract';
 import type { UpdatesApi, UpdatesView } from '@shared/contracts/updates.contract';
+import type { AppApi } from '@shared/contracts/app.contract';
 import type {
   EditorOverview,
   EditorResult,
@@ -388,6 +389,10 @@ const updates: UpdatesApi = {
   }
 };
 
+const appApi: AppApi = {
+  quit: () => ipcRenderer.invoke(IPC_CHANNELS.appQuit) as Promise<void>
+};
+
 const history: HistoryApi = {
   get: () => ipcRenderer.invoke(IPC_CHANNELS.historyGet) as Promise<HistoryView>
 };
@@ -416,7 +421,8 @@ export const api = {
   draft,
   inbox,
   editor,
-  updates
+  updates,
+  app: appApi
 };
 
 contextBridge.exposeInMainWorld('api', api);

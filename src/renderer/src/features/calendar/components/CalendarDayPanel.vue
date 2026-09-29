@@ -3,7 +3,8 @@
  * El día elegido del calendario, a la derecha de la rejilla (IBM, 130405): la
  * competición y la ronda en su color, los dos equipos con su escudo y su
  * marcador, dónde se juega, los enlaces al rival y al acta, lo que pasa ese día
- * y, abajo, la leyenda de colores.
+ * (cada cita con su color y su icono, los de la casilla) y, abajo, las dos
+ * leyendas: competiciones y citas del club.
  *
  * Va sobre el marco: es un panel entero.
  */
@@ -24,9 +25,16 @@ import {
   COMPETITION_BAND,
   COMPETITION_FILL,
   ResultBlock,
-  TONE_FILL,
   TeamBadge
 } from '@renderer/shared/ui';
+import GameIcon from '@renderer/features/app-shell/components/GameIcon.vue';
+import {
+  CALENDAR_EVENT_FILL,
+  CALENDAR_EVENT_GROUP,
+  CALENDAR_EVENT_GROUPS,
+  CALENDAR_EVENT_ICON,
+  CALENDAR_EVENT_LABEL
+} from '../calendar-event-style';
 
 const props = defineProps<{
   day: number;
@@ -148,9 +156,15 @@ function ownScore(game: CalendarGame): readonly [number, number] | null {
           <li
             v-for="event in events"
             :key="event.kind"
-            class="flex items-center gap-2 bg-tv-cell px-2 py-1"
+            class="flex items-center gap-2 bg-tv-cell py-1 pl-1 pr-2 font-semibold"
           >
-            <span class="h-1.5 w-1.5 shrink-0" :class="TONE_FILL.accent" aria-hidden="true"></span>
+            <span
+              class="flex h-5 w-5 shrink-0 items-center justify-center"
+              :class="CALENDAR_EVENT_FILL[CALENDAR_EVENT_GROUP[event.kind]]"
+              aria-hidden="true"
+            >
+              <GameIcon :name="CALENDAR_EVENT_ICON[CALENDAR_EVENT_GROUP[event.kind]]" :size="14" />
+            </span>
             {{ event.label }}
           </li>
         </ul>
@@ -170,6 +184,22 @@ function ownScore(game: CalendarGame): readonly [number, number] | null {
               aria-hidden="true"
             ></span>
             {{ COMPETITION_KIND_LABEL[kind] }}
+          </li>
+        </ul>
+      </section>
+
+      <section aria-label="Leyenda de las citas del club">
+        <AppSectionTitle size="xs">Citas del club</AppSectionTitle>
+        <ul class="mt-1.5 grid grid-cols-2 gap-x-3 gap-y-1 text-xs">
+          <li v-for="group in CALENDAR_EVENT_GROUPS" :key="group" class="flex items-center gap-2">
+            <span
+              class="flex h-4 w-4 shrink-0 items-center justify-center"
+              :class="CALENDAR_EVENT_FILL[group]"
+              aria-hidden="true"
+            >
+              <GameIcon :name="CALENDAR_EVENT_ICON[group]" :size="11" />
+            </span>
+            {{ CALENDAR_EVENT_LABEL[group] }}
           </li>
         </ul>
       </section>

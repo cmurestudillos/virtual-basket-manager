@@ -159,7 +159,6 @@ async function discard(): Promise<void> {
 <template>
   <div v-if="plan" class="flex flex-col gap-4">
     <PageToolbar place="tabs">
-      <span aria-hidden="true" class="my-3 w-px shrink-0 bg-white/30"></span>
       <AppTabs :model-value="tab" :options="TABS" @update:model-value="tab = $event as Tab" />
     </PageToolbar>
 

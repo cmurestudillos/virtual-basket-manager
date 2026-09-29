@@ -114,3 +114,13 @@ export function sectionForRoute(routeName: string | null | undefined): GameSecti
     ) ?? null
   );
 }
+
+/**
+ * Si la barra de sección pinta pestañas para esta ruta: con una sola pantalla la
+ * pestaña repetiría el título y no se pinta. Lo usan la barra y `PageToolbar`,
+ * que pone la raya delante de las pestañas propias de la pantalla sólo si hay
+ * pestañas de la sección antes.
+ */
+export function sectionHasTabs(routeName: string | null | undefined): boolean {
+  return (sectionForRoute(routeName)?.tabs.length ?? 0) > 1;
+}

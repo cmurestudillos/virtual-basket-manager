@@ -86,6 +86,7 @@ al extenderla porque ya se usaba unas 150 veces y el nombre no molesta.
 | Por tipo    | `tv-comp-league`, `-cup`, `-continental`, `-playoffs`, `-national`, cada uno con `-deep` | Un color por tipo de competición: franja del calendario, leyenda (ver abajo)                     |
 | Correo      | `tv-mail-from` → `tv-mail-to`                                                            | Rótulo azul del correo: la única cabecera que no es añil                                         |
 | Fondo       | `tv-deco-plum`, `tv-deco-petrol`, `tv-magenta`, `tv-orange`                              | Fondo con franjas: sólo menú, asistente y pantallas vacías                                       |
+| Citas       | `tv-event-season`, `-payroll`, `-market`, `-national`                                    | Citas del club en el calendario mensual (ver abajo)                                              |
 
 - **El texto sobre papel** es `tv-ink`; sobre el marco, blanco. Las cifras de
   las tablas van en negro: sólo llevan color los deltas, lo que está en
@@ -130,6 +131,26 @@ para el degradado.
 - **Cómo se pinta**: `COMPETITION_BAND` (la franja en degradado con letra
   blanca) y `COMPETITION_FILL` (el color liso de la leyenda), en
   `shared/ui/competition-colors.ts`; los nombres, en `COMPETITION_KIND_LABEL`.
+
+#### Un color por cita del club
+
+Las citas del calendario mensual (fase 5) —inicio de temporada, nóminas,
+mercado y selecciones— llevan cada una su color y su icono (`GameIcon`), con
+letra blanca encima. Antes eran etiquetas grises de 10 px que no se veían.
+
+| Cita        | Token               | Color                    | Icono      | Blanco encima |
+| ----------- | ------------------- | ------------------------ | ---------- | ------------: |
+| Temporada   | `tv-event-season`   | `#6a2fc0` (violeta)      | `trophy`   |         7,6:1 |
+| Nóminas     | `tv-event-payroll`  | `#2c7a1f` (verde dinero) | `money`    |         5,4:1 |
+| Mercado     | `tv-event-market`   | `#1f5fbf` (azul)         | `market`   |         6,1:1 |
+| Selecciones | `tv-event-national` | = `tv-comp-national`     | `national` |         5,3:1 |
+
+Son propios. Se eligieron lejos de los colores de competición que comparten
+casilla con ellos, del verde vivo y el granate de ganar y perder, y del azul
+claro de lo que se pulsa; selecciones es el color de su competición. Las siete
+citas del dominio se agrupan en estas cuatro (el mercado que abre y el que
+cierra, las listas y la ventana de selecciones), y cómo se pinta cada una está
+en `features/calendar/calendar-event-style.ts`.
 
 ### La letra
 
@@ -300,11 +321,11 @@ Fuera del kit quedan dos cosas a propósito:
   club y selección a la vez, «Club / Selección» en la barra de sección elige
   cuál se ve.
 
-  | Pieza              | Qué hace                                                                                                                                                                                                                                         |
-  | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-  | `CalendarPage`     | La rejilla y el panel del día; abre en el mes de hoy                                                                                                                                                                                             |
-  | `CalendarDayCell`  | Un día: escudo del rival y franja del color de su competición (`COMPETITION_BAND`) con el número y la «V»/«D»; sin partido, sus citas en pequeño. Hoy, borde `tv-cyan`; el elegido, `tv-select`. Es un botón con la frase entera en `aria-label` |
-  | `CalendarDayPanel` | El día elegido: competición y ronda en su color, los dos equipos con marcador, sede, enlaces a la ficha del rival y al acta, las citas y la leyenda de colores                                                                                   |
+  | Pieza              | Qué hace                                                                                                                                                                                                                                                                                                                                                           |
+  | ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+  | `CalendarPage`     | La rejilla y el panel del día; abre en el mes de hoy                                                                                                                                                                                                                                                                                                               |
+  | `CalendarDayCell`  | Un día: escudo del rival y franja del color de su competición (`COMPETITION_BAND`) con el número y la «V»/«D»; sin partido, sus citas en etiquetas de su color con icono (la primera al lado del número, la segunda debajo); con partido, cuadraditos de ese color. Hoy, borde `tv-cyan`; el elegido, `tv-select`. Es un botón con la frase entera en `aria-label` |
+  | `CalendarDayPanel` | El día elegido: competición y ronda en su color, los dos equipos con marcador, sede, enlaces a la ficha del rival y al acta, las citas y la leyenda de colores                                                                                                                                                                                                     |
 
   Lo que no es pantalla vive fuera y con test:
 
@@ -509,6 +530,13 @@ dos componentes:
 </PageActions>
 ```
 
+Las pestañas de la pantalla (`place="tabs"`) llevan delante **una raya fina**
+cuando la sección tiene pestañas propias antes que ellas (Equipo, Competición,
+Club…), para que se lean como otro nivel; en una sección de una sola pantalla
+(Mercado, Selecciones) no hay nada delante y no se pinta. La pone `PageToolbar`,
+no cada pantalla, con `sectionHasTabs()` de `sections.ts`, que es lo mismo que
+mira la barra para pintar o no sus pestañas (decisión del usuario, 2026-09-29).
+
 Se eligió `Teleport` y no `meta` de ruta con slots porque lo que va en la barra
 es de la pantalla —usa su estado y sus funciones— y así se escribe junto al
 resto de su plantilla. `PageActions` se apunta en un contador que provee el
@@ -541,7 +569,7 @@ Con la jornada anterior a medias, el propio avance la juega antes de llegar al
 partido. Esperar un mes, empezar temporada y avanzar un día son una sola llamada
 al proceso principal y no se pueden detener a medias.
 
-Al lado, pequeño, **«Avanzar día»** (mientras haya calendario con banquillo) y,
+Al lado, en tamaño medio, en el azul apagado y a la altura de CONTINUAR, **«Avanzar día»** (mientras haya calendario con banquillo) y,
 sin club pero con selección, **«Esperar un mes»**. Todo se deshabilita mientras
 hay un avance en curso.
 
@@ -573,6 +601,28 @@ y las cuatro resuelven algo que el kit no resolvía:
   las opciones se ven todas y se prueban de una pulsada.
 - **`AppScale`** — un 1-10 pelado no dice nada; lo que decide un entrenador no
   es «siete», es «más agresivo que lo normal».
+
+### Espaciado
+
+La escala es la de Tailwind (múltiplos de 4 px) más el hueco de 3 px de IBM.
+Revisada entera el 2026-09-29; lo que manda:
+
+| Dónde                                                    | Hueco                            |
+| -------------------------------------------------------- | -------------------------------- |
+| Borde de la zona de la pantalla (lo pone el marco)       | `p-4`                            |
+| **Entre paneles** (columnas, filas y avisos entre ellos) | `gap-4`                          |
+| Relleno del cuerpo del panel                             | `p-3` (de serie); `flush` sin él |
+| Entre bloques dentro de un panel                         | `gap-3`                          |
+| Entre cifras en caja (`AppStat`) de una fila             | `gap-3`                          |
+| Entre celdas, filas de una lista y botones pegados       | `gap-[3px]`                      |
+| Rótulo de panel                                          | `px-4 py-2`                      |
+| Botones en una barra (acciones, cabecera)                | `gap-3`                          |
+
+- Un panel con relleno no lleva otro relleno dentro: si su contenido necesita
+  el suyo (una tabla con un filtro encima), el panel va `flush`.
+- Fuera del marco (asistente de nueva partida, ajustes, editor del mundo) los
+  paneles van también a `gap-4` (decisión del usuario, 2026-09-29): antes iban a
+  `gap-3` y convivían dos escalas.
 
 ## Reglas
 

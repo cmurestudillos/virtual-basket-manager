@@ -6,6 +6,7 @@
  * grandes azules en mayúsculas.
  *
  * Son enlaces y no botones: cada uno abre una ruta, y el arnés los busca así.
+ * «Salir» es la excepción: no abre nada, cierra la aplicación.
  */
 import { AppBackdrop, AppButton, AppPanel } from '@renderer/shared/ui';
 import { useUpdates } from '@renderer/features/updates/useUpdates';
@@ -20,6 +21,10 @@ const ITEMS = [
   { route: 'world-editor', label: 'Editor del mundo' },
   { route: 'settings', label: 'Ajustes' }
 ] as const;
+
+function quit(): void {
+  void window.api.app.quit();
+}
 </script>
 
 <template>
@@ -39,6 +44,13 @@ const ITEMS = [
         >
           {{ item.label }}
         </RouterLink>
+        <button
+          type="button"
+          class="mt-3 px-8 py-3 ring-1 ring-inset ring-white/40 text-center text-base font-bold uppercase tracking-wide text-white transition hover:bg-white/10"
+          @click="quit"
+        >
+          Salir
+        </button>
       </nav>
 
       <div

@@ -225,7 +225,7 @@ async function discard(): Promise<void> {
 </script>
 
 <template>
-  <div v-if="board" class="flex flex-col gap-3">
+  <div v-if="board" class="flex flex-col gap-4">
     <!--
       El orden de los selectores importa: el arnés elige el sistema ofensivo en
       el primero y el defensivo en el segundo.

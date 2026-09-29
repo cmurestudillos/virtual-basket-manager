@@ -11,13 +11,13 @@
 import { computed } from 'vue';
 import { useRoute } from 'vue-router';
 import { SECTION_TABS_TARGET, SECTION_TOOLS_TARGET } from '../page-chrome';
-import { sectionForRoute } from '../sections';
+import { sectionForRoute, sectionHasTabs } from '../sections';
 
 const route = useRoute();
 const section = computed(() => sectionForRoute(route.name as string | undefined));
 /** Con una sola pantalla la pestaña repetiría el título: no se pinta. */
 const tabs = computed(() =>
-  section.value && section.value.tabs.length > 1 ? section.value.tabs : []
+  section.value && sectionHasTabs(route.name as string | undefined) ? section.value.tabs : []
 );
 </script>
 

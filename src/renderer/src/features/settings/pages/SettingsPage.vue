@@ -130,8 +130,8 @@ function back(): void {
     </header>
 
     <main class="min-h-0 flex-1 overflow-auto p-4">
-      <div class="mx-auto grid max-w-6xl grid-cols-2 items-start gap-3">
-        <div class="flex flex-col gap-3">
+      <div class="mx-auto grid max-w-6xl grid-cols-2 items-start gap-4">
+        <div class="flex flex-col gap-4">
           <AppPanel v-if="gameState.state" title="Tu entrenador" hint="en la partida cargada">
             <AppField label="Nacionalidad">
               <AppSelect
@@ -205,7 +205,7 @@ function back(): void {
           </AppPanel>
         </div>
 
-        <div class="flex flex-col gap-3">
+        <div class="flex flex-col gap-4">
           <AppPanel
             title="Actualizaciones"
             :hint="`versión ${updates.view.value?.currentVersion ?? version}`"
